@@ -61,6 +61,8 @@ Ensure Ollama is running and a model is downloaded:
 ```bash
 ollama serve  # Start Ollama server (if not running)
 ollama pull llama3.2  # Or mistral
+# Test the installation:
+python scripts/test_ollama.py
 ```
 
 ### 5. Validate Setup
@@ -89,6 +91,12 @@ python scripts/validate_setup.py
   - All dependencies installed (langchain, streamlit, chromadb, etc.)
   - Project structure initialized
   - Configuration management implemented
+- ✅ **TASK-002**: Ollama Installation and Model Configuration
+  - Ollama installed and running at `http://localhost:11434`
+  - Llama 3.2 model downloaded (2.0 GB)
+  - API endpoint verified and tested
+  - Test script created (`scripts/test_ollama.py`)
+  - Response time: ~0.4 seconds (excellent performance)
 - ✅ **TASK-003**: LangChain Framework Integration and Basic RAG Chain
   - Ollama LLM integration via langchain_community
   - Basic RAG chain implementation using LangChain 1.0+ LCEL
@@ -99,9 +107,9 @@ python scripts/validate_setup.py
 ### Next Steps
 
 After setup, proceed with:
-- **TASK-002**: Ollama Installation and Model Configuration (if not already done)
 - **TASK-004**: Document Ingestion Pipeline - Text and Markdown Support
 - **TASK-005**: ChromaDB Integration and Vector Database Setup
+- **TASK-006**: Embedding Generation and Storage Integration
 
 ## Architecture
 
