@@ -132,6 +132,62 @@ class IngestionPipeline:
 
         return all_ids
 
+    def process_document_objects(
+        self, documents: List[Document], store_embeddings: bool = True
+    ) -> List[str]:
+        """
+        Process Document objects directly (without file paths).
+
+        Args:
+            documents: List of Document objects to process
+            store_embeddings: Whether to store embeddings in ChromaDB (default: True)
+
+        Returns:
+            List of all document chunk IDs stored in ChromaDB
+
+        Raises:
+            IngestionPipelineError: If processing fails
+        """
+        all_ids = []
+
+        for doc in documents:
+            try:
+                # Chunk the document
+                chunks = self.document_loader.chunk_document(doc)
+
+                if not chunks:
+                    raise IngestionPipelineError(f"No chunks generated from document")
+
+                # Generate embeddings
+                texts = [chunk.page_content for chunk in chunks]
+                embeddings = self.embedding_generator.embed_documents(texts)
+
+                if len(embeddings) != len(chunks):
+                    raise IngestionPipelineError(
+                        f"Embedding count ({len(embeddings)}) does not match "
+                        f"chunk count ({len(chunks)})"
+                    )
+
+                # Store in ChromaDB (if requested)
+                if store_embeddings:
+                    ids = self.chroma_store.add_documents(chunks, embeddings)
+                    all_ids.extend(ids)
+                else:
+                    # Return placeholder IDs if not storing
+                    all_ids.extend([f"chunk_{i}" for i in range(len(chunks))])
+
+            except DocumentIngestionError as e:
+                raise IngestionPipelineError(f"Document ingestion failed: {str(e)}") from e
+            except EmbeddingError as e:
+                raise IngestionPipelineError(f"Embedding generation failed: {str(e)}") from e
+            except ChromaStoreError as e:
+                raise IngestionPipelineError(f"ChromaDB storage failed: {str(e)}") from e
+            except Exception as e:
+                print(f"Warning: Failed to process document: {str(e)}")
+                continue
+
+        return all_ids
+
     def get_document_count(self) -> int:
         """
         Get the number of documents stored in ChromaDB.

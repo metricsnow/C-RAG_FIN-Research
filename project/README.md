@@ -148,6 +148,19 @@ python scripts/validate_setup.py
   - Single-turn queries (no conversation history sidebar for MVP)
   - Implementation: `app/ui/app.py` (Streamlit application)
   - Run script: `scripts/run_streamlit.py`
+- ✅ **TASK-009**: Citation Tracking Implementation
+  - Citation tracking system fully implemented and verified
+  - Source metadata extraction from retrieved chunks
+  - Citation formatting: "Source: filename.pdf" for single source, "Sources: file1.pdf, file2.txt" for multiple
+  - Integration with Streamlit UI displaying citations below each answer
+  - Comprehensive test suite: `scripts/test_citation_tracking.py` (5 test cases, all passing)
+  - Implementation: `app/ui/app.py` (format_citations function)
+- 🟡 **TASK-010**: Financial Document Collection and Indexing (In Progress)
+  - SEC EDGAR data fetcher implemented (`app/ingestion/edgar_fetcher.py`)
+  - Free public SEC EDGAR API integration
+  - Automated fetching and ingestion script: `scripts/fetch_edgar_data.py`
+  - Supports fetching 10-K, 10-Q, and 8-K filings from major companies
+  - Direct Document object processing in ingestion pipeline
 
 ### Running the Streamlit App
 
@@ -163,10 +176,57 @@ streamlit run app/ui/app.py
 
 The app will open in your browser at `http://localhost:8501`.
 
+### Data Collection
+
+#### SEC EDGAR Data (Free Public API)
+
+The system includes an automated SEC EDGAR data fetcher that downloads free financial filings:
+
+```bash
+# Fetch and ingest EDGAR filings from major companies
+PYTHONPATH=/Users/marcus/Public_Git/Project1/project python scripts/fetch_edgar_data.py
+```
+
+**Features:**
+- Fetches filings from 10 major companies (AAPL, MSFT, GOOGL, AMZN, etc.)
+- Downloads 10-K (annual reports), 10-Q (quarterly reports), and 8-K (current events) forms
+- Automatically converts to text format and ingests into ChromaDB
+- Rate limiting (respects SEC guidelines: 10 requests/second)
+- Rich metadata (ticker, CIK, form type, filing date)
+
+**EDGAR Fetcher Module:**
+- `app/ingestion/edgar_fetcher.py`: SEC EDGAR API integration
+- `scripts/fetch_edgar_data.py`: Automated fetching and ingestion script
+
+**Usage:**
+```python
+from app.ingestion import create_edgar_fetcher, create_pipeline
+
+# Fetch EDGAR filings
+edgar_fetcher = create_edgar_fetcher()
+documents = edgar_fetcher.fetch_filings_to_documents(
+    tickers=["AAPL", "MSFT"],
+    form_types=["10-K", "10-Q"],
+    max_filings_per_company=5
+)
+
+# Ingest into ChromaDB
+pipeline = create_pipeline()
+chunk_ids = pipeline.process_document_objects(documents)
+```
+
+#### Manual Document Ingestion
+
+Place documents in `data/documents/` directory:
+- Text files (`.txt`)
+- Markdown files (`.md`)
+
+Then process through the ingestion pipeline.
+
 ### Next Steps
 
 After setup, proceed with:
-- **TASK-009**: Citation Tracking Implementation (enhanced citation display)
+- **TASK-010**: Complete document collection (EDGAR integration ready, run fetch script)
 
 ## Architecture
 
@@ -189,6 +249,7 @@ After setup, proceed with:
   - Error handling
 - **Document Ingestion** (`app/ingestion/document_loader.py`): Text and Markdown document processing with chunking
 - **Ingestion Pipeline** (`app/ingestion/pipeline.py`): Complete end-to-end pipeline (document → chunks → embeddings → ChromaDB)
+- **EDGAR Fetcher** (`app/ingestion/edgar_fetcher.py`): SEC EDGAR API integration for automated financial document fetching
 - **Embedding Generation** (`app/rag/embedding_factory.py`): OpenAI and Ollama embedding generation with batch processing
 - **ChromaDB Integration** (`app/vector_db/chroma_store.py`): Persistent vector database for document embeddings
 - **Test Scripts**:
@@ -197,7 +258,10 @@ After setup, proceed with:
   - `scripts/test_chromadb.py`: Tests ChromaDB operations
   - `scripts/test_embeddings.py`: Tests embedding generation and storage
   - `scripts/test_rag_query.py`: Tests complete RAG query system (7 test cases)
+  - `scripts/test_citation_tracking.py`: Tests citation tracking system (5 test cases)
   - `scripts/example_chromadb_usage.py`: ChromaDB usage examples
+- **Data Collection Scripts**:
+  - `scripts/fetch_edgar_data.py`: Automated SEC EDGAR data fetching and ingestion
 
 ### Notes
 
@@ -207,7 +271,9 @@ After setup, proceed with:
   - Configure via `EMBEDDING_PROVIDER` in `.env` (openai or ollama)
 - ChromaDB will persist data in `data/chroma_db/` directory
 - All source documents should be placed in `data/documents/`
+- EDGAR filings are saved to `data/documents/edgar_filings/` (optional)
 - Complete ingestion pipeline: document → chunks → embeddings → ChromaDB
+- EDGAR data can be fetched automatically using `scripts/fetch_edgar_data.py`
 - `.env` file is gitignored - use `.env.example` as template
 
 ## Troubleshooting

@@ -6,6 +6,7 @@ streamlit
 chromadb
 python-dotenv
 tiktoken
+requests
 
 # Optional: OpenAI for embeddings (recommended for MVP)
 openai

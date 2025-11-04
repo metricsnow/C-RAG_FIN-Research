@@ -13,6 +13,11 @@ from app.ingestion.pipeline import (
     IngestionPipelineError,
     create_pipeline,
 )
+from app.ingestion.edgar_fetcher import (
+    EdgarFetcher,
+    EdgarFetcherError,
+    create_edgar_fetcher,
+)
 
 __all__ = [
     "DocumentLoader",
@@ -20,5 +25,8 @@ __all__ = [
     "IngestionPipeline",
     "IngestionPipelineError",
     "create_pipeline",
+    "EdgarFetcher",
+    "EdgarFetcherError",
+    "create_edgar_fetcher",
 ]
 
