@@ -8,6 +8,17 @@ from app.ingestion.document_loader import (
     DocumentIngestionError,
     DocumentLoader,
 )
+from app.ingestion.pipeline import (
+    IngestionPipeline,
+    IngestionPipelineError,
+    create_pipeline,
+)
 
-__all__ = ["DocumentLoader", "DocumentIngestionError"]
+__all__ = [
+    "DocumentLoader",
+    "DocumentIngestionError",
+    "IngestionPipeline",
+    "IngestionPipelineError",
+    "create_pipeline",
+]
 

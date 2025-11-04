@@ -119,13 +119,32 @@ python scripts/validate_setup.py
   - Test suite with 7 test cases (all passing)
   - Implementation: `app/vector_db/chroma_store.py`
   - Storage location: `data/chroma_db/` (persistent)
+- ✅ **TASK-006**: Embedding Generation and Storage Integration
+  - Embedding factory supporting OpenAI (text-embedding-3-small) and Ollama
+  - Batch embedding generation for document chunks
+  - Complete ingestion pipeline integrating document loading, chunking, embeddings, and ChromaDB
+  - End-to-end processing: document → chunks → embeddings → storage
+  - Similarity search integration
+  - Test suite with 4 test cases (all passing)
+  - Implementation: `app/rag/embedding_factory.py`, `app/ingestion/pipeline.py`
+  - Embedding dimensions: 1536 (OpenAI text-embedding-3-small)
+- ✅ **TASK-007**: RAG Query System Implementation
+  - Complete RAG query system with LangChain Expression Language (LCEL) chain pattern
+  - Natural language query processing with query embedding generation
+  - Vector similarity search in ChromaDB with configurable top-k (default: 5)
+  - Context retrieval and formatting for LLM prompts
+  - Financial domain-optimized prompt template
+  - Ollama LLM integration for answer generation
+  - Comprehensive error handling (empty results, LLM failures, invalid inputs)
+  - Test suite with 7 test cases (all passing)
+  - Implementation: `app/rag/chain.py` (RAGQuerySystem class)
+  - Test script: `scripts/test_rag_query.py`
 
 ### Next Steps
 
 After setup, proceed with:
-- **TASK-006**: Embedding Generation and Storage Integration
-- **TASK-007**: RAG Query System Implementation
 - **TASK-008**: Streamlit Frontend - Basic Chat Interface
+- **TASK-009**: Citation Tracking Implementation
 
 ## Architecture
 
@@ -133,21 +152,34 @@ After setup, proceed with:
 
 - **Configuration Management** (`app/utils/config.py`): Loads environment variables from `.env`
 - **LLM Factory** (`app/rag/llm_factory.py`): Creates and configures Ollama LLM instances
-- **RAG Chain** (`app/rag/chain.py`): Basic RAG chain using LangChain Expression Language (LCEL)
+- **RAG Query System** (`app/rag/chain.py`): Complete RAG query system using LangChain Expression Language (LCEL)
+  - Natural language query processing
+  - Query embedding generation
+  - Vector similarity search in ChromaDB
+  - Context retrieval (top-k chunks)
+  - Financial domain-optimized prompt template
+  - LLM answer generation via Ollama
 - **Document Ingestion** (`app/ingestion/document_loader.py`): Text and Markdown document processing with chunking
+- **Ingestion Pipeline** (`app/ingestion/pipeline.py`): Complete end-to-end pipeline (document → chunks → embeddings → ChromaDB)
+- **Embedding Generation** (`app/rag/embedding_factory.py`): OpenAI and Ollama embedding generation with batch processing
 - **ChromaDB Integration** (`app/vector_db/chroma_store.py`): Persistent vector database for document embeddings
 - **Test Scripts**:
-  - `tests/test_basic_rag.py`: Validates RAG chain functionality
+  - `tests/test_basic_rag.py`: Validates basic RAG chain functionality
   - `scripts/test_ingestion.py`: Tests document ingestion pipeline
   - `scripts/test_chromadb.py`: Tests ChromaDB operations
+  - `scripts/test_embeddings.py`: Tests embedding generation and storage
+  - `scripts/test_rag_query.py`: Tests complete RAG query system (7 test cases)
   - `scripts/example_chromadb_usage.py`: ChromaDB usage examples
 
 ### Notes
 
 - PDF support is optional and deferred to Phase 2 if not needed
 - OpenAI embeddings are recommended for MVP (simpler than Ollama embeddings)
+  - Default model: text-embedding-3-small (1536 dimensions)
+  - Configure via `EMBEDDING_PROVIDER` in `.env` (openai or ollama)
 - ChromaDB will persist data in `data/chroma_db/` directory
 - All source documents should be placed in `data/documents/`
+- Complete ingestion pipeline: document → chunks → embeddings → ChromaDB
 - `.env` file is gitignored - use `.env.example` as template
 
 ## Troubleshooting

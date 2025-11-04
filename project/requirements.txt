@@ -1,9 +1,11 @@
 # Core Dependencies
 langchain
 langchain-community
+langchain-openai
 streamlit
 chromadb
 python-dotenv
+tiktoken
 
 # Optional: OpenAI for embeddings (recommended for MVP)
 openai
