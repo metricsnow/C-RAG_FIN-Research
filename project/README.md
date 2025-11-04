@@ -103,13 +103,29 @@ python scripts/validate_setup.py
   - Document loading and text splitting
   - Configuration module for environment variables
   - Test script for RAG chain validation
+- ✅ **TASK-004**: Document Ingestion Pipeline - Text and Markdown Support
+  - Document loader module with TextLoader and MarkdownLoader support
+  - RecursiveCharacterTextSplitter with chunk_size=1000, overlap=200
+  - Comprehensive metadata management (source, filename, type, date, chunk_index)
+  - File size validation (max 10MB)
+  - Error handling for corrupted/unsupported files
+  - Test suite with 6 test cases (all passing)
+  - Implementation: `app/ingestion/document_loader.py`
+- ✅ **TASK-005**: ChromaDB Integration and Vector Database Setup
+  - Persistent ChromaDB client with automatic collection management
+  - Document addition with embeddings support
+  - Similarity search by embedding or text
+  - Document retrieval by ID with metadata filtering
+  - Test suite with 7 test cases (all passing)
+  - Implementation: `app/vector_db/chroma_store.py`
+  - Storage location: `data/chroma_db/` (persistent)
 
 ### Next Steps
 
 After setup, proceed with:
-- **TASK-004**: Document Ingestion Pipeline - Text and Markdown Support
-- **TASK-005**: ChromaDB Integration and Vector Database Setup
 - **TASK-006**: Embedding Generation and Storage Integration
+- **TASK-007**: RAG Query System Implementation
+- **TASK-008**: Streamlit Frontend - Basic Chat Interface
 
 ## Architecture
 
@@ -118,7 +134,13 @@ After setup, proceed with:
 - **Configuration Management** (`app/utils/config.py`): Loads environment variables from `.env`
 - **LLM Factory** (`app/rag/llm_factory.py`): Creates and configures Ollama LLM instances
 - **RAG Chain** (`app/rag/chain.py`): Basic RAG chain using LangChain Expression Language (LCEL)
-- **Test Script** (`tests/test_basic_rag.py`): Validates RAG chain functionality
+- **Document Ingestion** (`app/ingestion/document_loader.py`): Text and Markdown document processing with chunking
+- **ChromaDB Integration** (`app/vector_db/chroma_store.py`): Persistent vector database for document embeddings
+- **Test Scripts**:
+  - `tests/test_basic_rag.py`: Validates RAG chain functionality
+  - `scripts/test_ingestion.py`: Tests document ingestion pipeline
+  - `scripts/test_chromadb.py`: Tests ChromaDB operations
+  - `scripts/example_chromadb_usage.py`: ChromaDB usage examples
 
 ### Notes
 

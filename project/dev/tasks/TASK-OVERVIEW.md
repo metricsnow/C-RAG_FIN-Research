@@ -28,8 +28,8 @@
 
 | Task ID | Task Name | Priority | Dependencies | Status |
 |---------|-----------|----------|---------------|--------|
-| TASK-004 | Document Ingestion Pipeline - Text and Markdown Support | High | TASK-003 | Waiting |
-| TASK-005 | ChromaDB Integration and Vector Database Setup | High | TASK-004 | Waiting |
+| TASK-004 | Document Ingestion Pipeline - Text and Markdown Support | High | TASK-003 | ✅ Done |
+| TASK-005 | ChromaDB Integration and Vector Database Setup | High | TASK-004 | ✅ Done |
 | TASK-006 | Embedding Generation and Storage Integration | High | TASK-005 | Waiting |
 
 ---
@@ -129,9 +129,9 @@ Before starting Milestone 1, ensure:
 
 | Status | Count |
 |--------|-------|
-| Waiting | 10 |
+| Waiting | 8 |
 | In Progress | 0 |
-| Completed | 3 |
+| Completed | 5 |
 | Total | 13 |
 
 ---
@@ -141,11 +141,12 @@ Before starting Milestone 1, ensure:
 1. ✅ **TASK-001**: Environment Setup and Dependency Management - **COMPLETE**
 2. ✅ **TASK-002**: Ollama Installation and Model Configuration - **COMPLETE**
 3. ✅ **TASK-003**: LangChain Framework Integration and Basic RAG Chain - **COMPLETE**
-4. **Proceed with TASK-004**: Document Ingestion Pipeline - Text and Markdown Support
-5. **Continue sequentially** through Milestone 2 tasks (TASK-005, TASK-006)
-6. **Plan Milestone 3** implementation after Milestone 2 complete
-7. **Execute Milestone 4** testing after Milestone 3 complete
-8. **Deploy and document** in Milestone 5
+4. ✅ **TASK-004**: Document Ingestion Pipeline - Text and Markdown Support - **COMPLETE**
+5. ✅ **TASK-005**: ChromaDB Integration and Vector Database Setup - **COMPLETE**
+6. **Proceed with TASK-006**: Embedding Generation and Storage Integration
+7. **Plan Milestone 3** implementation after Milestone 2 complete
+8. **Execute Milestone 4** testing after Milestone 3 complete
+9. **Deploy and document** in Milestone 5
 
 ---
 
@@ -160,4 +161,8 @@ Before starting Milestone 1, ensure:
 ---
 
 **Last Updated**: 2025-11-04
+
+**Recent Progress**:
+- TASK-004 completed: Document ingestion pipeline with text/Markdown support, chunking, and error handling
+- TASK-005 completed: ChromaDB integration with persistent storage, similarity search, and metadata filtering
 
