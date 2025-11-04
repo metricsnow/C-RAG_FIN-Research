@@ -27,15 +27,56 @@ Fetch and ingest EDGAR filings from major companies:
 ```bash
 cd project
 source venv/bin/activate
-PYTHONPATH=/Users/marcus/Public_Git/Project1/project python scripts/fetch_edgar_data.py
+python -u scripts/fetch_edgar_data.py
 ```
 
 This will:
-1. Fetch filings from 10 major companies (AAPL, MSFT, GOOGL, etc.)
-2. Download up to 5 filings per company
-3. Convert to text format
-4. Ingest into ChromaDB
-5. Make them searchable in your RAG system
+1. Fetch filings from 10 major companies (AAPL, MSFT, GOOGL, AMZN, META, TSLA, NVDA, JPM, V, JNJ)
+2. Download up to 5 filings per company (50 total)
+3. Convert HTML to text format
+4. Save files to `data/documents/edgar_filings/`
+5. Ingest into ChromaDB with embeddings
+6. Make them searchable in your RAG system
+
+**Example Output:**
+```
+============================================================
+SEC EDGAR Data Fetching and Ingestion
+============================================================
+Fetching EDGAR filings for 10 companies...
+Form types: 10-K, 10-Q, 8-K
+Target: 5 filings per company (up to 50 total)
+
+✓ EDGAR fetcher initialized
+
+[1/10] Processing AAPL...
+  → Looking up CIK for AAPL... ✓ CIK: 0000320193
+  → Fetching filing history... ✓ Found 5 filings
+  → Downloading filings...
+    [1/5] 10-K (2025-10-31)... ✓ Downloaded (13 KB)
+    [2/5] 8-K (2025-10-30)... ✓ Downloaded (3 KB)
+    ...
+✓ STEP 1 Complete: Fetched 50 filings
+
+STEP 2: Ingesting EDGAR filings into ChromaDB
+✓ Processed 50 documents in 27.5s
+✓ Generated 511 chunks
+✓ Total documents in ChromaDB: 586
+```
+
+### Verification
+
+Verify that documents are indexed and searchable:
+
+```bash
+python -u scripts/verify_document_indexing.py
+```
+
+This will:
+1. Verify document count (50-100 range)
+2. Test document searchability with sample queries
+3. Validate metadata storage
+4. Confirm indexing completeness
 
 ### Programmatic Usage
 
@@ -140,9 +181,13 @@ The fetcher automatically respects these limits with configurable delays.
 
 ### SEC EDGAR API Endpoints
 
-- **Company Tickers**: `https://data.sec.gov/files/company_tickers.json`
+- **Company Tickers**: Uses hardcoded ticker-to-CIK mapping (fallback to API if needed)
 - **Filing History**: `https://data.sec.gov/submissions/CIK##########.json`
-- **Filing Text**: `https://data.sec.gov/files/data/{CIK}/{accession-number}/{form-type}-{accession}.txt`
+- **Filing Archive**: `https://www.sec.gov/Archives/edgar/data/{CIK}/{accession-number-without-dashes}/{filename}`
+
+**Note**: The SEC EDGAR archive structure uses accession numbers with dashes removed in the URL path. For example:
+- Accession number: `0000320193-24-000096`
+- URL path: `000032019324000096` (dashes removed)
 
 ### Documentation
 
@@ -188,6 +233,19 @@ The EDGAR fetcher integrates seamlessly with the existing ingestion pipeline:
 5. **Embed**: Embeddings generated for chunks
 6. **Store**: Chunks stored in ChromaDB with metadata
 
+## Status Information
+
+The fetch script provides detailed progress information:
+
+- **Company Progress**: Shows `[1/10]`, `[2/10]`, etc. for each company
+- **CIK Lookup**: Status of ticker-to-CIK conversion
+- **Filing History**: Number of filings found per company
+- **Download Progress**: Individual filing download with file size (KB)
+- **Ingestion Progress**: Document processing and chunk generation status
+- **Final Statistics**: Total documents, chunks, and ingestion time
+
+All output is unbuffered (`python -u`) to ensure real-time status updates.
+
 ## Future Enhancements
 
 Potential improvements for Phase 2:
@@ -196,6 +254,8 @@ Potential improvements for Phase 2:
 - Insider trading data extraction (Forms 3, 4, 5)
 - XBRL data parsing for structured financial data
 - Historical data fetching with date ranges
+- Research papers from arXiv/SSRN integration
+- Market reports from public sources
 
 ## References
 

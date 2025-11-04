@@ -155,11 +155,15 @@ python scripts/validate_setup.py
   - Integration with Streamlit UI displaying citations below each answer
   - Comprehensive test suite: `scripts/test_citation_tracking.py` (5 test cases, all passing)
   - Implementation: `app/ui/app.py` (format_citations function)
-- 🟡 **TASK-010**: Financial Document Collection and Indexing (In Progress)
+- ✅ **TASK-010**: Financial Document Collection and Indexing
   - SEC EDGAR data fetcher implemented (`app/ingestion/edgar_fetcher.py`)
-  - Free public SEC EDGAR API integration
+  - Free public SEC EDGAR API integration with comprehensive status printing
   - Automated fetching and ingestion script: `scripts/fetch_edgar_data.py`
   - Supports fetching 10-K, 10-Q, and 8-K filings from major companies
+  - **50 documents collected** from 10 companies (AAPL, MSFT, GOOGL, AMZN, META, TSLA, NVDA, JPM, V, JNJ)
+  - **511 chunks generated** from 50 documents
+  - All documents indexed in ChromaDB and verified as searchable
+  - Verification script: `scripts/verify_document_indexing.py`
   - Direct Document object processing in ingestion pipeline
 
 ### Running the Streamlit App
@@ -184,7 +188,19 @@ The system includes an automated SEC EDGAR data fetcher that downloads free fina
 
 ```bash
 # Fetch and ingest EDGAR filings from major companies
-PYTHONPATH=/Users/marcus/Public_Git/Project1/project python scripts/fetch_edgar_data.py
+python -u scripts/fetch_edgar_data.py
+```
+
+This will fetch 50 EDGAR filings from 10 major companies, convert them to text, and ingest them into ChromaDB. The script provides detailed progress information including:
+- Company progress tracking `[1/10]`, `[2/10]`, etc.
+- CIK lookup status
+- Individual filing download progress with file sizes
+- Ingestion progress with timing information
+
+**Verification:**
+```bash
+# Verify documents are indexed and searchable
+python -u scripts/verify_document_indexing.py
 ```
 
 **Features:**

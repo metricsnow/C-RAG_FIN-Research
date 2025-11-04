@@ -83,21 +83,52 @@ class EdgarFetcher:
         Raises:
             EdgarFetcherError: If lookup fails
         """
+        # Common ticker-to-CIK mapping for major companies
+        # This avoids API dependency issues and provides reliable lookups
+        TICKER_TO_CIK = {
+            "AAPL": "0000320193",  # Apple Inc.
+            "MSFT": "0000789019",  # Microsoft Corporation
+            "GOOGL": "0001652044",  # Alphabet Inc.
+            "AMZN": "0001018724",  # Amazon.com Inc.
+            "META": "0001326801",  # Meta Platforms Inc.
+            "TSLA": "0001318605",  # Tesla, Inc.
+            "NVDA": "0001045810",  # NVIDIA Corporation
+            "JPM": "0000019617",   # JPMorgan Chase & Co.
+            "V": "0001403161",     # Visa Inc.
+            "JNJ": "0000200406",   # Johnson & Johnson
+            "WMT": "0000104169",   # Walmart Inc.
+            "PG": "0000080424",    # Procter & Gamble Co.
+            "MA": "0001141391",    # Mastercard Inc.
+            "HD": "0000354950",    # The Home Depot, Inc.
+            "DIS": "0001001039",   # The Walt Disney Company
+            "BAC": "0000070858",   # Bank of America Corp.
+            "XOM": "0000034088",   # Exxon Mobil Corporation
+            "VZ": "0000732712",    # Verizon Communications Inc.
+            "CVX": "0000093410",   # Chevron Corporation
+            "KO": "0000021344",    # The Coca-Cola Company
+        }
+        
+        ticker_upper = ticker.upper()
+        if ticker_upper in TICKER_TO_CIK:
+            return TICKER_TO_CIK[ticker_upper]
+        
+        # Fallback: Try API lookup if ticker not in mapping
         try:
-            # SEC provides company tickers JSON
+            # SEC provides company tickers JSON (may require authentication)
             url = f"{self.BASE_URL}/files/company_tickers.json"
             data = self._make_request(url)
             
             # Search for ticker
             for entry in data.values():
-                if isinstance(entry, dict) and entry.get("ticker") == ticker.upper():
+                if isinstance(entry, dict) and entry.get("ticker") == ticker_upper:
                     cik = str(entry.get("cik_str", ""))
                     # Pad CIK to 10 digits
                     return cik.zfill(10)
-            
-            return None
-        except Exception as e:
-            raise EdgarFetcherError(f"Failed to lookup CIK for {ticker}: {str(e)}") from e
+        except Exception:
+            # API lookup failed, but we already tried the mapping
+            pass
+        
+        return None
 
     def get_filing_history(self, cik: str) -> Dict[str, Any]:
         """
@@ -174,6 +205,11 @@ class EdgarFetcher:
         """
         Download filing text content.
 
+        Based on SEC EDGAR API structure:
+        - Base URL: https://www.sec.gov/Archives/edgar/data/
+        - Path: {CIK}/{ACCESSION-NUMBER-WITH-DASHES}/filename
+        - Accession number format: CIK-YY-SSSSSS (keep dashes)
+
         Args:
             cik: Company CIK (10-digit zero-padded)
             accession_number: Filing accession number (e.g., "0000950170-23-027789")
@@ -186,47 +222,118 @@ class EdgarFetcher:
             EdgarFetcherError: If download fails
         """
         try:
-            # Convert accession number to path format
-            # Example: 0000950170-23-027789 -> 0000950170-23-027789
-            acc_num = accession_number.replace("-", "")
-            # Format: CIK/accession-number/filing-name.txt
-            # For text files, we try the .txt version first
-            filing_name = f"{form_type.lower()}-{acc_num}.txt"
-            url = f"{self.BASE_URL}/files/data/{cik}/{acc_num}/{filing_name}"
+            # SEC EDGAR archive structure (per official documentation)
+            # Format: https://www.sec.gov/Archives/edgar/data/CIK/ACC-NUM-WITHOUT-DASHES/primary-document
+            # Note: Accession number in URL path has dashes REMOVED, but CIK keeps leading zeros
+            base_url = "https://www.sec.gov/Archives/edgar/data"
             
-            try:
-                time.sleep(self.rate_limit_delay)
-                response = self.session.get(url, timeout=30)
-                if response.status_code == 200:
-                    return response.text
-            except requests.exceptions.RequestException:
-                # Try alternative URL format or HTML version
-                pass
+            # Remove dashes from accession number for URL path
+            # Example: "0000320193-24-000096" -> "000032019324000096"
+            acc_path_no_dashes = accession_number.replace("-", "")
             
-            # Try HTML version if text not available
-            filing_name_html = f"{form_type.lower()}-{acc_num}.htm"
-            url_html = f"{self.BASE_URL}/files/data/{cik}/{acc_num}/{filing_name_html}"
-            time.sleep(self.rate_limit_delay)
-            response = self.session.get(url_html, timeout=30)
-            response.raise_for_status()
+            # Also keep version with dashes for index.json (if it exists)
+            acc_path_with_dashes = accession_number
             
-            # Extract text from HTML (simple extraction)
-            import re
-            from html import unescape
-            text = response.text
-            # Remove script and style tags
-            text = re.sub(r'<script[^>]*>.*?</script>', '', text, flags=re.DOTALL | re.IGNORECASE)
-            text = re.sub(r'<style[^>]*>.*?</style>', '', text, flags=re.DOTALL | re.IGNORECASE)
-            # Remove HTML tags
-            text = re.sub(r'<[^>]+>', ' ', text)
-            # Decode HTML entities
-            text = unescape(text)
-            # Clean up whitespace
-            text = re.sub(r'\s+', ' ', text)
-            text = text.strip()
+            # First, try to get the index.json to find the primary document
+            # Try both with and without dashes
+            index_url_no_dashes = f"{base_url}/{cik}/{acc_path_no_dashes}/index.json"
+            index_url_with_dashes = f"{base_url}/{cik}/{acc_path_with_dashes}/index.json"
+            primary_document = None
             
-            return text
+            # Try index.json without dashes first (most common format)
+            for index_url in [index_url_no_dashes, index_url_with_dashes]:
+                try:
+                    time.sleep(self.rate_limit_delay)
+                    response = self.session.get(index_url, timeout=30)
+                    if response.status_code == 200:
+                        index_data = response.json()
+                        # Parse index structure to find primary document
+                        # Index structure: {"directory": {"item": [...]}}
+                        if isinstance(index_data, dict):
+                            directory = index_data.get("directory", {})
+                            if isinstance(directory, dict):
+                                items = directory.get("item", [])
+                                if not isinstance(items, list):
+                                    items = [items] if items else []
+                                
+                                # Find primary document (usually the main filing document)
+                                for item in items:
+                                    if isinstance(item, dict):
+                                        # Primary documents are usually named like "10k.htm" or "10-k.htm"
+                                        doc_name = item.get("name", "")
+                                        doc_type = item.get("type", "")
+                                        
+                                        # Look for primary document matching form type
+                                        if form_type.replace("-", "").lower() in doc_name.lower() or \
+                                           doc_type == form_type or \
+                                           (doc_name and not doc_name.startswith("ex-")):
+                                            primary_document = doc_name
+                                            # Prefer HTML files for better content
+                                            if doc_name.endswith(".htm") or doc_name.endswith(".html"):
+                                                break
+                        if primary_document:
+                            break  # Found primary document, exit loop
+                except Exception:
+                    # Index lookup failed for this URL, try next
+                    continue
             
+            # Build list of document names to try (primary document first if found)
+            document_names = []
+            if primary_document:
+                document_names.append(primary_document)
+            
+            # Add common document name patterns
+            # Format: form-type-{accession_number_without_dashes}.{ext}
+            acc_no_dashes = accession_number.replace("-", "")
+            document_names.extend([
+                f"{form_type.lower()}-{acc_no_dashes}.txt",
+                f"{form_type.lower()}-{acc_no_dashes}.htm",
+                f"{form_type.lower()}.txt",
+                f"{form_type.lower()}.htm",
+                f"{form_type.replace('-', '')}.txt",
+                f"{form_type.replace('-', '')}.htm",
+            ])
+            
+            # Try each document name (use path without dashes)
+            for doc_name in document_names:
+                url = f"{base_url}/{cik}/{acc_path_no_dashes}/{doc_name}"
+                try:
+                    time.sleep(self.rate_limit_delay)
+                    response = self.session.get(url, timeout=30)
+                    if response.status_code == 200:
+                        text = response.text
+                        
+                        # If HTML, extract text content
+                        if doc_name.endswith('.htm') or doc_name.endswith('.html'):
+                            import re
+                            from html import unescape
+                            # Remove script and style tags
+                            text = re.sub(r'<script[^>]*>.*?</script>', '', text, flags=re.DOTALL | re.IGNORECASE)
+                            text = re.sub(r'<style[^>]*>.*?</style>', '', text, flags=re.DOTALL | re.IGNORECASE)
+                            # Remove HTML tags but preserve structure
+                            text = re.sub(r'<[^>]+>', ' ', text)
+                            # Decode HTML entities
+                            text = unescape(text)
+                            # Clean up whitespace
+                            text = re.sub(r'\s+', ' ', text)
+                            text = text.strip()
+                        
+                        # Validate content length
+                        if text and len(text.strip()) > 100:
+                            return text
+                except requests.exceptions.RequestException:
+                    continue
+                except Exception:
+                    continue
+            
+            # If all attempts failed, raise error
+            raise EdgarFetcherError(
+                f"Could not download filing {accession_number} - tried multiple document formats. "
+                f"Tried URLs: {base_url}/{cik}/{acc_path_no_dashes}/[filename]"
+            )
+            
+        except EdgarFetcherError:
+            raise
         except Exception as e:
             raise EdgarFetcherError(
                 f"Failed to download filing {accession_number}: {str(e)}"
@@ -257,24 +364,39 @@ class EdgarFetcher:
             form_types = ["10-K", "10-Q", "8-K"]
         
         documents = []
+        total_companies = len(tickers)
         
-        for ticker in tickers:
+        for idx, ticker in enumerate(tickers, 1):
             try:
+                print(f"\n[{idx}/{total_companies}] Processing {ticker}...")
+                
                 # Get CIK for ticker
+                print(f"  → Looking up CIK for {ticker}...", end=" ", flush=True)
                 cik = self.get_company_cik(ticker)
                 if not cik:
-                    print(f"Warning: Could not find CIK for ticker {ticker}")
+                    print(f"✗ Not found")
                     continue
+                print(f"✓ CIK: {cik}")
                 
                 # Get recent filings
+                print(f"  → Fetching filing history...", end=" ", flush=True)
                 filings = self.get_recent_filings(
                     cik,
                     form_types=form_types,
                     max_filings=max_filings_per_company
                 )
+                print(f"✓ Found {len(filings)} filings")
                 
-                for filing in filings:
+                if not filings:
+                    print(f"  ⚠ No filings found for {ticker}")
+                    continue
+                
+                # Download each filing
+                print(f"  → Downloading filings...")
+                for filing_idx, filing in enumerate(filings, 1):
                     try:
+                        print(f"    [{filing_idx}/{len(filings)}] {filing['form']} ({filing['date']})...", end=" ", flush=True)
+                        
                         # Download filing text
                         content = self.download_filing_text(
                             cik,
@@ -283,7 +405,7 @@ class EdgarFetcher:
                         )
                         
                         if not content or len(content.strip()) < 100:
-                            print(f"Warning: Filing {filing['accession_number']} has insufficient content")
+                            print(f"✗ Insufficient content")
                             continue
                         
                         # Create Document object
@@ -302,14 +424,21 @@ class EdgarFetcher:
                             }
                         )
                         documents.append(doc)
-                        print(f"✓ Fetched {ticker} {filing['form']} ({filing['date']})")
+                        content_size = len(content) // 1024  # Size in KB
+                        print(f"✓ Downloaded ({content_size} KB)")
                         
                     except Exception as e:
-                        print(f"Warning: Failed to download filing {filing['accession_number']}: {str(e)}")
+                        error_msg = str(e)
+                        print(f"✗ Error: {error_msg[:80]}")
+                        # Print full error for debugging if it's a download error
+                        if "Could not download" in error_msg or "Failed to download" in error_msg:
+                            print(f"    Details: {error_msg}")
                         continue
                 
+                print(f"  ✓ {ticker}: {len([d for d in documents if d.metadata.get('ticker') == ticker])} filings fetched")
+                
             except Exception as e:
-                print(f"Warning: Failed to fetch filings for {ticker}: {str(e)}")
+                print(f"  ✗ Failed to process {ticker}: {str(e)[:50]}")
                 continue
         
         return documents

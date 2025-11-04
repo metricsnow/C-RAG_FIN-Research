@@ -53,14 +53,21 @@ def main():
         print("✓ EDGAR fetcher initialized")
         
         # Fetch filings
-        print("\nFetching filings from SEC EDGAR...")
+        print("\n" + "="*60)
+        print("STEP 1: Fetching filings from SEC EDGAR API")
+        print("="*60)
+        print(f"Processing {len(tickers)} companies...")
+        print(f"Rate limit: {edgar_fetcher.rate_limit_delay}s between requests\n")
+        
         documents = edgar_fetcher.fetch_filings_to_documents(
             tickers=tickers,
             form_types=form_types,
             max_filings_per_company=5
         )
         
-        print(f"\n✓ Fetched {len(documents)} filings")
+        print(f"\n" + "-"*60)
+        print(f"✓ STEP 1 Complete: Fetched {len(documents)} filings")
+        print("-"*60)
         
         if not documents:
             print("⚠ No documents fetched. Exiting.")
@@ -75,20 +82,28 @@ def main():
         
         # Ingest into ChromaDB
         print("\n" + "="*60)
-        print("Ingesting EDGAR filings into ChromaDB...")
+        print("STEP 2: Ingesting EDGAR filings into ChromaDB")
         print("="*60)
         
         pipeline = create_pipeline(collection_name="documents")
+        print("✓ Ingestion pipeline initialized")
         
         # Process documents directly from Document objects
         print(f"\nProcessing {len(documents)} documents...")
+        print("  → Generating embeddings and storing in vector database...")
+        
+        import time as time_module
+        start_time = time_module.time()
         
         chunk_ids = pipeline.process_document_objects(documents)
-        print(f"✓ Ingested {len(chunk_ids)} chunks into ChromaDB")
+        
+        elapsed_time = time_module.time() - start_time
+        print(f"  ✓ Processed {len(documents)} documents in {elapsed_time:.1f}s")
+        print(f"  ✓ Generated {len(chunk_ids)} chunks")
         
         # Verify ingestion
         doc_count = pipeline.get_document_count()
-        print(f"✓ Total documents in ChromaDB: {doc_count}")
+        print(f"\n✓ Total documents in ChromaDB: {doc_count}")
         
         print("\n" + "="*60)
         print("EDGAR Data Ingestion Complete!")
