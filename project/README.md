@@ -139,12 +139,34 @@ python scripts/validate_setup.py
   - Test suite with 7 test cases (all passing)
   - Implementation: `app/rag/chain.py` (RAGQuerySystem class)
   - Test script: `scripts/test_rag_query.py`
+- ✅ **TASK-008**: Streamlit Frontend - Basic Chat Interface
+  - Basic chat interface using Streamlit `st.chat_input` and `st.chat_message` components
+  - Direct integration with RAG query system (no API layer)
+  - Session state management for chat history
+  - Simple citation display: "Source: document.pdf" format
+  - Error handling with user-friendly error messages
+  - Single-turn queries (no conversation history sidebar for MVP)
+  - Implementation: `app/ui/app.py` (Streamlit application)
+  - Run script: `scripts/run_streamlit.py`
+
+### Running the Streamlit App
+
+After setup and document ingestion, run the Streamlit frontend:
+
+```bash
+# Option 1: Using the run script
+python scripts/run_streamlit.py
+
+# Option 2: Direct Streamlit command
+streamlit run app/ui/app.py
+```
+
+The app will open in your browser at `http://localhost:8501`.
 
 ### Next Steps
 
 After setup, proceed with:
-- **TASK-008**: Streamlit Frontend - Basic Chat Interface
-- **TASK-009**: Citation Tracking Implementation
+- **TASK-009**: Citation Tracking Implementation (enhanced citation display)
 
 ## Architecture
 
@@ -159,6 +181,12 @@ After setup, proceed with:
   - Context retrieval (top-k chunks)
   - Financial domain-optimized prompt template
   - LLM answer generation via Ollama
+- **Streamlit Frontend** (`app/ui/app.py`): Basic chat interface for querying documents
+  - Chat interface using Streamlit chat components
+  - Direct RAG system integration
+  - Session state management
+  - Simple citation display
+  - Error handling
 - **Document Ingestion** (`app/ingestion/document_loader.py`): Text and Markdown document processing with chunking
 - **Ingestion Pipeline** (`app/ingestion/pipeline.py`): Complete end-to-end pipeline (document → chunks → embeddings → ChromaDB)
 - **Embedding Generation** (`app/rag/embedding_factory.py`): OpenAI and Ollama embedding generation with batch processing
