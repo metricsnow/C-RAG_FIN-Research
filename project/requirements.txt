@@ -1,0 +1,14 @@
+# Core Dependencies
+langchain
+langchain-community
+streamlit
+chromadb
+python-dotenv
+
+# Optional: OpenAI for embeddings (recommended for MVP)
+openai
+
+# Optional: PDF support (deferred to Phase 2 if not needed)
+# PyPDF2
+# pdfplumber
+
