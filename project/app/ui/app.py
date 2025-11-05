@@ -9,6 +9,9 @@ from pathlib import Path
 from typing import List, Dict, Any
 
 from app.rag import RAGQuerySystem, RAGQueryError, create_rag_system
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 def initialize_rag_system() -> RAGQuerySystem:
@@ -19,9 +22,12 @@ def initialize_rag_system() -> RAGQuerySystem:
         RAGQuerySystem instance
     """
     if "rag_system" not in st.session_state:
+        logger.info("Initializing RAG system for Streamlit app")
         try:
             st.session_state.rag_system = create_rag_system()
+            logger.info("RAG system initialized successfully")
         except RAGQueryError as e:
+            logger.error(f"Failed to initialize RAG system: {str(e)}", exc_info=True)
             st.error(f"Failed to initialize RAG system: {str(e)}")
             st.stop()
     return st.session_state.rag_system
@@ -107,11 +113,14 @@ def main():
         with st.chat_message("assistant"):
             with st.spinner("Searching documents and generating answer..."):
                 try:
+                    logger.info(f"Processing user query: '{prompt[:50]}...'")
                     # Query RAG system
                     result = rag_system.query(prompt)
                     
                     answer = result.get("answer", "I'm sorry, I couldn't generate an answer.")
                     sources = result.get("sources", [])
+                    
+                    logger.info(f"Generated answer with {len(sources)} sources")
                     
                     # Display answer
                     st.markdown(answer)
@@ -131,6 +140,7 @@ def main():
                     
                 except RAGQueryError as e:
                     error_msg = f"Error processing query: {str(e)}"
+                    logger.error(f"RAG query error: {str(e)}", exc_info=True)
                     st.error(error_msg)
                     st.session_state.messages.append({
                         "role": "assistant",
@@ -139,6 +149,7 @@ def main():
                     })
                 except Exception as e:
                     error_msg = f"Unexpected error: {str(e)}"
+                    logger.error(f"Unexpected error in UI: {str(e)}", exc_info=True)
                     st.error(error_msg)
                     st.session_state.messages.append({
                         "role": "assistant",

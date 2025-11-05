@@ -13,6 +13,9 @@ from app.ingestion.document_loader import DocumentLoader, DocumentIngestionError
 from app.rag.embedding_factory import EmbeddingGenerator, EmbeddingError
 from app.vector_db import ChromaStore, ChromaStoreError
 from app.utils.config import config
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class IngestionPipelineError(Exception):
@@ -69,38 +72,57 @@ class IngestionPipeline:
         Raises:
             IngestionPipelineError: If processing fails
         """
+        logger.info(f"Processing document: {file_path}")
         try:
             # Step 1: Load and chunk document
+            logger.debug(f"Loading and chunking document: {file_path}")
             chunks = self.document_loader.process_document(file_path)
 
             if not chunks:
+                logger.error(f"No chunks generated from {file_path}")
                 raise IngestionPipelineError(f"No chunks generated from {file_path}")
 
+            logger.info(f"Generated {len(chunks)} chunks from document")
+
             # Step 2: Generate embeddings
+            logger.debug(f"Generating embeddings for {len(chunks)} chunks")
             texts = [chunk.page_content for chunk in chunks]
             embeddings = self.embedding_generator.embed_documents(texts)
 
             if len(embeddings) != len(chunks):
+                logger.error(
+                    f"Embedding count ({len(embeddings)}) does not match "
+                    f"chunk count ({len(chunks)})"
+                )
                 raise IngestionPipelineError(
                     f"Embedding count ({len(embeddings)}) does not match "
                     f"chunk count ({len(chunks)})"
                 )
 
+            logger.debug(f"Generated {len(embeddings)} embeddings")
+
             # Step 3: Store in ChromaDB (if requested)
             if store_embeddings:
+                logger.debug(f"Storing {len(chunks)} chunks in ChromaDB")
                 ids = self.chroma_store.add_documents(chunks, embeddings)
+                logger.info(f"Successfully stored {len(ids)} chunks in ChromaDB")
                 return ids
             else:
                 # Return placeholder IDs if not storing
+                logger.debug(f"Skipping ChromaDB storage (store_embeddings=False)")
                 return [f"chunk_{i}" for i in range(len(chunks))]
 
         except DocumentIngestionError as e:
+            logger.error(f"Document ingestion failed: {str(e)}", exc_info=True)
             raise IngestionPipelineError(f"Document ingestion failed: {str(e)}") from e
         except EmbeddingError as e:
+            logger.error(f"Embedding generation failed: {str(e)}", exc_info=True)
             raise IngestionPipelineError(f"Embedding generation failed: {str(e)}") from e
         except ChromaStoreError as e:
+            logger.error(f"ChromaDB storage failed: {str(e)}", exc_info=True)
             raise IngestionPipelineError(f"ChromaDB storage failed: {str(e)}") from e
         except Exception as e:
+            logger.error(f"Unexpected error in pipeline: {str(e)}", exc_info=True)
             raise IngestionPipelineError(f"Unexpected error in pipeline: {str(e)}") from e
 
     def process_documents(
@@ -121,14 +143,17 @@ class IngestionPipeline:
         """
         all_ids = []
 
-        for file_path in file_paths:
+        logger.info(f"Processing {len(file_paths)} documents")
+        for idx, file_path in enumerate(file_paths, 1):
             try:
+                logger.info(f"Processing document {idx}/{len(file_paths)}: {file_path}")
                 ids = self.process_document(file_path, store_embeddings=store_embeddings)
                 all_ids.extend(ids)
             except IngestionPipelineError as e:
                 # Log error but continue processing other files
-                print(f"Warning: Failed to process {file_path}: {str(e)}")
+                logger.warning(f"Failed to process {file_path}: {str(e)}")
                 continue
+        logger.info(f"Completed processing {len(file_paths)} documents, stored {len(all_ids)} chunks")
 
         return all_ids
 
@@ -148,14 +173,17 @@ class IngestionPipeline:
         Raises:
             IngestionPipelineError: If processing fails
         """
+        logger.info(f"Processing {len(documents)} document objects")
         all_ids = []
 
-        for doc in documents:
+        for idx, doc in enumerate(documents, 1):
             try:
+                logger.debug(f"Processing document {idx}/{len(documents)}")
                 # Chunk the document
                 chunks = self.document_loader.chunk_document(doc)
 
                 if not chunks:
+                    logger.error("No chunks generated from document")
                     raise IngestionPipelineError(f"No chunks generated from document")
 
                 # Generate embeddings
@@ -163,6 +191,10 @@ class IngestionPipeline:
                 embeddings = self.embedding_generator.embed_documents(texts)
 
                 if len(embeddings) != len(chunks):
+                    logger.error(
+                        f"Embedding count ({len(embeddings)}) does not match "
+                        f"chunk count ({len(chunks)})"
+                    )
                     raise IngestionPipelineError(
                         f"Embedding count ({len(embeddings)}) does not match "
                         f"chunk count ({len(chunks)})"
@@ -177,14 +209,18 @@ class IngestionPipeline:
                     all_ids.extend([f"chunk_{i}" for i in range(len(chunks))])
 
             except DocumentIngestionError as e:
+                logger.error(f"Document ingestion failed: {str(e)}", exc_info=True)
                 raise IngestionPipelineError(f"Document ingestion failed: {str(e)}") from e
             except EmbeddingError as e:
+                logger.error(f"Embedding generation failed: {str(e)}", exc_info=True)
                 raise IngestionPipelineError(f"Embedding generation failed: {str(e)}") from e
             except ChromaStoreError as e:
+                logger.error(f"ChromaDB storage failed: {str(e)}", exc_info=True)
                 raise IngestionPipelineError(f"ChromaDB storage failed: {str(e)}") from e
             except Exception as e:
-                print(f"Warning: Failed to process document: {str(e)}")
+                logger.warning(f"Failed to process document: {str(e)}", exc_info=True)
                 continue
+        logger.info(f"Completed processing {len(documents)} document objects, stored {len(all_ids)} chunks")
 
         return all_ids
 
@@ -195,7 +231,9 @@ class IngestionPipeline:
         Returns:
             Number of documents in the collection
         """
-        return self.chroma_store.count()
+        count = self.chroma_store.count()
+        logger.debug(f"Document count in ChromaDB: {count}")
+        return count
 
     def search_similar(
         self, query_text: str, n_results: int = 5
@@ -213,11 +251,14 @@ class IngestionPipeline:
         Raises:
             IngestionPipelineError: If search fails
         """
+        logger.info(f"Searching for similar documents: query='{query_text[:50]}...', n_results={n_results}")
         try:
             # Generate query embedding
+            logger.debug("Generating query embedding")
             query_embedding = self.embedding_generator.embed_query(query_text)
 
             # Search ChromaDB
+            logger.debug(f"Searching ChromaDB with n_results={n_results}")
             results = self.chroma_store.query_by_embedding(
                 query_embedding, n_results=n_results
             )
@@ -230,13 +271,17 @@ class IngestionPipeline:
                 doc = Document(page_content=doc_text, metadata=metadata)
                 documents.append(doc)
 
+            logger.info(f"Found {len(documents)} similar documents")
             return documents
 
         except EmbeddingError as e:
+            logger.error(f"Query embedding failed: {str(e)}", exc_info=True)
             raise IngestionPipelineError(f"Query embedding failed: {str(e)}") from e
         except ChromaStoreError as e:
+            logger.error(f"ChromaDB search failed: {str(e)}", exc_info=True)
             raise IngestionPipelineError(f"ChromaDB search failed: {str(e)}") from e
         except Exception as e:
+            logger.error(f"Unexpected error in search: {str(e)}", exc_info=True)
             raise IngestionPipelineError(f"Unexpected error in search: {str(e)}") from e
 
 

@@ -16,6 +16,9 @@ except ImportError:
 from langchain_core.embeddings import Embeddings
 
 from app.utils.config import config
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class EmbeddingError(Exception):
@@ -51,12 +54,14 @@ class EmbeddingFactory:
             provider = config.EMBEDDING_PROVIDER
 
         provider = provider.lower()
+        logger.debug(f"Creating embeddings instance with provider: {provider}")
 
         if provider == "openai":
             return EmbeddingFactory._create_openai_embeddings()
         elif provider == "ollama":
             return EmbeddingFactory._create_ollama_embeddings()
         else:
+            logger.error(f"Unsupported embedding provider: {provider}")
             raise EmbeddingError(
                 f"Unsupported embedding provider: {provider}. "
                 "Supported providers: 'openai', 'ollama'"
@@ -73,20 +78,25 @@ class EmbeddingFactory:
         Raises:
             EmbeddingError: If OpenAI API key is not configured
         """
+        logger.debug("Creating OpenAI embeddings instance")
         if not config.OPENAI_API_KEY:
+            logger.error("OpenAI API key not found")
             raise EmbeddingError(
                 "OpenAI API key not found. Please set OPENAI_API_KEY in .env file"
             )
 
         try:
             # OpenAIEmbeddings API may vary between langchain_openai and langchain_community
-            return OpenAIEmbeddings(
+            embeddings = OpenAIEmbeddings(
                 model="text-embedding-3-small",
                 openai_api_key=config.OPENAI_API_KEY,
                 chunk_size=1000,
                 max_retries=3,
             )  # type: ignore[call-arg]
+            logger.info("OpenAI embeddings instance created successfully")
+            return embeddings
         except Exception as e:
+            logger.error(f"Failed to create OpenAI embeddings: {str(e)}", exc_info=True)
             raise EmbeddingError(f"Failed to create OpenAI embeddings: {str(e)}") from e
 
     @staticmethod
@@ -104,20 +114,25 @@ class EmbeddingFactory:
         Raises:
             EmbeddingError: If Ollama embeddings are not available or configured
         """
+        logger.debug("Creating Ollama embeddings instance")
         try:
             # Try to import OllamaEmbeddings
             from langchain_community.embeddings import OllamaEmbeddings
 
-            return OllamaEmbeddings(
+            embeddings = OllamaEmbeddings(
                 base_url=config.OLLAMA_BASE_URL,
                 model="llama3.2",  # Using same model as LLM
             )
+            logger.info("Ollama embeddings instance created successfully")
+            return embeddings
         except ImportError:
+            logger.error("Ollama embeddings not available (langchain-community not installed)")
             raise EmbeddingError(
                 "Ollama embeddings not available. "
                 "Please install langchain-community or use OpenAI embeddings."
             )
         except Exception as e:
+            logger.error(f"Failed to create Ollama embeddings: {str(e)}", exc_info=True)
             raise EmbeddingError(f"Failed to create Ollama embeddings: {str(e)}") from e
 
 
@@ -153,9 +168,13 @@ class EmbeddingGenerator:
         Raises:
             EmbeddingError: If embedding generation fails
         """
+        logger.debug(f"Generating query embedding for text: '{text[:50]}...'")
         try:
-            return self.embeddings.embed_query(text)
+            embedding = self.embeddings.embed_query(text)
+            logger.debug(f"Generated query embedding (dimensions: {len(embedding)})")
+            return embedding
         except Exception as e:
+            logger.error(f"Failed to generate query embedding: {str(e)}", exc_info=True)
             raise EmbeddingError(f"Failed to generate query embedding: {str(e)}") from e
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
@@ -172,11 +191,16 @@ class EmbeddingGenerator:
             EmbeddingError: If embedding generation fails
         """
         if not texts:
+            logger.debug("Empty texts list provided, returning empty embeddings")
             return []
 
+        logger.debug(f"Generating embeddings for {len(texts)} documents")
         try:
-            return self.embeddings.embed_documents(texts)
+            embeddings = self.embeddings.embed_documents(texts)
+            logger.info(f"Generated {len(embeddings)} document embeddings")
+            return embeddings
         except Exception as e:
+            logger.error(f"Failed to generate document embeddings: {str(e)}", exc_info=True)
             raise EmbeddingError(
                 f"Failed to generate document embeddings: {str(e)}"
             ) from e

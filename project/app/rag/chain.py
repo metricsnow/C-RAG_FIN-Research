@@ -17,6 +17,9 @@ from app.rag.llm_factory import get_llm
 from app.rag.embedding_factory import EmbeddingGenerator, EmbeddingError
 from app.vector_db import ChromaStore, ChromaStoreError
 from app.utils.config import config
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class RAGQueryError(Exception):
@@ -55,10 +58,14 @@ class RAGQuerySystem:
         Raises:
             RAGQueryError: If initialization fails
         """
+        logger.info(f"Initializing RAG query system: collection={collection_name}, top_k={top_k}")
         try:
             self.top_k = top_k
+            logger.debug("Creating LLM instance")
             self.llm = get_llm()
+            logger.debug(f"Creating embedding generator with provider={embedding_provider or config.EMBEDDING_PROVIDER}")
             self.embedding_generator = EmbeddingGenerator(provider=embedding_provider)
+            logger.debug(f"Creating ChromaDB store with collection={collection_name}")
             self.chroma_store = ChromaStore(collection_name=collection_name)
 
             # Financial domain-optimized prompt template
@@ -84,8 +91,10 @@ Answer:"""
             # Create RAG chain using LCEL (LangChain Expression Language)
             # Chain: question -> embedding -> retrieval -> format -> prompt -> LLM -> answer
             self.chain = self._build_chain()
+            logger.info("RAG query system initialized successfully")
 
         except Exception as e:
+            logger.error(f"Failed to initialize RAG query system: {str(e)}", exc_info=True)
             raise RAGQueryError(f"Failed to initialize RAG query system: {str(e)}") from e
 
     def _format_docs(self, docs: List[Document]) -> str:
@@ -115,11 +124,14 @@ Answer:"""
         Raises:
             RAGQueryError: If retrieval fails
         """
+        logger.debug(f"Retrieving context for question: '{question[:50]}...'")
         try:
             # Generate query embedding
+            logger.debug("Generating query embedding")
             query_embedding = self.embedding_generator.embed_query(question)
 
             # Search ChromaDB
+            logger.debug(f"Querying ChromaDB with top_k={self.top_k}")
             results = self.chroma_store.query_by_embedding(
                 query_embedding=query_embedding,
                 n_results=self.top_k,
@@ -137,13 +149,17 @@ Answer:"""
                     )
                     documents.append(doc)
 
+            logger.info(f"Retrieved {len(documents)} context documents")
             return documents
 
         except EmbeddingError as e:
+            logger.error(f"Failed to generate query embedding: {str(e)}", exc_info=True)
             raise RAGQueryError(f"Failed to generate query embedding: {str(e)}") from e
         except ChromaStoreError as e:
+            logger.error(f"Failed to retrieve context from ChromaDB: {str(e)}", exc_info=True)
             raise RAGQueryError(f"Failed to retrieve context from ChromaDB: {str(e)}") from e
         except Exception as e:
+            logger.error(f"Unexpected error during context retrieval: {str(e)}", exc_info=True)
             raise RAGQueryError(f"Unexpected error during context retrieval: {str(e)}") from e
 
     def _build_chain(self):
@@ -195,14 +211,17 @@ Answer:"""
             RAGQueryError: If query processing fails
         """
         if not question or not question.strip():
+            logger.error("Empty question provided")
             raise RAGQueryError("Question cannot be empty")
 
+        logger.info(f"Processing query: '{question[:50]}...'")
         try:
             # Use provided top_k or default
             current_top_k = top_k if top_k is not None else self.top_k
 
             # Retrieve context
             if top_k != self.top_k:
+                logger.debug(f"Using custom top_k={current_top_k} for this query")
                 # Temporarily override top_k
                 original_top_k = self.top_k
                 self.top_k = current_top_k
@@ -213,6 +232,7 @@ Answer:"""
 
             # Check if we have any relevant results
             if not retrieved_docs:
+                logger.warning("No relevant documents found for query")
                 return {
                     "answer": "I couldn't find any relevant information in the document database to answer your question. Please try rephrasing your question or ensure documents have been indexed.",
                     "sources": [],
@@ -220,14 +240,18 @@ Answer:"""
                 }
 
             # Format context
+            logger.debug("Formatting context documents")
             context = self._format_docs(retrieved_docs)
 
             # Generate answer using LLM
+            logger.debug("Generating answer using LLM")
             try:
                 response = self.chain.invoke({"question": question, "context": context})
                 answer = response if isinstance(response, str) else str(response)
+                logger.info(f"Successfully generated answer ({len(answer)} chars)")
             except Exception as e:
                 # Handle LLM failures gracefully
+                logger.error(f"LLM generation failed: {str(e)}", exc_info=True)
                 return {
                     "answer": f"I encountered an error while generating an answer: {str(e)}. Please try again or check your Ollama configuration.",
                     "sources": [doc.metadata for doc in retrieved_docs],
@@ -247,6 +271,7 @@ Answer:"""
         except RAGQueryError:
             raise
         except Exception as e:
+            logger.error(f"Unexpected error processing query: {str(e)}", exc_info=True)
             raise RAGQueryError(f"Unexpected error processing query: {str(e)}") from e
 
     def query_simple(self, question: str) -> str:

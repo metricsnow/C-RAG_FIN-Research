@@ -8,6 +8,8 @@ This project uses **pytest** for standardized testing with comprehensive coverag
 
 **Type Checking**: The project also uses **mypy** for static type checking. Type checking validates type hints throughout the codebase and catches type errors at development time. See the [Type Checking](#type-checking) section below for details.
 
+**Logging**: The project includes comprehensive logging infrastructure across all modules. Logging is configured centrally and supports environment variable-based configuration. Log levels can be adjusted for testing (e.g., `LOG_LEVEL=DEBUG`) to see detailed operation logs during test execution. See the [Logging](#logging-in-tests) section below for details.
+
 ## Test Coverage
 
 ### Coverage Configuration
@@ -482,10 +484,93 @@ def process_documents(
 - ❌ Add type hints only for new code (fix existing code gradually)
 - ❌ Disable type checking for entire files unnecessarily
 
+## Logging in Tests
+
+### Overview
+
+The project includes comprehensive logging infrastructure across all modules. During test execution, logging can provide valuable insights into test behavior and help debug test failures.
+
+### Logging Configuration for Tests
+
+**Default behavior**: Logging is initialized automatically when modules are imported. The default log level is `INFO`, which provides useful information without being too verbose.
+
+**Adjusting log level for tests**:
+
+```bash
+# Run tests with DEBUG logging for detailed information
+LOG_LEVEL=DEBUG pytest
+
+# Run tests with WARNING level to reduce verbosity
+LOG_LEVEL=WARNING pytest
+
+# Run tests with ERROR level to see only errors
+LOG_LEVEL=ERROR pytest
+```
+
+### Logging in Test Code
+
+**Using loggers in tests**:
+
+```python
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
+
+def test_something():
+    logger.debug("Starting test")
+    # Test implementation
+    logger.info("Test completed successfully")
+```
+
+**Capturing logs in pytest**:
+
+Pytest can capture and display log output during test execution:
+
+```bash
+# Show log output for failed tests
+pytest --log-cli-level=INFO
+
+# Show all log output
+pytest -s --log-cli-level=DEBUG
+```
+
+### Logging Best Practices for Tests
+
+**DO**:
+- ✅ Use `LOG_LEVEL=DEBUG` when debugging test failures
+- ✅ Use `LOG_LEVEL=WARNING` or `ERROR` for cleaner test output
+- ✅ Check logs when tests fail to understand what happened
+- ✅ Use appropriate log levels in test code (DEBUG for detailed info, INFO for important events)
+
+**DON'T**:
+- ❌ Rely on log output for test assertions (use proper assertions)
+- ❌ Leave log level at DEBUG in CI/CD (use INFO or WARNING)
+- ❌ Log sensitive data in tests
+
+### Module Logging Coverage
+
+All modules include comprehensive logging:
+- **ingestion/**: Document loading, chunking, and pipeline operations
+- **rag/**: Query processing, embedding generation, and LLM operations
+- **ui/**: User interface interactions (limited in tests due to Streamlit)
+- **vector_db/**: ChromaDB operations and data management
+- **utils/**: Configuration and utility functions
+
+### Example: Using Logs to Debug Tests
+
+```bash
+# Run a specific test with DEBUG logging
+LOG_LEVEL=DEBUG pytest tests/test_rag_chain.py::test_query_system -v -s
+
+# Check logs for specific module
+LOG_LEVEL=DEBUG pytest tests/test_rag_chain.py -v -s 2>&1 | grep "app.rag.chain"
+```
+
 ## References
 
 - [Pytest Documentation](https://docs.pytest.org/)
 - [Coverage.py Documentation](https://coverage.readthedocs.io/)
 - [pytest-cov Documentation](https://pytest-cov.readthedocs.io/)
 - [Mypy Documentation](https://mypy.readthedocs.io/)
+- [Python Logging Documentation](https://docs.python.org/3/library/logging.html)
 

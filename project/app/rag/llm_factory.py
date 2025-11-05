@@ -20,6 +20,9 @@ except ImportError:
     warnings.filterwarnings("ignore", category=DeprecationWarning, module="langchain_community.llms")
 
 from app.utils.config import config
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 def create_ollama_llm():
@@ -30,9 +33,11 @@ def create_ollama_llm():
         OllamaLLM or Ollama: Configured Ollama LLM instance
     """
     ollama_config = config.get_ollama_config()
+    logger.debug(f"Creating Ollama LLM with config: {ollama_config}")
 
     if OLLAMA_AVAILABLE:
         # Use langchain-ollama (recommended)
+        logger.debug("Using langchain-ollama (recommended)")
         llm = OLLAMA_CLASS(
             base_url=ollama_config["base_url"],
             model=ollama_config["model"],
@@ -41,6 +46,7 @@ def create_ollama_llm():
         )
     else:
         # Fallback to deprecated langchain-community
+        logger.warning("Using deprecated langchain-community (fallback)")
         llm = OLLAMA_CLASS(
             base_url=ollama_config["base_url"],
             model=ollama_config["model"],
@@ -48,6 +54,7 @@ def create_ollama_llm():
             timeout=ollama_config["timeout"],
         )
 
+    logger.info(f"Ollama LLM created successfully: model={ollama_config['model']}")
     return llm
 
 
@@ -58,8 +65,10 @@ def get_llm():
     Returns:
         LLM instance (Ollama or other)
     """
+    logger.debug(f"Getting LLM instance with provider: {config.LLM_PROVIDER}")
     if config.LLM_PROVIDER == "ollama":
         return create_ollama_llm()
     else:
+        logger.error(f"Unsupported LLM provider: {config.LLM_PROVIDER}")
         raise ValueError(f"Unsupported LLM provider: {config.LLM_PROVIDER}")
 

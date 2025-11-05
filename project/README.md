@@ -190,7 +190,10 @@ The system uses environment variables loaded from `.env` file. Key configuration
 | `OLLAMA_BASE_URL` | Ollama server URL | `http://localhost:11434` | No |
 | `LLM_MODEL` | Ollama model name | `llama3.2` | No |
 | `CHROMA_DB_PATH` | ChromaDB storage path | `./data/chroma_db` | No |
-| `LOG_LEVEL` | Logging level | `INFO` | No |
+| `LOG_LEVEL` | Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL) | `INFO` | No |
+| `LOG_FILE` | Path to log file (optional, console only if not set) | None | No |
+| `LOG_FILE_MAX_BYTES` | Maximum log file size before rotation | `10485760` (10MB) | No |
+| `LOG_FILE_BACKUP_COUNT` | Number of backup log files to keep | `5` | No |
 | `MAX_DOCUMENT_SIZE_MB` | Maximum document size | `10` | No |
 | `DEFAULT_TOP_K` | Default number of chunks to retrieve | `5` | No |
 
@@ -207,6 +210,56 @@ The system uses environment variables loaded from `.env` file. Key configuration
 - Slower processing
 - Lower dimensional embeddings
 - Set `EMBEDDING_PROVIDER=ollama` in `.env`
+
+### Logging Configuration
+
+The application includes comprehensive logging infrastructure across all modules. Logging is configured centrally and supports environment variable-based configuration.
+
+**Log Levels**:
+- `DEBUG`: Detailed information for diagnosing problems
+- `INFO`: General informational messages (default)
+- `WARNING`: Warning messages for potential issues
+- `ERROR`: Error messages for failures
+- `CRITICAL`: Critical errors that may cause system failure
+
+**Basic Configuration**:
+
+```bash
+# Set log level in .env file
+LOG_LEVEL=INFO  # Options: DEBUG, INFO, WARNING, ERROR, CRITICAL
+```
+
+**Log File Configuration (Optional)**:
+
+```bash
+# Enable log file output
+LOG_FILE=./logs/app.log
+
+# Configure log rotation (optional)
+LOG_FILE_MAX_BYTES=10485760  # 10MB (default)
+LOG_FILE_BACKUP_COUNT=5       # Keep 5 backup files (default)
+```
+
+**Log Format**:
+```
+2025-01-27 10:30:45 - app.rag.chain - INFO - Processing query: 'What is...'
+2025-01-27 10:30:45 - app.vector_db.chroma_store - DEBUG - Querying ChromaDB: n_results=5
+2025-01-27 10:30:46 - app.rag.chain - INFO - Successfully generated answer (245 chars)
+```
+
+**Production Recommendations**:
+- Use `LOG_LEVEL=INFO` or `WARNING` in production to reduce log verbosity
+- Enable log file rotation for production deployments
+- Monitor log file sizes and disk space
+- Review logs regularly for error patterns
+
+**Module Coverage**:
+Logging is implemented across all modules:
+- `ingestion/` - Document loading, chunking, and pipeline operations
+- `rag/` - Query processing, embedding generation, and LLM operations
+- `ui/` - User interface interactions and query handling
+- `vector_db/` - ChromaDB operations and data management
+- `utils/` - Configuration and utility functions
 
 ### Streamlit Configuration
 

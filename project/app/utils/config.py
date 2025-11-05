@@ -6,6 +6,7 @@ Loads environment variables and provides configuration for the application.
 
 import os
 from pathlib import Path
+from typing import Optional
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -34,6 +35,9 @@ class Config:
 
     # Application Configuration
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
+    LOG_FILE: Optional[str] = os.getenv("LOG_FILE", None)  # None = console only
+    LOG_FILE_MAX_BYTES: int = int(os.getenv("LOG_FILE_MAX_BYTES", str(10 * 1024 * 1024)))  # 10MB
+    LOG_FILE_BACKUP_COUNT: int = int(os.getenv("LOG_FILE_BACKUP_COUNT", "5"))
     MAX_DOCUMENT_SIZE_MB: int = int(os.getenv("MAX_DOCUMENT_SIZE_MB", "10"))
     DEFAULT_TOP_K: int = int(os.getenv("DEFAULT_TOP_K", "5"))
 

@@ -15,6 +15,10 @@ from urllib.parse import urljoin
 
 from langchain_core.documents import Document
 
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
+
 
 class EdgarFetcherError(Exception):
     """Custom exception for EDGAR fetcher errors."""
@@ -61,13 +65,17 @@ class EdgarFetcher:
             EdgarFetcherError: If request fails
         """
         try:
+            logger.debug(f"Making request to SEC EDGAR: {url}")
             time.sleep(self.rate_limit_delay)  # Rate limiting
             response = self.session.get(url, timeout=30)
             response.raise_for_status()
+            logger.debug(f"Successfully fetched from SEC EDGAR: {url}")
             return response.json()
         except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to fetch from SEC EDGAR {url}: {str(e)}", exc_info=True)
             raise EdgarFetcherError(f"Failed to fetch from SEC EDGAR: {str(e)}") from e
         except json.JSONDecodeError as e:
+            logger.error(f"Invalid JSON response from SEC EDGAR {url}: {str(e)}", exc_info=True)
             raise EdgarFetcherError(f"Invalid JSON response from SEC EDGAR: {str(e)}") from e
 
     def get_company_cik(self, ticker: str) -> Optional[str]:
@@ -108,12 +116,16 @@ class EdgarFetcher:
             "KO": "0000021344",    # The Coca-Cola Company
         }
         
+        logger.debug(f"Looking up CIK for ticker: {ticker}")
         ticker_upper = ticker.upper()
         if ticker_upper in TICKER_TO_CIK:
-            return TICKER_TO_CIK[ticker_upper]
+            cik = TICKER_TO_CIK[ticker_upper]
+            logger.debug(f"Found CIK {cik} for ticker {ticker} from mapping")
+            return cik
         
         # Fallback: Try API lookup if ticker not in mapping
         try:
+            logger.debug(f"Ticker {ticker} not in mapping, trying API lookup")
             # SEC provides company tickers JSON (may require authentication)
             url = f"{self.BASE_URL}/files/company_tickers.json"
             data = self._make_request(url)
@@ -123,11 +135,15 @@ class EdgarFetcher:
                 if isinstance(entry, dict) and entry.get("ticker") == ticker_upper:
                     cik = str(entry.get("cik_str", ""))
                     # Pad CIK to 10 digits
-                    return cik.zfill(10)
-        except Exception:
+                    cik_padded = cik.zfill(10)
+                    logger.debug(f"Found CIK {cik_padded} for ticker {ticker} from API")
+                    return cik_padded
+        except Exception as e:
             # API lookup failed, but we already tried the mapping
+            logger.warning(f"API lookup failed for ticker {ticker}: {str(e)}")
             pass
         
+        logger.warning(f"CIK not found for ticker: {ticker}")
         return None
 
     def get_filing_history(self, cik: str) -> Dict[str, Any]:
@@ -143,11 +159,15 @@ class EdgarFetcher:
         Raises:
             EdgarFetcherError: If fetch fails
         """
+        logger.debug(f"Getting filing history for CIK: {cik}")
         if len(cik) != 10 or not cik.isdigit():
+            logger.error(f"Invalid CIK format: {cik}. Must be 10-digit string.")
             raise EdgarFetcherError(f"Invalid CIK format: {cik}. Must be 10-digit string.")
         
         url = f"{self.BASE_URL}/submissions/CIK{cik}.json"
-        return self._make_request(url)
+        history = self._make_request(url)
+        logger.debug(f"Retrieved filing history for CIK {cik}")
+        return history
 
     def get_recent_filings(
         self,
@@ -170,6 +190,7 @@ class EdgarFetcher:
         Raises:
             EdgarFetcherError: If fetch fails
         """
+        logger.info(f"Getting recent filings for CIK {cik}, form_types={form_types}, max_filings={max_filings}")
         try:
             history = self.get_filing_history(cik)
             
@@ -191,9 +212,12 @@ class EdgarFetcher:
             
             # Sort by date (most recent first) and limit
             filings.sort(key=lambda x: x["date"], reverse=True)
-            return filings[:max_filings]
+            result = filings[:max_filings]
+            logger.info(f"Found {len(result)} recent filings for CIK {cik}")
+            return result
             
         except Exception as e:
+            logger.error(f"Failed to get recent filings for CIK {cik}: {str(e)}", exc_info=True)
             raise EdgarFetcherError(f"Failed to get recent filings: {str(e)}") from e
 
     def download_filing_text(
@@ -221,6 +245,7 @@ class EdgarFetcher:
         Raises:
             EdgarFetcherError: If download fails
         """
+        logger.info(f"Downloading filing: CIK={cik}, accession={accession_number}, form={form_type}")
         try:
             # SEC EDGAR archive structure (per official documentation)
             # Format: https://www.sec.gov/Archives/edgar/data/CIK/ACC-NUM-WITHOUT-DASHES/primary-document
@@ -320,6 +345,7 @@ class EdgarFetcher:
                         
                         # Validate content length
                         if text and len(text.strip()) > 100:
+                            logger.info(f"Successfully downloaded filing {accession_number} ({len(text)} chars)")
                             return text
                 except requests.exceptions.RequestException:
                     continue
@@ -327,6 +353,9 @@ class EdgarFetcher:
                     continue
             
             # If all attempts failed, raise error
+            logger.error(
+                f"Could not download filing {accession_number} - tried multiple document formats"
+            )
             raise EdgarFetcherError(
                 f"Could not download filing {accession_number} - tried multiple document formats. "
                 f"Tried URLs: {base_url}/{cik}/{acc_path_no_dashes}/[filename]"
@@ -363,39 +392,40 @@ class EdgarFetcher:
         if form_types is None:
             form_types = ["10-K", "10-Q", "8-K"]
         
+        logger.info(f"Fetching filings for {len(tickers)} tickers: {tickers}")
         documents = []
         total_companies = len(tickers)
         
         for idx, ticker in enumerate(tickers, 1):
             try:
-                print(f"\n[{idx}/{total_companies}] Processing {ticker}...")
+                logger.info(f"[{idx}/{total_companies}] Processing {ticker}...")
                 
                 # Get CIK for ticker
-                print(f"  → Looking up CIK for {ticker}...", end=" ", flush=True)
                 cik = self.get_company_cik(ticker)
                 if not cik:
-                    print(f"✗ Not found")
+                    logger.warning(f"CIK not found for ticker {ticker}, skipping")
                     continue
-                print(f"✓ CIK: {cik}")
+                logger.info(f"Found CIK {cik} for ticker {ticker}")
                 
                 # Get recent filings
-                print(f"  → Fetching filing history...", end=" ", flush=True)
                 filings = self.get_recent_filings(
                     cik,
                     form_types=form_types,
                     max_filings=max_filings_per_company
                 )
-                print(f"✓ Found {len(filings)} filings")
                 
                 if not filings:
-                    print(f"  ⚠ No filings found for {ticker}")
+                    logger.warning(f"No filings found for {ticker}")
                     continue
                 
                 # Download each filing
-                print(f"  → Downloading filings...")
+                logger.info(f"Downloading {len(filings)} filings for {ticker}")
                 for filing_idx, filing in enumerate(filings, 1):
                     try:
-                        print(f"    [{filing_idx}/{len(filings)}] {filing['form']} ({filing['date']})...", end=" ", flush=True)
+                        logger.debug(
+                            f"[{filing_idx}/{len(filings)}] Downloading {filing['form']} "
+                            f"({filing['date']}) for {ticker}"
+                        )
                         
                         # Download filing text
                         content = self.download_filing_text(
@@ -405,7 +435,10 @@ class EdgarFetcher:
                         )
                         
                         if not content or len(content.strip()) < 100:
-                            print(f"✗ Insufficient content")
+                            logger.warning(
+                                f"Insufficient content for {ticker} {filing['form']} "
+                                f"({filing['date']})"
+                            )
                             continue
                         
                         # Create Document object
@@ -425,22 +458,27 @@ class EdgarFetcher:
                         )
                         documents.append(doc)
                         content_size = len(content) // 1024  # Size in KB
-                        print(f"✓ Downloaded ({content_size} KB)")
+                        logger.info(
+                            f"Downloaded {ticker} {filing['form']} ({filing['date']}): "
+                            f"{content_size} KB"
+                        )
                         
                     except Exception as e:
-                        error_msg = str(e)
-                        print(f"✗ Error: {error_msg[:80]}")
-                        # Print full error for debugging if it's a download error
-                        if "Could not download" in error_msg or "Failed to download" in error_msg:
-                            print(f"    Details: {error_msg}")
+                        logger.error(
+                            f"Error downloading {ticker} {filing['form']} ({filing['date']}): "
+                            f"{str(e)}",
+                            exc_info=True
+                        )
                         continue
                 
-                print(f"  ✓ {ticker}: {len([d for d in documents if d.metadata.get('ticker') == ticker])} filings fetched")
+                ticker_docs = len([d for d in documents if d.metadata.get('ticker') == ticker])
+                logger.info(f"Completed {ticker}: {ticker_docs} filings fetched")
                 
             except Exception as e:
-                print(f"  ✗ Failed to process {ticker}: {str(e)[:50]}")
+                logger.error(f"Failed to process {ticker}: {str(e)}", exc_info=True)
                 continue
         
+        logger.info(f"Completed fetching filings: {len(documents)} documents total")
         return documents
 
     def save_filings_to_files(
@@ -458,6 +496,7 @@ class EdgarFetcher:
         Returns:
             List of saved file paths
         """
+        logger.info(f"Saving {len(documents)} documents to {output_dir}")
         output_dir.mkdir(parents=True, exist_ok=True)
         saved_paths = []
         
@@ -468,10 +507,12 @@ class EdgarFetcher:
             try:
                 file_path.write_text(doc.page_content, encoding="utf-8")
                 saved_paths.append(file_path)
+                logger.debug(f"Saved document to: {file_path}")
             except Exception as e:
-                print(f"Warning: Failed to save {filename}: {str(e)}")
+                logger.warning(f"Failed to save {filename}: {str(e)}", exc_info=True)
                 continue
         
+        logger.info(f"Successfully saved {len(saved_paths)} documents to {output_dir}")
         return saved_paths
 
 

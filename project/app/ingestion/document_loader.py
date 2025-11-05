@@ -15,6 +15,9 @@ from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from app.utils.config import config
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class DocumentIngestionError(Exception):
@@ -68,15 +71,22 @@ class DocumentLoader:
         Raises:
             DocumentIngestionError: If file validation fails
         """
+        logger.debug(f"Validating file: {file_path}")
         if not file_path.exists():
+            logger.error(f"File not found: {file_path}")
             raise DocumentIngestionError(f"File not found: {file_path}")
 
         if not file_path.is_file():
+            logger.error(f"Path is not a file: {file_path}")
             raise DocumentIngestionError(f"Path is not a file: {file_path}")
 
         # Check file size
         file_size = file_path.stat().st_size
         if file_size > self.MAX_FILE_SIZE_BYTES:
+            logger.warning(
+                f"File size ({file_size} bytes) exceeds maximum "
+                f"allowed size ({self.MAX_FILE_SIZE_BYTES} bytes): {file_path}"
+            )
             raise DocumentIngestionError(
                 f"File size ({file_size} bytes) exceeds maximum "
                 f"allowed size ({self.MAX_FILE_SIZE_BYTES} bytes)"
@@ -85,10 +95,12 @@ class DocumentLoader:
         # Check file extension
         file_ext = file_path.suffix.lower()
         if file_ext not in [".txt", ".md"]:
+            logger.error(f"Unsupported file format: {file_ext} for file: {file_path}")
             raise DocumentIngestionError(
                 f"Unsupported file format: {file_ext}. "
                 "Supported formats: .txt, .md"
             )
+        logger.debug(f"File validation successful: {file_path}")
 
     def _get_file_type(self, file_path: Path) -> str:
         """
@@ -118,13 +130,17 @@ class DocumentLoader:
         Raises:
             DocumentIngestionError: If file loading fails
         """
+        logger.info(f"Loading text file: {file_path}")
         try:
             loader = TextLoader(str(file_path), encoding="utf-8")
             documents = loader.load()
             if not documents:
+                logger.error(f"Failed to load content from: {file_path}")
                 raise DocumentIngestionError(f"Failed to load content from: {file_path}")
+            logger.debug(f"Successfully loaded text file: {file_path}")
             return documents[0]
         except Exception as e:
+            logger.error(f"Error loading text file {file_path}: {str(e)}", exc_info=True)
             raise DocumentIngestionError(
                 f"Error loading text file {file_path}: {str(e)}"
             ) from e
@@ -145,16 +161,20 @@ class DocumentLoader:
         Raises:
             DocumentIngestionError: If file loading fails
         """
+        logger.info(f"Loading Markdown file: {file_path}")
         try:
             # TextLoader can handle Markdown files effectively
             loader = TextLoader(str(file_path), encoding="utf-8")
             documents = loader.load()
             if not documents:
+                logger.error(f"Failed to load content from: {file_path}")
                 raise DocumentIngestionError(
                     f"Failed to load content from: {file_path}"
                 )
+            logger.debug(f"Successfully loaded Markdown file: {file_path}")
             return documents[0]
         except Exception as e:
+            logger.error(f"Error loading Markdown file {file_path}: {str(e)}", exc_info=True)
             raise DocumentIngestionError(
                 f"Error loading Markdown file {file_path}: {str(e)}"
             ) from e
@@ -172,6 +192,7 @@ class DocumentLoader:
         Raises:
             DocumentIngestionError: If document loading fails
         """
+        logger.info(f"Loading document: {file_path}")
         # Validate file
         self._validate_file(file_path)
 
@@ -191,7 +212,7 @@ class DocumentLoader:
                 "date": datetime.now().isoformat(),
             }
         )
-
+        logger.debug(f"Document loaded successfully: {file_path} (type: {file_type})")
         return document
 
     def chunk_document(self, document: Document) -> List[Document]:
@@ -204,6 +225,7 @@ class DocumentLoader:
         Returns:
             List of Document chunks with metadata including chunk_index
         """
+        logger.debug(f"Chunking document (source: {document.metadata.get('source', 'unknown')})")
         # Split document into chunks
         chunks = self.text_splitter.split_documents([document])
 
@@ -213,6 +235,7 @@ class DocumentLoader:
             # Preserve original metadata
             chunk.metadata.update(document.metadata)
 
+        logger.info(f"Document chunked into {len(chunks)} chunks")
         return chunks
 
     def process_document(self, file_path: Path) -> List[Document]:
@@ -259,7 +282,7 @@ class DocumentLoader:
                 all_chunks.extend(chunks)
             except DocumentIngestionError as e:
                 # Log error but continue processing other files
-                print(f"Warning: Failed to process {file_path}: {str(e)}")
+                logger.warning(f"Failed to process {file_path}: {str(e)}")
                 continue
 
         return all_chunks
