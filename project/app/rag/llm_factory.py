@@ -5,28 +5,48 @@ Creates and configures LLM instances based on configuration.
 """
 
 import warnings
-from langchain_community.llms import Ollama
+
+# Try to use langchain-ollama (recommended), fallback to langchain-community
+try:
+    from langchain_ollama import OllamaLLM
+    OLLAMA_AVAILABLE = True
+    OLLAMA_CLASS = OllamaLLM
+except ImportError:
+    # Fallback to deprecated langchain-community
+    from langchain_community.llms import Ollama
+    OLLAMA_AVAILABLE = False
+    OLLAMA_CLASS = Ollama
+    # Suppress deprecation warning for compatibility
+    warnings.filterwarnings("ignore", category=DeprecationWarning, module="langchain_community.llms")
+
 from app.utils.config import config
 
-# Suppress deprecation warning for now (will migrate to langchain-ollama in future)
-warnings.filterwarnings("ignore", category=DeprecationWarning, module="langchain_community.llms")
 
-
-def create_ollama_llm() -> Ollama:
+def create_ollama_llm():
     """
     Create and configure Ollama LLM instance.
 
     Returns:
-        Ollama: Configured Ollama LLM instance
+        OllamaLLM or Ollama: Configured Ollama LLM instance
     """
     ollama_config = config.get_ollama_config()
 
-    llm = Ollama(
-        base_url=ollama_config["base_url"],
-        model=ollama_config["model"],
-        temperature=ollama_config["temperature"],
-        timeout=ollama_config["timeout"],
-    )
+    if OLLAMA_AVAILABLE:
+        # Use langchain-ollama (recommended)
+        llm = OLLAMA_CLASS(
+            base_url=ollama_config["base_url"],
+            model=ollama_config["model"],
+            temperature=ollama_config["temperature"],
+            timeout=ollama_config["timeout"],
+        )
+    else:
+        # Fallback to deprecated langchain-community
+        llm = OLLAMA_CLASS(
+            base_url=ollama_config["base_url"],
+            model=ollama_config["model"],
+            temperature=ollama_config["temperature"],
+            timeout=ollama_config["timeout"],
+        )
 
     return llm
 
