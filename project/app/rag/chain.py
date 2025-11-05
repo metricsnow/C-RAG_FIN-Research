@@ -53,6 +53,8 @@ class RAGQuerySystem:
         collection_name: str = "documents",
         top_k: int = 5,
         embedding_provider: Optional[str] = None,
+        llm_provider: Optional[str] = None,
+        llm_model: Optional[str] = None,
     ):
         """
         Initialize RAG query system.
@@ -62,20 +64,24 @@ class RAGQuerySystem:
             top_k: Number of top chunks to retrieve (default: 5)
             embedding_provider: Embedding provider ('openai' or 'ollama').
                 If None, uses config.EMBEDDING_PROVIDER
+            llm_provider: LLM provider ('ollama' or 'openai').
+                If None, uses config.LLM_PROVIDER
+            llm_model: LLM model name. If None, uses default for provider
 
         Raises:
             RAGQueryError: If initialization fails
         """
         logger.info(
-            f"Initializing RAG query system: collection={collection_name}, top_k={top_k}"
+            f"Initializing RAG query system: "
+            f"collection={collection_name}, top_k={top_k}"
         )
         try:
             self.top_k = top_k
-            logger.debug("Creating LLM instance")
-            self.llm = get_llm()
-            logger.debug(
-                f"Creating embedding generator with provider={embedding_provider or config.EMBEDDING_PROVIDER}"
-            )
+            provider = llm_provider or config.LLM_PROVIDER
+            logger.debug(f"Creating LLM instance with provider={provider}")
+            self.llm = get_llm(provider=llm_provider, model=llm_model)
+            emb_provider = embedding_provider or config.EMBEDDING_PROVIDER
+            logger.debug(f"Creating embedding generator with provider={emb_provider}")
             self.embedding_generator = EmbeddingGenerator(provider=embedding_provider)
             logger.debug(f"Creating ChromaDB store with collection={collection_name}")
             self.chroma_store = ChromaStore(collection_name=collection_name)
@@ -86,6 +92,20 @@ class RAGQuerySystem:
 financial analysis, market research, and investment insights.
 
 Use the following context from financial documents to answer the question.
+Each document includes source information in the format:
+[Document N - Company: Company Name (TICKER), Form: FORM_TYPE]
+
+IMPORTANT: When answering questions about which companies have specific documents:
+1. Look at the document headers (the [Document N - Company: ...] lines)
+2. Extract ALL unique company names and ticker symbols from these headers
+3. List ALL companies found, not just one or two
+4. Use the company names from the headers
+   (e.g., "Apple Inc. (AAPL)", "Microsoft Corporation (MSFT)")
+5. Do NOT try to parse document content to find company names
+   - use the headers only
+6. If multiple documents from the same company are found,
+   list the company only once
+
 If the context doesn't contain enough information to answer the question,
 clearly state that you don't have sufficient information in the provided context.
 
@@ -94,14 +114,17 @@ Context:
 
 Question: {question}
 
-Provide a clear, accurate answer based on the context provided. If multiple
-sources are referenced, synthesize the information cohesively.
+Provide a clear, accurate answer. When listing companies,
+extract ALL unique companies from the document headers.
+Use the format "Company Name (TICKER)" for each company.
+List all companies found, not just a subset.
 
 Answer:"""
             )
 
             # Create RAG chain using LCEL (LangChain Expression Language)
-            # Chain: question -> embedding -> retrieval -> format -> prompt -> LLM -> answer
+            # Chain: question -> embedding -> retrieval -> format ->
+            # prompt -> LLM -> answer
             self.chain = self._build_chain()
             logger.info("RAG query system initialized successfully")
 
@@ -115,22 +138,64 @@ Answer:"""
 
     def _format_docs(self, docs: List[Document]) -> str:
         """
-        Format retrieved documents into context string.
+        Format retrieved documents into context string with metadata.
 
         Args:
             docs: List of Document objects from retrieval
 
         Returns:
-            Formatted context string
+            Formatted context string with source information
         """
         if not docs:
             return "No relevant context found."
-        return "\n\n".join(
-            [
-                f"[Source: {doc.metadata.get('source', 'unknown')}]\n{doc.page_content}"
-                for doc in docs
-            ]
-        )
+
+        formatted_parts = []
+        for i, doc in enumerate(docs, 1):
+            # Extract metadata
+            meta = doc.metadata or {}
+            ticker = meta.get("ticker", "")
+            company_name = meta.get("company_name", "")
+            filename = meta.get("filename", "")
+            source = meta.get("source", "")
+            form_type = meta.get("form_type", "")
+
+            # Build source identifier
+            source_info = []
+            if company_name:
+                source_info.append(f"Company: {company_name}")
+            elif ticker:
+                # Map ticker to company name for better readability
+                ticker_to_company = {
+                    "AAPL": "Apple Inc.",
+                    "MSFT": "Microsoft Corporation",
+                    "GOOGL": "Alphabet Inc.",
+                    "AMZN": "Amazon.com Inc.",
+                    "META": "Meta Platforms Inc.",
+                    "TSLA": "Tesla, Inc.",
+                    "NVDA": "NVIDIA Corporation",
+                    "JPM": "JPMorgan Chase & Co.",
+                    "V": "Visa Inc.",
+                    "JNJ": "Johnson & Johnson",
+                }
+                company = ticker_to_company.get(ticker, ticker)
+                source_info.append(f"Company: {company} ({ticker})")
+            elif filename:
+                source_info.append(f"Source: {filename}")
+            elif source:
+                source_info.append(f"Source: {source}")
+
+            if form_type:
+                source_info.append(f"Form: {form_type}")
+
+            # Format document with source info
+            source_header = (
+                f"[Document {i}"
+                + (f" - {', '.join(source_info)}" if source_info else "")
+                + "]"
+            )
+            formatted_parts.append(f"{source_header}\n{doc.page_content}")
+
+        return "\n\n".join(formatted_parts)
 
     def _retrieve_context(self, question: str) -> List[Document]:
         """
@@ -147,30 +212,68 @@ Answer:"""
         """
         logger.debug(f"Retrieving context for question: '{question[:50]}...'")
         try:
+            # Enhance query for better retrieval
+            question_lower = question.lower()
+            enhanced_question = question
+            # If question is about companies, add SEC filing context
+            if any(
+                word in question_lower
+                for word in [
+                    "company",
+                    "companies",
+                    "which",
+                    "who",
+                    "balance sheet",
+                    "financial statement",
+                ]
+            ):
+                enhanced_question = f"{question} SEC EDGAR filing financial document"
+
             # Generate query embedding
             logger.debug("Generating query embedding")
-            query_embedding = self.embedding_generator.embed_query(question)
+            query_embedding = self.embedding_generator.embed_query(enhanced_question)
 
-            # Search ChromaDB
-            logger.debug(f"Querying ChromaDB with top_k={self.top_k}")
+            # Search ChromaDB - retrieve more results to find SEC EDGAR docs
+            retrieval_count = min(self.top_k * 3, 30)
+            logger.debug(
+                f"Querying ChromaDB: retrieval_count={retrieval_count}, "
+                f"top_k={self.top_k}"
+            )
             results = self.chroma_store.query_by_embedding(
                 query_embedding=query_embedding,
-                n_results=self.top_k,
+                n_results=retrieval_count,
             )
 
-            # Convert to Document objects
+            # Convert to Document objects and prioritize SEC EDGAR documents
             documents = []
+            edgar_docs = []
+            other_docs = []
+
             if results["documents"] and len(results["documents"]) > 0:
-                for i, (doc_text, metadata) in enumerate(
-                    zip(results["documents"], results["metadatas"])
+                for doc_text, metadata in zip(
+                    results["documents"], results["metadatas"]
                 ):
                     doc = Document(
                         page_content=doc_text,
                         metadata=metadata or {},
                     )
-                    documents.append(doc)
+                    # Prioritize SEC EDGAR filings (they have ticker metadata)
+                    if metadata.get("type") == "edgar_filing" or metadata.get("ticker"):
+                        edgar_docs.append(doc)
+                    else:
+                        other_docs.append(doc)
 
-            logger.info(f"Retrieved {len(documents)} context documents")
+            # Combine: SEC EDGAR docs first, then others, limit to top_k
+            documents = (
+                edgar_docs[: self.top_k]
+                + other_docs[: max(0, self.top_k - len(edgar_docs))]
+            )
+            documents = documents[: self.top_k]  # Ensure we don't exceed top_k
+
+            logger.info(
+                f"Retrieved {len(documents)} context documents "
+                f"({len(edgar_docs)} SEC EDGAR, {len(other_docs)} others)"
+            )
             return documents
 
         except EmbeddingError as e:
@@ -273,7 +376,12 @@ Answer:"""
                 logger.warning("No relevant documents found for query")
                 track_success(rag_queries_total)
                 return {
-                    "answer": "I couldn't find any relevant information in the document database to answer your question. Please try rephrasing your question or ensure documents have been indexed.",
+                    "answer": (
+                        "I couldn't find any relevant information in the "
+                        "document database to answer your question. Please try "
+                        "rephrasing your question or ensure documents have "
+                        "been indexed."
+                    ),
                     "sources": [],
                     "chunks_used": 0,
                 }
@@ -292,7 +400,11 @@ Answer:"""
                 # Handle LLM failures gracefully
                 logger.error(f"LLM generation failed: {str(e)}", exc_info=True)
                 return {
-                    "answer": f"I encountered an error while generating an answer: {str(e)}. Please try again or check your Ollama configuration.",
+                    "answer": (
+                        f"I encountered an error while generating an answer: "
+                        f"{str(e)}. Please try again or check your LLM "
+                        f"configuration."
+                    ),
                     "sources": [doc.metadata for doc in retrieved_docs],
                     "chunks_used": len(retrieved_docs),
                     "error": f"LLM generation failed: {str(e)}",
@@ -339,6 +451,8 @@ def create_rag_system(
     collection_name: str = "documents",
     top_k: int = 5,
     embedding_provider: Optional[str] = None,
+    llm_provider: Optional[str] = None,
+    llm_model: Optional[str] = None,
 ) -> RAGQuerySystem:
     """
     Create a RAG query system instance.
@@ -348,6 +462,9 @@ def create_rag_system(
         top_k: Number of top chunks to retrieve (default: 5)
         embedding_provider: Embedding provider ('openai' or 'ollama').
             If None, uses config.EMBEDDING_PROVIDER
+        llm_provider: LLM provider ('ollama' or 'openai').
+            If None, uses config.LLM_PROVIDER
+        llm_model: LLM model name. If None, uses default for provider
 
     Returns:
         RAGQuerySystem instance
@@ -356,4 +473,6 @@ def create_rag_system(
         collection_name=collection_name,
         top_k=top_k,
         embedding_provider=embedding_provider,
+        llm_provider=llm_provider,
+        llm_model=llm_model,
     )

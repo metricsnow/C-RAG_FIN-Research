@@ -5,7 +5,7 @@
 # Port configuration
 port = 8501
 address = "0.0.0.0"  # Allow external connections (for ngrok/VPS)
-enableCORS = false
+enableCORS = true
 enableXsrfProtection = true
 
 # File watcher configuration

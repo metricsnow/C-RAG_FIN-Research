@@ -57,10 +57,14 @@ if [ ! -d "data/chroma_db" ]; then
     echo "You may need to ingest documents first. See README.md for instructions."
 fi
 
+# Set PYTHONPATH explicitly before starting Streamlit
+export PYTHONPATH="$PROJECT_ROOT:$PYTHONPATH"
+
 # Start Streamlit
 echo -e "${GREEN}Starting Streamlit application...${NC}"
 echo "Application will be available at: http://localhost:8501"
 echo "Press Ctrl+C to stop the server"
 echo ""
 
-python scripts/run_streamlit.py
+# Use the wrapper script with explicit PYTHONPATH
+PYTHONPATH="$PROJECT_ROOT:$PYTHONPATH" python scripts/run_streamlit.py

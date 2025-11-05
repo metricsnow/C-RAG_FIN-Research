@@ -23,6 +23,22 @@ except ImportError:
         "ignore", category=DeprecationWarning, module="langchain_community.llms"
     )
 
+# Try to use langchain-openai (recommended), fallback to langchain-community
+try:
+    from langchain_openai import ChatOpenAI
+
+    OPENAI_AVAILABLE = True
+    OPENAI_CLASS = ChatOpenAI
+except ImportError:
+    try:
+        from langchain_community.chat_models import ChatOpenAI
+
+        OPENAI_AVAILABLE = True
+        OPENAI_CLASS = ChatOpenAI
+    except ImportError:
+        OPENAI_AVAILABLE = False
+        OPENAI_CLASS = None
+
 from app.utils.config import config
 from app.utils.logger import get_logger
 
@@ -62,16 +78,71 @@ def create_ollama_llm():
     return llm
 
 
-def get_llm():
+def create_openai_llm(model: str = "gpt-4o-mini", temperature: float = 0.7):
     """
-    Get LLM instance based on configured provider.
+    Create and configure OpenAI LLM instance.
+
+    Args:
+        model: OpenAI model name (default: "gpt-4o-mini" - cheapest)
+        temperature: Temperature for generation (default: 0.7)
 
     Returns:
-        LLM instance (Ollama or other)
+        ChatOpenAI: Configured OpenAI LLM instance
+
+    Raises:
+        ValueError: If OpenAI is not available or API key is missing
     """
-    logger.debug(f"Getting LLM instance with provider: {config.LLM_PROVIDER}")
-    if config.LLM_PROVIDER == "ollama":
+    if not OPENAI_AVAILABLE:
+        raise ValueError(
+            "OpenAI LLM not available. Please install langchain-openai "
+            "or langchain-community"
+        )
+
+    if not config.OPENAI_API_KEY:
+        raise ValueError(
+            "OpenAI API key not found. Please set OPENAI_API_KEY in .env file"
+        )
+
+    logger.debug(f"Creating OpenAI LLM with model={model}, temperature={temperature}")
+    try:
+        llm = OPENAI_CLASS(
+            model=model,
+            temperature=temperature,
+            openai_api_key=config.OPENAI_API_KEY,
+            timeout=30,
+            max_retries=3,
+        )
+        logger.info(f"OpenAI LLM created successfully: model={model}")
+        return llm
+    except Exception as e:
+        logger.error(f"Failed to create OpenAI LLM: {str(e)}", exc_info=True)
+        raise ValueError(f"Failed to create OpenAI LLM: {str(e)}") from e
+
+
+def get_llm(provider: str = None, model: str = None):
+    """
+    Get LLM instance based on provider.
+
+    Args:
+        provider: LLM provider ('ollama' or 'openai'). If None, uses config.LLM_PROVIDER
+        model: Model name. If None, uses default for provider
+
+    Returns:
+        LLM instance (Ollama or OpenAI)
+    """
+    if provider is None:
+        provider = config.LLM_PROVIDER
+
+    logger.debug(f"Getting LLM instance with provider: {provider}")
+
+    if provider == "ollama":
         return create_ollama_llm()
+    elif provider == "openai":
+        # Use cheapest model by default (gpt-4o-mini)
+        openai_model = model or "gpt-4o-mini"
+        return create_openai_llm(
+            model=openai_model, temperature=config.OLLAMA_TEMPERATURE
+        )
     else:
-        logger.error(f"Unsupported LLM provider: {config.LLM_PROVIDER}")
-        raise ValueError(f"Unsupported LLM provider: {config.LLM_PROVIDER}")
+        logger.error(f"Unsupported LLM provider: {provider}")
+        raise ValueError(f"Unsupported LLM provider: {provider}")

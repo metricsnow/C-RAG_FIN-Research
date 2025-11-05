@@ -21,15 +21,16 @@ A production-ready RAG (Retrieval-Augmented Generation) system for semantic sear
 ### Core Capabilities
 
 - **Semantic Document Search**: Natural language queries across financial documents with intelligent retrieval
-- **Local LLM Deployment**: Privacy-first approach using Ollama for local inference (no data leaves your machine)
+- **Flexible LLM Deployment**: Choose between local Ollama (privacy-first) or OpenAI (gpt-4o-mini) for inference
 - **Citation Tracking**: Automatic source attribution with document references for every answer
 - **SEC EDGAR Integration**: Automated fetching and indexing of SEC filings (10-K, 10-Q, 8-K forms)
 - **Financial Domain Specialization**: Optimized for financial terminology and research queries
 - **Vector Database**: Persistent ChromaDB storage for efficient similarity search
-- **Streamlit UI**: Modern, interactive chat interface for querying documents
+- **Streamlit UI**: Modern, interactive chat interface with model selection toggle for querying documents
 
 ### Technical Features
 
+- **Dual LLM Support**: OpenAI (gpt-4o-mini) or Ollama (llama3.2) - switchable via UI toggle
 - **Dual Embedding Support**: OpenAI (text-embedding-3-small) or Ollama embeddings
 - **LangChain Integration**: Built on LangChain 1.0+ with Expression Language (LCEL)
 - **Batch Processing**: Efficient batch embedding generation for large document collections
@@ -37,6 +38,7 @@ A production-ready RAG (Retrieval-Augmented Generation) system for semantic sear
 - **Error Handling**: Comprehensive error handling with graceful degradation
 - **Performance Optimized**: Average query response time <5 seconds
 - **Production Ready**: Multiple deployment options (local, ngrok, VPS)
+- **Interactive Model Selection**: UI toggle to switch between local Ollama and OpenAI LLMs
 
 ### Data Collection
 
@@ -74,12 +76,15 @@ The Contextual RAG-Powered Financial Research Assistant is an enterprise-grade R
 Before installing, ensure you have:
 
 - **Python 3.11 or higher** (Python 3.12 recommended)
-- **Ollama installed and running** locally
-  - Download from [ollama.ai](https://ollama.ai)
-  - At least one model downloaded (Llama 3.2 or Mistral recommended)
+- **LLM Provider** (choose one or both):
+  - **Ollama** installed and running locally (privacy-first, no API costs)
+    - Download from [ollama.ai](https://ollama.ai)
+    - At least one model downloaded (Llama 3.2 recommended)
+  - **OpenAI API key** (for gpt-4o-mini LLM - cost-effective cloud option)
+    - Sign up at [platform.openai.com](https://platform.openai.com)
+    - Get API key from API keys section
 - **(Optional) OpenAI API key** for embeddings (recommended for best performance)
-  - Sign up at [platform.openai.com](https://platform.openai.com)
-  - Get API key from API keys section
+  - Can use same API key as LLM provider
 
 ### System Requirements
 
@@ -151,9 +156,13 @@ touch .env
 Edit `.env` file with your settings (all variables are optional with defaults):
 
 ```bash
-# OpenAI API Key (optional, recommended for embeddings)
-# Required if using OpenAI embeddings
+# OpenAI API Key (optional, for embeddings and/or LLM)
+# Required if using OpenAI embeddings or OpenAI LLM
 OPENAI_API_KEY=your-api-key-here
+
+# LLM Provider: 'ollama' or 'openai' (default: 'ollama')
+# Can be overridden via UI toggle in Streamlit app
+LLM_PROVIDER=ollama
 
 # Embedding Provider: 'openai' or 'ollama' (default: 'openai')
 EMBEDDING_PROVIDER=openai
@@ -243,7 +252,7 @@ The system uses environment variables loaded from `.env` file (automatically han
 | `OLLAMA_TEMPERATURE` | float | LLM temperature | `0.7` | Range: 0.0 - 2.0 |
 | `OLLAMA_PRIORITY` | integer | Request priority | `1` | Must be >= 0 |
 | `OLLAMA_ENABLED` | boolean | Enable Ollama LLM provider | `true` | true/false, 1/0, yes/no |
-| `LLM_PROVIDER` | string | LLM provider | `'ollama'` | Currently only 'ollama' |
+| `LLM_PROVIDER` | string | LLM provider | `'ollama'` | 'ollama' or 'openai' |
 | `LLM_MODEL` | string | Ollama model name | `'llama3.2'` | - |
 | `CHROMA_DB_PATH` | string | ChromaDB storage path | `./data/chroma_db` | - |
 | `CHROMA_PERSIST_DIRECTORY` | string | ChromaDB persist directory | `./data/chroma_db` | - |

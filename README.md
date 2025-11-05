@@ -1,6 +1,6 @@
 # Contextual RAG-Powered Financial Research Assistant
 
-A production-ready RAG (Retrieval-Augmented Generation) system for semantic search across financial documents, featuring local LLM deployment with Ollama and comprehensive citation tracking.
+A production-ready RAG (Retrieval-Augmented Generation) system for semantic search across financial documents, featuring flexible LLM deployment (Ollama or OpenAI) and comprehensive citation tracking.
 
 [![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
 [![LangChain](https://img.shields.io/badge/LangChain-1.0+-green.svg)](https://python.langchain.com/)
