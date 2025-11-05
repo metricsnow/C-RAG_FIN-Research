@@ -39,6 +39,8 @@ development_framework_v2/
 *.swp
 *.swo
 *~
+.cursorignore
+.cursorrules
 
 # OS generated files
 .DS_Store
