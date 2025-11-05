@@ -4,6 +4,8 @@
 
 This project uses **pytest** for standardized testing with comprehensive coverage reporting. The test suite is organized in the `tests/` directory and follows pytest best practices.
 
+**Test Organization**: All tests are centralized in the `tests/` directory following standard Python conventions. Legacy script-based tests from `scripts/` have been removed in favor of pytest-based tests. This provides better organization, clearer separation of concerns, and standard Python project structure.
+
 ## Test Coverage
 
 ### Coverage Configuration
@@ -44,7 +46,7 @@ exclude_lines =
 
 **Overall Coverage**: **82.75%** ✅ (exceeded 80% target, improved from 57%)
 
-**Test Count**: **174 tests** (153 passing, 19 with minor mocking issues, 2 skipped)
+**Test Count**: **177 tests** (all tests organized in `tests/` directory following standard Python conventions)
 
 **Coverage Achievement**:
 - ✅ **Target**: 80%+ ✅ **Achieved**: 82.75%
@@ -256,6 +258,15 @@ pytest --no-cov
 
 ## Test Organization
 
+### Overview
+
+All tests are organized in the `tests/` directory following standard Python conventions. This provides:
+
+- **Clear Separation**: Tests are separated from utility scripts (`scripts/` contains only deployment and utility scripts)
+- **Standard Structure**: Follows Python testing best practices with pytest
+- **Easy Discovery**: All test files are discoverable by pytest automatically
+- **Consistent Organization**: Tests organized by module/feature for easy navigation
+
 ### Directory Structure
 
 ```
@@ -273,11 +284,14 @@ tests/
 ├── test_basic_rag.py                      # Basic RAG tests (2 tests)
 ├── test_document_loader_comprehensive.py  # Comprehensive DocumentLoader tests (12 tests)
 ├── test_llm_factory.py                    # LLM factory tests (4 tests)
-├── test_edgar_fetcher.py                  # EDGAR fetcher tests (40 tests - NEW)
-└── test_ui_app.py                         # UI/Streamlit tests (25 tests - NEW)
+├── test_edgar_fetcher.py                  # EDGAR fetcher tests (40 tests)
+├── test_ui_app.py                         # UI/Streamlit tests (25 tests)
+└── test_ollama.py                         # Ollama API integration tests (3 tests)
 ```
 
-**Total**: **174 tests** covering all main functionalities
+**Total**: **177 tests** covering all main functionalities
+
+**Note**: All tests are organized in the `tests/` directory following standard Python conventions. Legacy script-based tests in `scripts/` have been removed in favor of pytest-based tests.
 
 **Test Philosophy**: 
 - **Production conditions** for integration tests (real embeddings, production data)

@@ -321,33 +321,35 @@ python -u scripts/verify_document_indexing.py
 
 ### Running Tests
 
-The project includes comprehensive test suites:
+The project uses pytest for comprehensive test execution. All tests are organized in the `tests/` directory following standard Python conventions.
 
+**Run all tests**:
 ```bash
-# Basic RAG functionality
-python tests/test_basic_rag.py
-
-# Document ingestion
-python scripts/test_ingestion.py
-
-# ChromaDB operations
-python scripts/test_chromadb.py
-
-# Embedding generation
-python scripts/test_embeddings.py
-
-# RAG query system
-python scripts/test_rag_query.py
-
-# Citation tracking
-python scripts/test_citation_tracking.py
-
-# System integration (comprehensive)
-python scripts/test_system_integration.py
-
-# Streamlit UI integration
-python scripts/test_streamlit_integration.py
+pytest
 ```
+
+**Run specific test categories**:
+```bash
+# Run only unit tests (fast)
+pytest -m unit
+
+# Run integration tests
+pytest -m integration
+
+# Run tests with coverage
+pytest --cov=app --cov-report=term-missing
+
+# Run specific test file
+pytest tests/test_chromadb.py
+
+# Run Ollama integration tests (requires Ollama running)
+pytest -m ollama
+```
+
+**Test Organization**:
+- All tests are in `tests/` directory
+- Tests use pytest framework with fixtures and markers
+- See `docs/testing.md` for detailed test documentation
 
 ### Development Workflow
 
