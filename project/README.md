@@ -729,6 +729,194 @@ See comprehensive guide: [`docs/deployment.md`](docs/deployment.md)
 - **Review documentation**: See `docs/` directory
 - **Test components**: Run individual test scripts
 
+## Testing
+
+This project uses **pytest** for standardized testing with comprehensive coverage reporting. For detailed testing documentation, see [docs/testing.md](docs/testing.md).
+
+### Running Tests
+
+**Run all tests**:
+```bash
+pytest
+```
+
+**Run specific test file**:
+```bash
+pytest tests/test_ingestion.py
+```
+
+**Run tests with verbose output**:
+```bash
+pytest -v
+```
+
+**Run only unit tests** (excludes integration tests):
+```bash
+pytest -m "not integration"
+```
+
+**Run tests with coverage report**:
+```bash
+# Terminal report with missing lines
+pytest --cov=app --cov-report=term-missing
+
+# Terminal report (summary only)
+pytest --cov=app --cov-report=term
+```
+
+**Generate HTML coverage report**:
+```bash
+pytest --cov=app --cov-report=html
+# Open htmlcov/index.html in browser for interactive coverage visualization
+```
+
+**Generate XML coverage report** (for CI/CD):
+```bash
+pytest --cov=app --cov-report=xml
+# Generates coverage.xml for integration with CI tools
+```
+
+**Run tests without coverage** (faster execution):
+```bash
+pytest --no-cov
+```
+
+**Check coverage threshold**:
+```bash
+# Tests will fail if coverage below threshold (default: 30%)
+pytest --cov=app --cov-fail-under=50  # Custom threshold
+```
+
+### Test Markers
+
+Tests are categorized using pytest markers:
+
+- `@pytest.mark.unit` - Fast, isolated unit tests
+- `@pytest.mark.integration` - Integration tests (may require external services)
+- `@pytest.mark.slow` - Tests that take significant time
+- `@pytest.mark.ollama` - Tests requiring Ollama service
+- `@pytest.mark.chromadb` - Tests requiring ChromaDB
+- `@pytest.mark.streamlit` - Tests requiring Streamlit UI
+
+**Run tests by marker**:
+```bash
+# Only unit tests
+pytest -m unit
+
+# Skip slow tests
+pytest -m "not slow"
+
+# Only Ollama tests
+pytest -m ollama
+```
+
+### Test Organization
+
+Tests are organized in the `tests/` directory:
+
+```
+tests/
+├── conftest.py              # Shared fixtures with production data
+├── test_ingestion.py         # Document ingestion tests (6 tests)
+├── test_chromadb.py          # ChromaDB integration tests (7 tests)
+├── test_embeddings.py        # Embedding factory tests (12 tests)
+├── test_pipeline.py          # Ingestion pipeline tests (8 tests)
+├── test_rag_production.py    # RAG system production tests (9 tests)
+├── test_end_to_end.py        # End-to-end workflow tests (6 tests)
+└── test_basic_rag.py        # Basic RAG tests (2 tests)
+```
+
+**Total**: 50+ tests covering all main functionalities
+
+**Test Philosophy**: All tests use production conditions with real embeddings and production-like financial documents - no demo or mock data.
+
+### Coverage Configuration
+
+Test coverage is automatically measured for all test runs. Coverage reporting is configured in `pytest.ini`:
+
+**Configuration Details**:
+- **Minimum coverage threshold**: 30% (configurable via `--cov-fail-under`)
+- **Coverage source**: `app/` directory (all application code)
+- **Excluded paths**: Test files, `__pycache__`, `venv/`
+- **Report formats**: Terminal (default), HTML, XML
+
+**Coverage Reports**:
+
+1. **Terminal Report** (default):
+   ```bash
+   pytest --cov=app --cov-report=term-missing
+   ```
+   Shows coverage percentage per module and highlights missing lines
+
+2. **HTML Report** (interactive):
+   ```bash
+   pytest --cov=app --cov-report=html
+   # Open htmlcov/index.html in browser
+   ```
+   Provides line-by-line coverage visualization
+
+3. **XML Report** (CI/CD integration):
+   ```bash
+   pytest --cov=app --cov-report=xml
+   # Generates coverage.xml for CI tools
+   ```
+
+**Current Coverage Status**:
+- **Overall Coverage**: ~57% (improved from 44%)
+- **Total Tests**: 87+ tests covering all main functionalities
+- **Well-Tested Modules** (Core Business Logic):
+  - `app/ingestion/document_loader.py`: 92% ✅
+  - `app/ingestion/pipeline.py`: 85% ✅
+  - `app/vector_db/chroma_store.py`: 85% ✅
+  - `app/rag/chain.py`: 80% ✅
+  - `app/rag/llm_factory.py`: 81% ✅
+  - `app/utils/config.py`: 81% ✅
+  - `app/rag/embedding_factory.py`: 67% ✅
+- **Modules with Lower Coverage**:
+  - `app/ui/app.py`: 0% (Streamlit UI - requires integration testing)
+  - `app/ingestion/edgar_fetcher.py`: 12% (External API - requires mocked tests)
+
+**Interpreting Coverage Reports**:
+
+- **100% Coverage**: All lines executed (ideal for critical modules)
+- **70-99%**: Good coverage (most code paths tested)
+- **50-69%**: Moderate coverage (key functionality tested)
+- **30-49%**: Basic coverage (core functionality tested)
+- **<30%**: Low coverage (needs improvement)
+
+**Coverage Improvement Guidelines**:
+
+1. **Focus on critical paths**: Prioritize testing business logic and error handling
+2. **Test edge cases**: Cover boundary conditions and error scenarios
+3. **Integration tests**: Add tests for component interactions
+4. **Mock external dependencies**: Use fixtures for Ollama, ChromaDB, etc.
+5. **Review coverage reports**: Regularly check HTML reports to identify gaps
+
+**Target Coverage Goals**:
+- **Core modules** (RAG, ingestion, vector_db): Aim for 70%+
+- **Utility modules** (config, factories): Aim for 80%+
+- **UI modules** (Streamlit): 50%+ (integration testing)
+- **Overall project**: 50%+ (realistic target for MVP+)
+
+### Writing New Tests
+
+1. **Create test file** in `tests/` directory with `test_*.py` naming
+2. **Use pytest fixtures** from `conftest.py` for common setup
+3. **Add appropriate markers** for test categorization
+4. **Use assertions** instead of print statements
+
+**Example test**:
+```python
+import pytest
+
+@pytest.mark.unit
+def test_example_function():
+    """Test example function."""
+    result = example_function()
+    assert result is not None
+    assert len(result) > 0
+```
+
 ## Contributing
 
 We welcome contributions! Here's how you can help:
@@ -750,7 +938,7 @@ We welcome contributions! Here's how you can help:
 
 4. **Run tests** before submitting:
    ```bash
-   python scripts/test_system_integration.py
+   pytest
    ```
 
 5. **Submit a pull request** with clear description
@@ -765,9 +953,10 @@ We welcome contributions! Here's how you can help:
 
 ### Testing
 
-- Write tests for new features
-- Ensure all existing tests pass
-- Add integration tests for new components
+- Write pytest tests for new features (see [Testing section](#testing) above)
+- Ensure all existing tests pass: `pytest`
+- Add appropriate test markers (unit, integration, etc.)
+- Maintain test coverage above 30%
 
 ### Documentation
 

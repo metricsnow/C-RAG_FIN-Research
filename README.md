@@ -6,28 +6,6 @@ A production-ready RAG (Retrieval-Augmented Generation) system for semantic sear
 [![LangChain](https://img.shields.io/badge/LangChain-1.0+-green.svg)](https://python.langchain.com/)
 [![Status](https://img.shields.io/badge/Status-MVP%20Complete-success.svg)](https://github.com/metricsnow/C-RAG_FIN-Research)
 
-## 🚀 Quick Start
-
-```bash
-# Navigate to project directory
-cd project
-
-# Set up virtual environment
-python3.11 -m venv venv
-source venv/bin/activate  # On macOS/Linux
-# or venv\Scripts\activate  # On Windows
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Configure environment (optional)
-cp .env.example .env
-# Edit .env with your settings
-
-# Start the application
-streamlit run app/ui/app.py
-```
-
 **Full documentation**: See [`project/README.md`](project/README.md) for comprehensive setup and usage instructions.
 
 ## 📋 Project Status
@@ -149,13 +127,6 @@ See [`project/docs/prd-phase2.md`](project/docs/prd-phase2.md) for Phase 2 enhan
 
 See [Phase 2 PRD](project/docs/prd-phase2.md) for detailed planning.
 
-## 🤝 Contributing
-
-Contributions are welcome! Please see the [Contributing Guide](project/README.md#contributing) in the project README for guidelines.
-
-## 📝 License
-
-[Add your license information here]
 
 ## 🙏 Acknowledgments
 
@@ -165,12 +136,6 @@ Contributions are welcome! Please see the [Contributing Guide](project/README.md
 - **Streamlit**: Web frontend framework
 - **SEC EDGAR**: Financial document data source
 
-## 📞 Support
-
-For issues, questions, or contributions:
-- Review the [documentation](project/README.md)
-- Check [troubleshooting guide](project/README.md#troubleshooting)
-- Open an issue on GitHub
 
 ---
 
