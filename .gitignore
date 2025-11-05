@@ -32,6 +32,7 @@ generated/
 .cursor/remediation/
 temp/
 development_framework_v2/
+development_framework_v2a/
 
 # IDE and editor files
 .vscode/
