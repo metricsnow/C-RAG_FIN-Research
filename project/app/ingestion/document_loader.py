@@ -5,7 +5,6 @@ Handles document loading, text extraction, chunking, and metadata management
 for the RAG system.
 """
 
-import os
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
@@ -43,22 +42,27 @@ class DocumentLoader:
 
     def __init__(
         self,
-        chunk_size: int = 1000,
-        chunk_overlap: int = 200,
+        chunk_size: Optional[int] = None,
+        chunk_overlap: Optional[int] = None,
     ):
         """
         Initialize document loader.
 
         Args:
-            chunk_size: Size of text chunks in characters (default: 1000)
-            chunk_overlap: Overlap between chunks in characters (default: 200)
+            chunk_size: Size of text chunks in characters.
+                If None, uses config.RAG_CHUNK_SIZE (default: 800)
+            chunk_overlap: Overlap between chunks in characters.
+                If None, uses config.RAG_CHUNK_OVERLAP (default: 150)
         """
-        self.chunk_size = chunk_size
-        self.chunk_overlap = chunk_overlap
+        # Use optimized defaults from config if not provided
+        self.chunk_size = chunk_size or config.RAG_CHUNK_SIZE
+        self.chunk_overlap = chunk_overlap or config.RAG_CHUNK_OVERLAP
         self.text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=chunk_size,
-            chunk_overlap=chunk_overlap,
+            chunk_size=self.chunk_size,
+            chunk_overlap=self.chunk_overlap,
             length_function=len,
+            # Preserve separators for better context boundaries
+            separators=["\n\n", "\n", ". ", " ", ""],
         )
 
     def _validate_file(self, file_path: Path) -> None:
