@@ -40,6 +40,17 @@ A production-ready RAG (Retrieval-Augmented Generation) system for semantic sear
 - **Production Ready**: Multiple deployment options (local, ngrok, VPS)
 - **Interactive Model Selection**: UI toggle to switch between local Ollama and OpenAI LLMs
 
+### RAG Optimization Features (TASK-028)
+
+- **Hybrid Search**: Combines semantic (vector) and keyword (BM25) search for improved retrieval
+- **Query Refinement**: Financial domain-specific query expansion and rewriting
+- **Reranking**: Cross-encoder reranking for better relevance scoring
+- **Optimized Chunking**: Semantic chunking with structure-aware boundaries (800 chars, 150 overlap)
+- **Enhanced Prompt Engineering**: Financial domain-optimized prompts with few-shot examples
+- **Multi-Stage Retrieval**: Broad initial retrieval (high recall) → refined reranking (high precision)
+- **Context Formatting**: Enhanced document context with section metadata and structure information
+- **Configurable Optimizations**: All optimizations can be enabled/disabled via environment variables
+
 ### Data Collection
 
 - **Automated EDGAR Fetching**: Fetch SEC filings from 10+ major companies automatically
@@ -262,6 +273,59 @@ The system uses environment variables loaded from `.env` file (automatically han
 | `LOG_FILE_BACKUP_COUNT` | integer | Number of backup log files to keep | `5` | Must be >= 1 |
 | `MAX_DOCUMENT_SIZE_MB` | integer | Maximum document size in MB | `10` | Must be >= 1 |
 | `DEFAULT_TOP_K` | integer | Default number of chunks to retrieve | `5` | Must be >= 1 |
+| `RAG_USE_HYBRID_SEARCH` | boolean | Enable hybrid search (semantic + BM25) | `true` | true/false |
+| `RAG_USE_RERANKING` | boolean | Enable reranking with cross-encoder | `true` | true/false |
+| `RAG_CHUNK_SIZE` | integer | Optimized chunk size for financial docs | `800` | Range: 100-2000 |
+| `RAG_CHUNK_OVERLAP` | integer | Optimized chunk overlap | `150` | Range: 0-500 |
+| `RAG_TOP_K_INITIAL` | integer | Initial retrieval count (before reranking) | `20` | Range: 5-100 |
+| `RAG_TOP_K_FINAL` | integer | Final retrieval count (after reranking) | `5` | Range: 1-20 |
+| `RAG_RERANK_MODEL` | string | Reranking model name | `cross-encoder/ms-marco-MiniLM-L-6-v2` | - |
+| `RAG_QUERY_EXPANSION` | boolean | Enable financial domain query expansion | `true` | true/false |
+| `RAG_FEW_SHOT_EXAMPLES` | boolean | Include few-shot examples in prompts | `true` | true/false |
+
+### RAG Optimization Configuration
+
+The system includes advanced RAG optimizations (TASK-028) that can be configured via environment variables:
+
+**Hybrid Search**: Combines semantic (vector) and keyword (BM25) search for improved retrieval accuracy.
+- Enable/disable with `RAG_USE_HYBRID_SEARCH=true/false`
+
+**Reranking**: Uses cross-encoder models to rerank retrieved documents for better relevance.
+- Enable/disable with `RAG_USE_RERANKING=true/false`
+- Model selection via `RAG_RERANK_MODEL` (default: `cross-encoder/ms-marco-MiniLM-L-6-v2`)
+
+**Optimized Chunking**: Semantic chunking with structure-aware boundaries optimized for financial documents.
+- Chunk size: `RAG_CHUNK_SIZE` (default: 800, optimized for financial docs)
+- Overlap: `RAG_CHUNK_OVERLAP` (default: 150, for context preservation)
+
+**Query Refinement**: Financial domain-specific query expansion and rewriting.
+- Enable/disable with `RAG_QUERY_EXPANSION=true/false`
+
+**Prompt Engineering**: Financial domain-optimized prompts with few-shot examples.
+- Enable/disable with `RAG_FEW_SHOT_EXAMPLES=true/false`
+
+**Multi-Stage Retrieval**:
+- Initial retrieval: `RAG_TOP_K_INITIAL` (default: 20, high recall)
+- Final retrieval: `RAG_TOP_K_FINAL` (default: 5, high precision after reranking)
+
+**Example Configuration**:
+```bash
+# Enable all optimizations (default)
+RAG_USE_HYBRID_SEARCH=true
+RAG_USE_RERANKING=true
+RAG_CHUNK_SIZE=800
+RAG_CHUNK_OVERLAP=150
+RAG_TOP_K_INITIAL=20
+RAG_TOP_K_FINAL=5
+RAG_QUERY_EXPANSION=true
+RAG_FEW_SHOT_EXAMPLES=true
+
+# Disable optimizations for faster queries (lower quality)
+RAG_USE_HYBRID_SEARCH=false
+RAG_USE_RERANKING=false
+```
+
+**Note**: All optimizations are backward compatible and include graceful fallback to basic retrieval if optimization components fail to load.
 
 ### Configuration Validation
 

@@ -45,7 +45,8 @@ class Config(BaseSettings):
     Application configuration loaded from environment variables.
 
     Uses Pydantic for type-safe configuration with automatic validation.
-    Environment variables are automatically loaded from .env file and system environment.
+    Environment variables are automatically loaded from .env file and
+    system environment.
     """
 
     model_config = SettingsConfigDict(
@@ -184,6 +185,61 @@ class Config(BaseSettings):
         description="Port for health check HTTP server",
     )
 
+    # RAG Optimization Configuration
+    rag_use_hybrid_search: bool = Field(
+        default=True,
+        alias="RAG_USE_HYBRID_SEARCH",
+        description="Enable hybrid search (semantic + BM25)",
+    )
+    rag_use_reranking: bool = Field(
+        default=True,
+        alias="RAG_USE_RERANKING",
+        description="Enable reranking with cross-encoder",
+    )
+    rag_chunk_size: int = Field(
+        default=800,
+        ge=100,
+        le=2000,
+        alias="RAG_CHUNK_SIZE",
+        description="Optimized chunk size for financial documents",
+    )
+    rag_chunk_overlap: int = Field(
+        default=150,
+        ge=0,
+        le=500,
+        alias="RAG_CHUNK_OVERLAP",
+        description="Optimized chunk overlap for context preservation",
+    )
+    rag_top_k_initial: int = Field(
+        default=20,
+        ge=5,
+        le=100,
+        alias="RAG_TOP_K_INITIAL",
+        description="Initial retrieval count (before reranking)",
+    )
+    rag_top_k_final: int = Field(
+        default=5,
+        ge=1,
+        le=20,
+        alias="RAG_TOP_K_FINAL",
+        description="Final retrieval count (after reranking)",
+    )
+    rag_rerank_model: str = Field(
+        default="cross-encoder/ms-marco-MiniLM-L-6-v2",
+        alias="RAG_RERANK_MODEL",
+        description="Reranking model name",
+    )
+    rag_query_expansion: bool = Field(
+        default=True,
+        alias="RAG_QUERY_EXPANSION",
+        description="Enable financial domain query expansion",
+    )
+    rag_few_shot_examples: bool = Field(
+        default=True,
+        alias="RAG_FEW_SHOT_EXAMPLES",
+        description="Include few-shot examples in prompts",
+    )
+
     # Project paths (computed fields)
     _project_root: Optional[Path] = None
     _data_dir: Optional[Path] = None
@@ -319,6 +375,36 @@ class Config(BaseSettings):
         return self.llm_model
 
     @property
+    def RAG_USE_HYBRID_SEARCH(self) -> bool:
+        """RAG hybrid search enabled (backward compatibility)."""
+        return self.rag_use_hybrid_search
+
+    @property
+    def RAG_USE_RERANKING(self) -> bool:
+        """RAG reranking enabled (backward compatibility)."""
+        return self.rag_use_reranking
+
+    @property
+    def RAG_CHUNK_SIZE(self) -> int:
+        """RAG chunk size (backward compatibility)."""
+        return self.rag_chunk_size
+
+    @property
+    def RAG_CHUNK_OVERLAP(self) -> int:
+        """RAG chunk overlap (backward compatibility)."""
+        return self.rag_chunk_overlap
+
+    @property
+    def RAG_TOP_K_INITIAL(self) -> int:
+        """RAG initial top K (backward compatibility)."""
+        return self.rag_top_k_initial
+
+    @property
+    def RAG_TOP_K_FINAL(self) -> int:
+        """RAG final top K (backward compatibility)."""
+        return self.rag_top_k_final
+
+    @property
     def PROJECT_ROOT(self) -> Path:
         """Project root directory (backward compatibility)."""
         if self._project_root is None:
@@ -351,7 +437,8 @@ class Config(BaseSettings):
         Validate configuration settings.
 
         This method provides enhanced validation with better error messages.
-        Pydantic already validates types and constraints, this adds business logic validation.
+        Pydantic already validates types and constraints, this adds business
+        logic validation.
 
         Returns:
             bool: True if configuration is valid, False otherwise
@@ -364,7 +451,8 @@ class Config(BaseSettings):
         # Validate LLM provider configuration
         if self.llm_provider == "ollama" and not self.ollama_enabled:
             errors.append(
-                "Invalid configuration: Ollama is disabled but LLM provider is set to 'ollama'"
+                "Invalid configuration: Ollama is disabled but LLM provider "
+                "is set to 'ollama'"
             )
 
         # Validate embedding provider configuration

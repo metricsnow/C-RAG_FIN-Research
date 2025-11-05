@@ -26,6 +26,13 @@ mypy>=1.18.0
 pydantic>=2.0.0
 pydantic-settings>=2.0.0
 
+# RAG Optimization (TASK-028)
+rank-bm25>=0.2.2
+sentence-transformers>=2.2.0
+
+# Monitoring and Observability
+prometheus-client>=0.20.0
+
 # Documentation
 sphinx>=8.2.0
 sphinx-rtd-theme>=3.0.0

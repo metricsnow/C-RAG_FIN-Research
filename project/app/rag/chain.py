@@ -15,6 +15,9 @@ from langchain_core.runnables import RunnablePassthrough
 
 from app.rag.embedding_factory import EmbeddingError, EmbeddingGenerator
 from app.rag.llm_factory import get_llm
+from app.rag.prompt_engineering import PromptEngineer
+from app.rag.query_refinement import QueryRefiner
+from app.rag.retrieval_optimizer import RetrievalOptimizer, RetrievalOptimizerError
 from app.utils.config import config
 from app.utils.logger import get_logger
 from app.utils.metrics import (
@@ -86,9 +89,44 @@ class RAGQuerySystem:
             logger.debug(f"Creating ChromaDB store with collection={collection_name}")
             self.chroma_store = ChromaStore(collection_name=collection_name)
 
+            # Initialize optimization components
+            self.query_refiner = QueryRefiner(
+                enable_expansion=config.rag_query_expansion,
+                enable_multi_query=False,  # Can be enabled later if needed
+            )
+            self.prompt_engineer = PromptEngineer(
+                include_few_shot=config.rag_few_shot_examples
+            )
+
+            # Initialize retrieval optimizer if optimizations are enabled
+            self.use_optimizations = (
+                config.rag_use_hybrid_search or config.rag_use_reranking
+            )
+            if self.use_optimizations:
+                logger.info("Initializing RAG optimizations")
+                self.retrieval_optimizer = RetrievalOptimizer(
+                    chroma_store=self.chroma_store,
+                    embedding_generator=self.embedding_generator,
+                    use_hybrid_search=config.rag_use_hybrid_search,
+                    use_reranking=config.rag_use_reranking,
+                    top_k_initial=config.rag_top_k_initial,
+                    top_k_final=self.top_k,
+                    rerank_model=config.rag_rerank_model,
+                )
+            else:
+                self.retrieval_optimizer = None
+                logger.info("RAG optimizations disabled, using basic retrieval")
+
             # Financial domain-optimized prompt template
-            self.prompt_template = ChatPromptTemplate.from_template(
-                """You are a helpful financial research assistant specializing in
+            try:
+                self.prompt_template = self.prompt_engineer.get_optimized_prompt()
+            except Exception as e:
+                logger.warning(
+                    f"Failed to load optimized prompt, using fallback: {str(e)}"
+                )
+                # Fallback to original template
+                self.prompt_template = ChatPromptTemplate.from_template(
+                    """You are a helpful financial research assistant specializing in
 financial analysis, market research, and investment insights.
 
 Use the following context from financial documents to answer the question.
@@ -120,7 +158,7 @@ Use the format "Company Name (TICKER)" for each company.
 List all companies found, not just a subset.
 
 Answer:"""
-            )
+                )
 
             # Create RAG chain using LCEL (LangChain Expression Language)
             # Chain: question -> embedding -> retrieval -> format ->
@@ -140,6 +178,8 @@ Answer:"""
         """
         Format retrieved documents into context string with metadata.
 
+        Uses enhanced formatting from prompt engineer if available.
+
         Args:
             docs: List of Document objects from retrieval
 
@@ -149,6 +189,14 @@ Answer:"""
         if not docs:
             return "No relevant context found."
 
+        # Use enhanced formatting if prompt engineer is available
+        try:
+            if hasattr(self, "prompt_engineer") and self.prompt_engineer:
+                return self.prompt_engineer.format_context_enhanced(docs)
+        except Exception as e:
+            logger.warning(f"Enhanced formatting failed, using basic: {str(e)}")
+
+        # Fallback to basic formatting
         formatted_parts = []
         for i, doc in enumerate(docs, 1):
             # Extract metadata
@@ -201,6 +249,8 @@ Answer:"""
         """
         Retrieve relevant context chunks from ChromaDB.
 
+        Uses optimized retrieval if available, otherwise falls back to basic retrieval.
+
         Args:
             question: User's question
 
@@ -211,10 +261,39 @@ Answer:"""
             RAGQueryError: If retrieval fails
         """
         logger.debug(f"Retrieving context for question: '{question[:50]}...'")
+
+        # Use optimized retrieval if available
+        if self.use_optimizations and self.retrieval_optimizer:
+            try:
+                # Refine query first
+                refined_query = self.query_refiner.refine_query(question)
+                logger.debug(f"Refined query: '{refined_query[:50]}...'")
+
+                # Use optimized retrieval
+                documents = self.retrieval_optimizer.retrieve(
+                    refined_query, top_k=self.top_k
+                )
+                logger.info(
+                    f"Retrieved {len(documents)} documents using optimized retrieval"
+                )
+                return documents
+
+            except RetrievalOptimizerError as e:
+                logger.warning(
+                    f"Optimized retrieval failed, falling back to basic: {str(e)}"
+                )
+                # Fall through to basic retrieval
+            except Exception as e:
+                logger.warning(f"Unexpected error in optimized retrieval: {str(e)}")
+                # Fall through to basic retrieval
+
+        # Fallback to basic retrieval
         try:
-            # Enhance query for better retrieval
-            question_lower = question.lower()
-            enhanced_question = question
+            # Refine query for better retrieval
+            refined_query = self.query_refiner.refine_query(question)
+            question_lower = refined_query.lower()
+            enhanced_question = refined_query
+
             # If question is about companies, add SEC filing context
             if any(
                 word in question_lower
@@ -227,7 +306,9 @@ Answer:"""
                     "financial statement",
                 ]
             ):
-                enhanced_question = f"{question} SEC EDGAR filing financial document"
+                enhanced_question = (
+                    f"{refined_query} SEC EDGAR filing financial document"
+                )
 
             # Generate query embedding
             logger.debug("Generating query embedding")

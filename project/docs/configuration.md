@@ -158,6 +158,78 @@ HEALTH_CHECK_ENABLED=false
 | `MAX_DOCUMENT_SIZE_MB` | integer | `10` | Must be >= 1 | Maximum document size in MB |
 | `DEFAULT_TOP_K` | integer | `5` | Must be >= 1 | Default number of chunks to retrieve |
 
+### RAG Optimization Configuration (TASK-028)
+
+The system includes advanced RAG optimizations for improved answer quality. All optimizations are configurable and can be enabled/disabled independently.
+
+| Variable | Type | Default | Constraints | Description |
+|----------|------|---------|------------|-------------|
+| `RAG_USE_HYBRID_SEARCH` | boolean | `true` | `true`/`false`, `1`/`0`, `yes`/`no` | Enable hybrid search (semantic + BM25) |
+| `RAG_USE_RERANKING` | boolean | `true` | `true`/`false`, `1`/`0`, `yes`/`no` | Enable reranking with cross-encoder |
+| `RAG_CHUNK_SIZE` | integer | `800` | Range: 100 - 2000 | Optimized chunk size for financial documents |
+| `RAG_CHUNK_OVERLAP` | integer | `150` | Range: 0 - 500 | Optimized chunk overlap for context preservation |
+| `RAG_TOP_K_INITIAL` | integer | `20` | Range: 5 - 100 | Initial retrieval count (before reranking) |
+| `RAG_TOP_K_FINAL` | integer | `5` | Range: 1 - 20 | Final retrieval count (after reranking) |
+| `RAG_RERANK_MODEL` | string | `cross-encoder/ms-marco-MiniLM-L-6-v2` | - | Reranking model name |
+| `RAG_QUERY_EXPANSION` | boolean | `true` | `true`/`false`, `1`/`0`, `yes`/`no` | Enable financial domain query expansion |
+| `RAG_FEW_SHOT_EXAMPLES` | boolean | `true` | `true`/`false`, `1`/`0`, `yes`/`no` | Include few-shot examples in prompts |
+
+**Optimization Features**:
+
+1. **Hybrid Search**: Combines semantic (vector similarity) and keyword (BM25) search for improved retrieval accuracy.
+   - Semantic search finds documents by meaning
+   - BM25 finds documents by exact keyword matches
+   - Results are merged using Reciprocal Rank Fusion (RRF)
+
+2. **Reranking**: Uses cross-encoder models to rerank retrieved documents for better relevance.
+   - Initial retrieval: broad retrieval with high recall (top 20)
+   - Reranking: reorder by relevance using cross-encoder
+   - Final retrieval: top-k most relevant documents (top 5)
+
+3. **Optimized Chunking**: Semantic chunking with structure-aware boundaries optimized for financial documents.
+   - Smaller chunks (800 chars) for better precision
+   - Strategic overlap (150 chars) for context preservation
+   - Respects document structure (paragraphs, sections)
+
+4. **Query Refinement**: Financial domain-specific query expansion and rewriting.
+   - Expands financial terms (e.g., "revenue" → "revenue income sales earnings")
+   - Normalizes query text
+   - Adds domain context
+
+5. **Prompt Engineering**: Financial domain-optimized prompts with few-shot examples.
+   - Clear instructions for financial domain
+   - Few-shot examples for better understanding
+   - Enhanced context formatting
+
+**Example Configuration**:
+```bash
+# Enable all optimizations (recommended for best quality)
+RAG_USE_HYBRID_SEARCH=true
+RAG_USE_RERANKING=true
+RAG_CHUNK_SIZE=800
+RAG_CHUNK_OVERLAP=150
+RAG_TOP_K_INITIAL=20
+RAG_TOP_K_FINAL=5
+RAG_QUERY_EXPANSION=true
+RAG_FEW_SHOT_EXAMPLES=true
+
+# Disable optimizations for faster queries (lower quality)
+RAG_USE_HYBRID_SEARCH=false
+RAG_USE_RERANKING=false
+
+# Customize chunking for your documents
+RAG_CHUNK_SIZE=1000  # Larger chunks for longer documents
+RAG_CHUNK_OVERLAP=200  # More overlap for better context
+```
+
+**Performance Considerations**:
+- Hybrid search: Slightly slower but more accurate (recommended)
+- Reranking: Adds latency but significantly improves relevance (recommended)
+- Query expansion: Minimal overhead, improves retrieval (recommended)
+- Few-shot examples: No performance impact, improves answer quality (recommended)
+
+**Backward Compatibility**: All optimizations are backward compatible. If optimization components fail to load, the system gracefully falls back to basic retrieval.
+
 ## Validation
 
 ### Type Validation
@@ -179,6 +251,10 @@ Numeric constraints are enforced:
 - `LOG_FILE_BACKUP_COUNT` must be >= 1
 - `METRICS_PORT` must be between 1024 and 65535
 - `HEALTH_CHECK_PORT` must be between 1024 and 65535
+- `RAG_CHUNK_SIZE` must be between 100 and 2000
+- `RAG_CHUNK_OVERLAP` must be between 0 and 500
+- `RAG_TOP_K_INITIAL` must be between 5 and 100
+- `RAG_TOP_K_FINAL` must be between 1 and 20
 
 ### Custom Validation
 
