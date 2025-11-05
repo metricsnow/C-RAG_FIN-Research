@@ -6,6 +6,7 @@ No demo data - all tests use production embedding providers.
 """
 
 import pytest
+from unittest.mock import Mock, patch
 
 from app.rag.embedding_factory import (
     EmbeddingGenerator,
@@ -188,4 +189,132 @@ def test_embedding_error_handling_invalid_text(embedding_generator):
         # Some providers might truncate or error - both are acceptable
         assert isinstance(e, (EmbeddingError, Exception)), \
             "Should raise appropriate error for invalid input"
+
+
+# Edge case and error path tests
+class TestEmbeddingFactoryErrorHandling:
+    """Test error handling in EmbeddingFactory."""
+    
+    @patch('app.rag.embedding_factory.config')
+    def test_create_openai_embeddings_missing_api_key(self, mock_config):
+        """Test OpenAI embeddings creation with missing API key."""
+        mock_config.OPENAI_API_KEY = None
+        
+        with pytest.raises(EmbeddingError) as exc_info:
+            EmbeddingFactory._create_openai_embeddings()
+        
+        assert "OpenAI API key not found" in str(exc_info.value)
+    
+    @patch('app.rag.embedding_factory.config')
+    @patch('app.rag.embedding_factory.OpenAIEmbeddings')
+    def test_create_openai_embeddings_api_error(self, mock_openai, mock_config):
+        """Test OpenAI embeddings creation with API error."""
+        mock_config.OPENAI_API_KEY = "test-key"
+        mock_openai.side_effect = Exception("API connection failed")
+        
+        with pytest.raises(EmbeddingError) as exc_info:
+            EmbeddingFactory._create_openai_embeddings()
+        
+        assert "Failed to create OpenAI embeddings" in str(exc_info.value)
+    
+    @patch('app.rag.embedding_factory.config')
+    def test_create_ollama_embeddings_import_error(self, mock_config):
+        """Test Ollama embeddings creation when import fails."""
+        mock_config.OLLAMA_BASE_URL = "http://localhost:11434"
+        
+        with patch('builtins.__import__', side_effect=ImportError("No module")):
+            with pytest.raises(EmbeddingError) as exc_info:
+                EmbeddingFactory._create_ollama_embeddings()
+            
+            assert "Ollama embeddings not available" in str(exc_info.value)
+    
+    @patch('app.rag.embedding_factory.config')
+    def test_create_ollama_embeddings_connection_error(self, mock_config):
+        """Test Ollama embeddings creation with connection error."""
+        mock_config.OLLAMA_BASE_URL = "http://localhost:11434"
+        
+        with patch('app.rag.embedding_factory.OllamaEmbeddings', side_effect=Exception("Connection failed")):
+            with pytest.raises(EmbeddingError) as exc_info:
+                EmbeddingFactory._create_ollama_embeddings()
+            
+            assert "Failed to create Ollama embeddings" in str(exc_info.value)
+    
+    def test_create_embeddings_invalid_provider(self):
+        """Test creating embeddings with invalid provider."""
+        with pytest.raises(EmbeddingError) as exc_info:
+            EmbeddingFactory.create_embeddings("invalid")
+        
+        assert "Unsupported embedding provider" in str(exc_info.value)
+    
+    @patch('app.rag.embedding_factory.config')
+    def test_create_embeddings_case_insensitive(self, mock_config):
+        """Test provider name is case-insensitive."""
+        mock_config.EMBEDDING_PROVIDER = "openai"
+        mock_config.OPENAI_API_KEY = "test-key"
+        
+        # Should work with uppercase, lowercase, mixed case
+        with patch('app.rag.embedding_factory.OpenAIEmbeddings') as mock_openai:
+            mock_openai.return_value = Mock()
+            EmbeddingFactory.create_embeddings("OPENAI")
+            EmbeddingFactory.create_embeddings("OpenAI")
+            EmbeddingFactory.create_embeddings("openai")
+            assert mock_openai.call_count == 3
+
+
+class TestEmbeddingGeneratorErrorHandling:
+    """Test error handling in EmbeddingGenerator."""
+    
+    @patch('app.rag.embedding_factory.EmbeddingFactory.create_embeddings')
+    def test_embed_query_error(self, mock_create):
+        """Test embed_query handles errors."""
+        mock_embeddings = Mock()
+        mock_embeddings.embed_query.side_effect = Exception("API error")
+        mock_create.return_value = mock_embeddings
+        
+        generator = EmbeddingGenerator()
+        
+        with pytest.raises(EmbeddingError) as exc_info:
+            generator.embed_query("test")
+        
+        assert "Failed to generate query embedding" in str(exc_info.value)
+    
+    @patch('app.rag.embedding_factory.EmbeddingFactory.create_embeddings')
+    def test_embed_documents_error(self, mock_create):
+        """Test embed_documents handles errors."""
+        mock_embeddings = Mock()
+        mock_embeddings.embed_documents.side_effect = Exception("API error")
+        mock_create.return_value = mock_embeddings
+        
+        generator = EmbeddingGenerator()
+        
+        with pytest.raises(EmbeddingError) as exc_info:
+            generator.embed_documents(["text1", "text2"])
+        
+        assert "Failed to generate document embeddings" in str(exc_info.value)
+    
+    @patch('app.rag.embedding_factory.EmbeddingFactory.create_embeddings')
+    def test_get_embedding_dimensions_error(self, mock_create):
+        """Test get_embedding_dimensions handles errors."""
+        mock_embeddings = Mock()
+        mock_embeddings.embed_query.side_effect = Exception("API error")
+        mock_create.return_value = mock_embeddings
+        
+        generator = EmbeddingGenerator()
+        
+        with pytest.raises(EmbeddingError) as exc_info:
+            generator.get_embedding_dimensions()
+        
+        assert "Failed to determine embedding dimensions" in str(exc_info.value)
+    
+    @patch('app.rag.embedding_factory.EmbeddingFactory.create_embeddings')
+    def test_embed_documents_empty_list(self, mock_create):
+        """Test embed_documents with empty list returns empty list."""
+        mock_embeddings = Mock()
+        mock_create.return_value = mock_embeddings
+        
+        generator = EmbeddingGenerator()
+        result = generator.embed_documents([])
+        
+        assert result == []
+        mock_embeddings.embed_documents.assert_not_called()
 
