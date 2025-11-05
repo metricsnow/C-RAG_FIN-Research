@@ -17,6 +17,14 @@ from app.rag.embedding_factory import EmbeddingError, EmbeddingGenerator
 from app.rag.llm_factory import get_llm
 from app.utils.config import config
 from app.utils.logger import get_logger
+from app.utils.metrics import (
+    rag_context_chunks_retrieved,
+    rag_queries_total,
+    rag_query_duration_seconds,
+    track_duration,
+    track_error,
+    track_success,
+)
 from app.vector_db import ChromaStore, ChromaStoreError
 
 logger = get_logger(__name__)
@@ -241,20 +249,29 @@ Answer:"""
             # Use provided top_k or default
             current_top_k = top_k if top_k is not None else self.top_k
 
-            # Retrieve context
-            if top_k != self.top_k:
-                logger.debug(f"Using custom top_k={current_top_k} for this query")
-                # Temporarily override top_k
-                original_top_k = self.top_k
-                self.top_k = current_top_k
-                retrieved_docs = self._retrieve_context(question)
-                self.top_k = original_top_k
-            else:
-                retrieved_docs = self._retrieve_context(question)
+            # Track query duration
+            with track_duration(
+                rag_query_duration_seconds,
+                {"provider": self.embedding_generator.provider},
+            ):
+                # Retrieve context
+                if top_k != self.top_k:
+                    logger.debug(f"Using custom top_k={current_top_k} for this query")
+                    # Temporarily override top_k
+                    original_top_k = self.top_k
+                    self.top_k = current_top_k
+                    retrieved_docs = self._retrieve_context(question)
+                    self.top_k = original_top_k
+                else:
+                    retrieved_docs = self._retrieve_context(question)
+
+            # Track chunks retrieved
+            rag_context_chunks_retrieved.observe(len(retrieved_docs))
 
             # Check if we have any relevant results
             if not retrieved_docs:
                 logger.warning("No relevant documents found for query")
+                track_success(rag_queries_total)
                 return {
                     "answer": "I couldn't find any relevant information in the document database to answer your question. Please try rephrasing your question or ensure documents have been indexed.",
                     "sources": [],
@@ -284,6 +301,9 @@ Answer:"""
             # Extract source metadata
             sources = [doc.metadata for doc in retrieved_docs]
 
+            # Track successful query
+            track_success(rag_queries_total)
+
             return {
                 "answer": answer,
                 "sources": sources,
@@ -291,9 +311,11 @@ Answer:"""
             }
 
         except RAGQueryError:
+            track_error(rag_queries_total)
             raise
         except Exception as e:
             logger.error(f"Unexpected error processing query: {str(e)}", exc_info=True)
+            track_error(rag_queries_total)
             raise RAGQueryError(f"Unexpected error processing query: {str(e)}") from e
 
     def query_simple(self, question: str) -> str:

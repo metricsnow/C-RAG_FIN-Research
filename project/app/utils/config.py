@@ -156,6 +156,34 @@ class Config(BaseSettings):
         description="Number of backup log files to keep",
     )
 
+    # Metrics Configuration
+    metrics_enabled: bool = Field(
+        default=True,
+        alias="METRICS_ENABLED",
+        description="Enable Prometheus metrics collection",
+    )
+    metrics_port: int = Field(
+        default=8000,
+        ge=1024,
+        le=65535,
+        alias="METRICS_PORT",
+        description="Port for Prometheus metrics HTTP server",
+    )
+
+    # Health Check Configuration
+    health_check_enabled: bool = Field(
+        default=True,
+        alias="HEALTH_CHECK_ENABLED",
+        description="Enable health check endpoints",
+    )
+    health_check_port: int = Field(
+        default=8080,
+        ge=1024,
+        le=65535,
+        alias="HEALTH_CHECK_PORT",
+        description="Port for health check HTTP server",
+    )
+
     # Project paths (computed fields)
     _project_root: Optional[Path] = None
     _data_dir: Optional[Path] = None

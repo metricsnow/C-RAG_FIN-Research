@@ -13,6 +13,15 @@ from app.ingestion.document_loader import DocumentIngestionError, DocumentLoader
 from app.rag.embedding_factory import EmbeddingError, EmbeddingGenerator
 from app.utils.config import config
 from app.utils.logger import get_logger
+from app.utils.metrics import (
+    document_chunks_created,
+    document_ingestion_duration_seconds,
+    document_ingestion_total,
+    document_size_bytes,
+    track_duration,
+    track_error,
+    track_success,
+)
 from app.vector_db import ChromaStore, ChromaStoreError
 
 logger = get_logger(__name__)
@@ -74,57 +83,74 @@ class IngestionPipeline:
         """
         logger.info(f"Processing document: {file_path}")
         try:
-            # Step 1: Load and chunk document
-            logger.debug(f"Loading and chunking document: {file_path}")
-            chunks = self.document_loader.process_document(file_path)
+            # Track document size
+            file_size = file_path.stat().st_size if file_path.exists() else 0
+            document_size_bytes.observe(file_size)
 
-            if not chunks:
-                logger.error(f"No chunks generated from {file_path}")
-                raise IngestionPipelineError(f"No chunks generated from {file_path}")
+            # Track ingestion duration
+            with track_duration(document_ingestion_duration_seconds):
+                # Step 1: Load and chunk document
+                logger.debug(f"Loading and chunking document: {file_path}")
+                chunks = self.document_loader.process_document(file_path)
 
-            logger.info(f"Generated {len(chunks)} chunks from document")
+                if not chunks:
+                    logger.error(f"No chunks generated from {file_path}")
+                    raise IngestionPipelineError(
+                        f"No chunks generated from {file_path}"
+                    )
 
-            # Step 2: Generate embeddings
-            logger.debug(f"Generating embeddings for {len(chunks)} chunks")
-            texts = [chunk.page_content for chunk in chunks]
-            embeddings = self.embedding_generator.embed_documents(texts)
+                logger.info(f"Generated {len(chunks)} chunks from document")
 
-            if len(embeddings) != len(chunks):
-                logger.error(
-                    f"Embedding count ({len(embeddings)}) does not match "
-                    f"chunk count ({len(chunks)})"
-                )
-                raise IngestionPipelineError(
-                    f"Embedding count ({len(embeddings)}) does not match "
-                    f"chunk count ({len(chunks)})"
-                )
+                # Step 2: Generate embeddings
+                logger.debug(f"Generating embeddings for {len(chunks)} chunks")
+                texts = [chunk.page_content for chunk in chunks]
+                embeddings = self.embedding_generator.embed_documents(texts)
 
-            logger.debug(f"Generated {len(embeddings)} embeddings")
+                if len(embeddings) != len(chunks):
+                    logger.error(
+                        f"Embedding count ({len(embeddings)}) does not match "
+                        f"chunk count ({len(chunks)})"
+                    )
+                    raise IngestionPipelineError(
+                        f"Embedding count ({len(embeddings)}) does not match "
+                        f"chunk count ({len(chunks)})"
+                    )
 
-            # Step 3: Store in ChromaDB (if requested)
-            if store_embeddings:
-                logger.debug(f"Storing {len(chunks)} chunks in ChromaDB")
-                ids = self.chroma_store.add_documents(chunks, embeddings)
-                logger.info(f"Successfully stored {len(ids)} chunks in ChromaDB")
-                return ids
-            else:
-                # Return placeholder IDs if not storing
-                logger.debug(f"Skipping ChromaDB storage (store_embeddings=False)")
-                return [f"chunk_{i}" for i in range(len(chunks))]
+                logger.debug(f"Generated {len(embeddings)} embeddings")
+
+                # Track chunks created
+                document_chunks_created.observe(len(chunks))
+
+                # Step 3: Store in ChromaDB (if requested)
+                if store_embeddings:
+                    logger.debug(f"Storing {len(chunks)} chunks in ChromaDB")
+                    ids = self.chroma_store.add_documents(chunks, embeddings)
+                    logger.info(f"Successfully stored {len(ids)} chunks in ChromaDB")
+                    track_success(document_ingestion_total)
+                    return ids
+                else:
+                    # Return placeholder IDs if not storing
+                    logger.debug(f"Skipping ChromaDB storage (store_embeddings=False)")
+                    track_success(document_ingestion_total)
+                    return [f"chunk_{i}" for i in range(len(chunks))]
 
         except DocumentIngestionError as e:
             logger.error(f"Document ingestion failed: {str(e)}", exc_info=True)
+            track_error(document_ingestion_total)
             raise IngestionPipelineError(f"Document ingestion failed: {str(e)}") from e
         except EmbeddingError as e:
             logger.error(f"Embedding generation failed: {str(e)}", exc_info=True)
+            track_error(document_ingestion_total)
             raise IngestionPipelineError(
                 f"Embedding generation failed: {str(e)}"
             ) from e
         except ChromaStoreError as e:
             logger.error(f"ChromaDB storage failed: {str(e)}", exc_info=True)
+            track_error(document_ingestion_total)
             raise IngestionPipelineError(f"ChromaDB storage failed: {str(e)}") from e
         except Exception as e:
             logger.error(f"Unexpected error in pipeline: {str(e)}", exc_info=True)
+            track_error(document_ingestion_total)
             raise IngestionPipelineError(
                 f"Unexpected error in pipeline: {str(e)}"
             ) from e

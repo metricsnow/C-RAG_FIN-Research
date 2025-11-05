@@ -10,7 +10,9 @@ from typing import Any, Dict, List
 import streamlit as st
 
 from app.rag import RAGQueryError, RAGQuerySystem, create_rag_system
+from app.utils.health import start_health_check_server
 from app.utils.logger import get_logger
+from app.utils.metrics import initialize_metrics
 
 logger = get_logger(__name__)
 
@@ -68,6 +70,16 @@ def format_citations(sources: List[Dict[str, Any]]) -> str:
 
 def main():
     """Main Streamlit application."""
+    # Initialize metrics and health checks (only once)
+    if "monitoring_initialized" not in st.session_state:
+        try:
+            initialize_metrics()
+            start_health_check_server()
+            st.session_state.monitoring_initialized = True
+            logger.info("Monitoring and health checks initialized")
+        except Exception as e:
+            logger.warning(f"Failed to initialize monitoring: {e}")
+
     # Page configuration
     st.set_page_config(
         page_title="Financial Research Assistant",

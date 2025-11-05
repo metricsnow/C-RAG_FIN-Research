@@ -343,6 +343,70 @@ Logging is implemented across all modules:
 - `vector_db/` - ChromaDB operations and data management
 - `utils/` - Configuration and utility functions
 
+### Monitoring and Observability
+
+The application includes comprehensive monitoring and observability capabilities using Prometheus metrics and health check endpoints.
+
+**Metrics Collection**:
+- Prometheus-compatible metrics exposed on port 8000 (default)
+- Automatic metrics collection for all key operations
+- Metrics available at `http://localhost:8000/metrics`
+
+**Available Metrics**:
+- **RAG Query Metrics**: Query duration, chunks retrieved, success/error counts
+- **Document Ingestion Metrics**: Ingestion duration, chunks created, document sizes
+- **Vector Database Metrics**: Operation duration, success/error counts, collection sizes
+- **LLM Metrics**: Request counts, duration, token usage
+- **Embedding Metrics**: Request counts, duration, embedding dimensions
+- **System Metrics**: Uptime, health status
+
+**Health Check Endpoints**:
+- `http://localhost:8080/health` - Comprehensive health check with component status
+- `http://localhost:8080/health/live` - Liveness probe (application running)
+- `http://localhost:8080/health/ready` - Readiness probe (application ready to serve)
+
+**Configuration**:
+```bash
+# Enable/disable metrics collection
+METRICS_ENABLED=true  # Default: true
+
+# Metrics server port
+METRICS_PORT=8000  # Default: 8000
+
+# Enable/disable health checks
+HEALTH_CHECK_ENABLED=true  # Default: true
+
+# Health check server port
+HEALTH_CHECK_PORT=8080  # Default: 8080
+```
+
+**Health Check Components**:
+- ChromaDB connectivity and document count
+- Ollama service availability (if using Ollama)
+- OpenAI API connectivity (if using OpenAI embeddings)
+- System resource status
+
+**Usage Examples**:
+```bash
+# Check application health
+curl http://localhost:8080/health
+
+# Check if application is ready
+curl http://localhost:8080/health/ready
+
+# View Prometheus metrics
+curl http://localhost:8000/metrics
+```
+
+**Production Recommendations**:
+- Enable metrics and health checks in production
+- Configure Prometheus to scrape metrics endpoint
+- Use health check endpoints for load balancer configuration
+- Monitor key metrics: query duration, error rates, system uptime
+- Set up alerting based on health check status
+
+For more details, see the [Configuration Documentation](docs/configuration.md#monitoring-and-observability-configuration).
+
 ### Streamlit Configuration
 
 Streamlit configuration is in `.streamlit/config.toml`:

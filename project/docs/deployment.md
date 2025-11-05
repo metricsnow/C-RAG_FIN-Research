@@ -355,6 +355,108 @@ sudo systemctl restart streamlit-app
 sudo systemctl restart ollama
 ```
 
+## Monitoring and Health Checks
+
+### Health Check Endpoints
+
+The application provides health check endpoints for monitoring and orchestration:
+
+```bash
+# Comprehensive health check
+curl http://localhost:8080/health
+
+# Liveness probe (application running)
+curl http://localhost:8080/health/live
+
+# Readiness probe (application ready to serve)
+curl http://localhost:8080/health/ready
+```
+
+**Health Check Response** (example):
+```json
+{
+  "status": "healthy",
+  "timestamp": 1706380800.0,
+  "components": {
+    "chromadb": {
+      "status": "healthy",
+      "document_count": 150,
+      "collection": "documents"
+    },
+    "ollama": {
+      "status": "healthy",
+      "base_url": "http://localhost:11434",
+      "models_available": 1
+    }
+  }
+}
+```
+
+### Prometheus Metrics
+
+Metrics are exposed in Prometheus format for monitoring:
+
+```bash
+# View metrics
+curl http://localhost:8000/metrics
+```
+
+**Available Metrics**:
+- `rag_queries_total` - Total RAG queries (with status label)
+- `rag_query_duration_seconds` - RAG query processing duration
+- `document_ingestion_total` - Total documents ingested
+- `vector_db_operations_total` - Vector database operations
+- `llm_requests_total` - LLM API requests
+- `system_uptime_seconds` - System uptime
+- `system_health_status` - System health status (1 = healthy, 0 = unhealthy)
+
+**Prometheus Configuration** (example `prometheus.yml`):
+```yaml
+scrape_configs:
+  - job_name: 'financial-research-assistant'
+    static_configs:
+      - targets: ['localhost:8000']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+```
+
+### Monitoring Best Practices
+
+1. **Health Checks**:
+   - Configure load balancers to use `/health/ready` for readiness checks
+   - Use `/health/live` for liveness probes in Kubernetes
+   - Monitor health check status regularly
+
+2. **Metrics Collection**:
+   - Set up Prometheus to scrape metrics endpoint
+   - Configure Grafana dashboards for visualization
+   - Set up alerts for error rates and system health
+
+3. **Key Metrics to Monitor**:
+   - Query duration (p95, p99)
+   - Error rates (queries, ingestion, LLM requests)
+   - System uptime
+   - Vector database operation performance
+   - Document ingestion throughput
+
+4. **Alerting**:
+   - Alert on health check failures
+   - Alert on high error rates (>5% of requests)
+   - Alert on slow query performance (p95 > 10s)
+   - Alert on system downtime
+
+### Disabling Monitoring
+
+If you need to disable monitoring:
+
+```bash
+# In .env file
+METRICS_ENABLED=false
+HEALTH_CHECK_ENABLED=false
+```
+
+Note: Disabling monitoring is not recommended for production deployments.
+
 ## Troubleshooting
 
 ### Streamlit Not Accessible

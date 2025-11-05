@@ -107,6 +107,50 @@ The configuration system uses Pydantic's `BaseSettings` which:
 | `LOG_FILE_MAX_BYTES` | integer | `10485760` (10MB) | Must be >= 1024 | Maximum log file size before rotation |
 | `LOG_FILE_BACKUP_COUNT` | integer | `5` | Must be >= 1 | Number of backup log files to keep |
 
+### Monitoring and Observability Configuration
+
+| Variable | Type | Default | Constraints | Description |
+|----------|------|---------|------------|-------------|
+| `METRICS_ENABLED` | boolean | `true` | `true`/`false`, `1`/`0`, `yes`/`no` | Enable Prometheus metrics collection |
+| `METRICS_PORT` | integer | `8000` | Range: 1024 - 65535 | Port for Prometheus metrics HTTP server |
+| `HEALTH_CHECK_ENABLED` | boolean | `true` | `true`/`false`, `1`/`0`, `yes`/`no` | Enable health check endpoints |
+| `HEALTH_CHECK_PORT` | integer | `8080` | Range: 1024 - 65535 | Port for health check HTTP server |
+
+**Metrics Collection**:
+- Metrics are automatically collected for all key operations
+- Metrics are exposed in Prometheus format at `http://localhost:{METRICS_PORT}/metrics`
+- Metrics include: RAG queries, document ingestion, vector DB operations, LLM requests, embeddings, and system health
+
+**Health Check Endpoints**:
+- `/health` - Comprehensive health check with component status
+- `/health/live` - Liveness probe (application running)
+- `/health/ready` - Readiness probe (application ready to serve)
+- Available at `http://localhost:{HEALTH_CHECK_PORT}/health`
+
+**Health Check Components**:
+- ChromaDB connectivity and document count
+- Ollama service availability (if using Ollama LLM provider)
+- OpenAI API connectivity (if using OpenAI embeddings)
+- System resource status
+
+**Example Configuration**:
+```bash
+# Enable metrics and health checks
+METRICS_ENABLED=true
+METRICS_PORT=8000
+HEALTH_CHECK_ENABLED=true
+HEALTH_CHECK_PORT=8080
+```
+
+**Disabling Monitoring**:
+```bash
+# Disable metrics collection
+METRICS_ENABLED=false
+
+# Disable health checks
+HEALTH_CHECK_ENABLED=false
+```
+
 ### Application Configuration
 
 | Variable | Type | Default | Constraints | Description |
@@ -133,6 +177,8 @@ Numeric constraints are enforced:
 - `DEFAULT_TOP_K` must be >= 1
 - `LOG_FILE_MAX_BYTES` must be >= 1024
 - `LOG_FILE_BACKUP_COUNT` must be >= 1
+- `METRICS_PORT` must be between 1024 and 65535
+- `HEALTH_CHECK_PORT` must be between 1024 and 65535
 
 ### Custom Validation
 
