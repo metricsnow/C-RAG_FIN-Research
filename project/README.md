@@ -362,7 +362,24 @@ pytest -m ollama
 
 3. **Reference PRD** in `docs/prd-phase1.md` for requirements
 
-4. **Run tests** before committing changes
+4. **Run type checking** before committing:
+   ```bash
+   mypy app
+   ```
+
+5. **Run tests** before committing changes:
+   ```bash
+   pytest
+   ```
+
+6. **Quality checks** (recommended before committing):
+   ```bash
+   # Type checking
+   mypy app
+   
+   # Tests with coverage
+   pytest --cov=app --cov-report=term-missing
+   ```
 
 ## Architecture
 
@@ -946,13 +963,21 @@ We welcome contributions! Here's how you can help:
 3. **Follow development standards**:
    - Use Python 3.11+
    - Follow PEP 8 style guide
-   - Add type hints
+   - Add type hints to all functions
+   - Run type checking: `mypy app`
    - Write docstrings (Google style)
    - Include tests for new features
 
-4. **Run tests** before submitting:
+4. **Run quality checks** before submitting:
    ```bash
+   # Type checking
+   mypy app
+   
+   # Tests
    pytest
+   
+   # Tests with coverage
+   pytest --cov=app --cov-report=term-missing
    ```
 
 5. **Submit a pull request** with clear description
@@ -962,8 +987,30 @@ We welcome contributions! Here's how you can help:
 - **Formatting**: Use `black` for code formatting
 - **Linting**: Follow PEP 8 guidelines
 - **Type Hints**: Add type hints to all functions
+- **Type Checking**: Run `mypy app` to validate type hints
 - **Docstrings**: Use Google-style docstrings
 - **Comments**: Add comments for complex logic
+
+### Type Checking
+
+The project uses `mypy` for static type checking. Type checking is configured in `pyproject.toml`.
+
+**Run type checking:**
+```bash
+mypy app
+```
+
+**Type checking configuration:**
+- Configuration file: `pyproject.toml` (under `[tool.mypy]`)
+- Python version: 3.13
+- Third-party libraries without type stubs are configured to ignore missing imports
+- Test files have relaxed type checking requirements
+
+**Adding type hints:**
+- Use type hints for all function parameters and return types
+- Use `Optional[T]` for nullable types
+- Use `List[T]`, `Dict[K, V]` for collections
+- Import from `typing` module for type annotations
 
 ### Testing
 

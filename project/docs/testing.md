@@ -6,6 +6,8 @@ This project uses **pytest** for standardized testing with comprehensive coverag
 
 **Test Organization**: All tests are centralized in the `tests/` directory following standard Python conventions. Legacy script-based tests from `scripts/` have been removed in favor of pytest-based tests. This provides better organization, clearer separation of concerns, and standard Python project structure.
 
+**Type Checking**: The project also uses **mypy** for static type checking. Type checking validates type hints throughout the codebase and catches type errors at development time. See the [Type Checking](#type-checking) section below for details.
+
 ## Test Coverage
 
 ### Coverage Configuration
@@ -379,9 +381,111 @@ pytest -m integration      # Only integration tests
 - **Per Release**: Ensure coverage doesn't decrease
 - **Per Feature**: Add tests alongside new code
 
+## Type Checking
+
+### Overview
+
+The project uses **mypy** for static type checking to validate type hints throughout the codebase. Type checking catches type errors at development time, improving code reliability and providing better IDE support.
+
+### Configuration
+
+Type checking is configured in `pyproject.toml` under the `[tool.mypy]` section:
+
+- **Python version**: 3.13
+- **Configuration file**: `pyproject.toml`
+- **Third-party libraries**: Configured to ignore missing type stubs (chromadb, langchain, streamlit, requests)
+- **Test files**: Have relaxed type checking requirements
+
+### Running Type Checking
+
+**Basic type checking**:
+```bash
+mypy app
+```
+
+**With error codes**:
+```bash
+mypy app --show-error-codes
+```
+
+**Check specific module**:
+```bash
+mypy app/rag/chain.py
+```
+
+### Type Checking Workflow
+
+**Before committing code**:
+1. Run type checking: `mypy app`
+2. Fix any type errors
+3. Run tests: `pytest`
+4. Ensure both pass before committing
+
+**Integration with testing**:
+- Type checking validates type hints at development time
+- Tests validate runtime behavior
+- Both are complementary quality checks
+
+### Type Hint Standards
+
+**Required annotations**:
+- Function parameters
+- Return types
+- Class attributes (when appropriate)
+
+**Type hints conventions**:
+- Use `Optional[T]` for nullable types
+- Use `List[T]`, `Dict[K, V]` for collections
+- Import from `typing` module for type annotations
+- Use type hints from `typing` module (e.g., `List`, `Dict`, `Optional`)
+
+**Example**:
+```python
+from typing import List, Optional, Dict, Any
+
+def process_documents(
+    documents: List[Document],
+    top_k: Optional[int] = None
+) -> Dict[str, Any]:
+    """Process documents and return results."""
+    # Implementation
+    return {"results": []}
+```
+
+### Common Type Checking Issues
+
+**Missing type stubs**:
+- Third-party libraries without type stubs are configured in `pyproject.toml`
+- Use `# type: ignore` comments sparingly and document why
+
+**None checks**:
+- Always check for `None` before using optional values
+- Use `assert` or explicit checks for type narrowing
+
+**Type compatibility**:
+- Some third-party APIs may have complex types
+- Use `# type: ignore[error-code]` with specific error codes when necessary
+- Document why type ignores are needed
+
+### Type Checking Best Practices
+
+**DO**:
+- ✅ Add type hints to all new functions
+- ✅ Fix type errors before committing
+- ✅ Run type checking regularly during development
+- ✅ Use specific error codes in `# type: ignore` comments
+- ✅ Document why type ignores are necessary
+
+**DON'T**:
+- ❌ Ignore type checking errors
+- ❌ Use broad `# type: ignore` without error codes
+- ❌ Add type hints only for new code (fix existing code gradually)
+- ❌ Disable type checking for entire files unnecessarily
+
 ## References
 
 - [Pytest Documentation](https://docs.pytest.org/)
 - [Coverage.py Documentation](https://coverage.readthedocs.io/)
 - [pytest-cov Documentation](https://pytest-cov.readthedocs.io/)
+- [Mypy Documentation](https://mypy.readthedocs.io/)
 

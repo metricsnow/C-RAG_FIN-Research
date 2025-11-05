@@ -1,0 +1,62 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.mypy]
+# Python version
+python_version = "3.13"
+
+# Basic type checking options
+warn_return_any = false  # Allow Any returns for JSON parsing and external APIs
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+
+# Show error codes and context
+show_error_codes = true
+show_error_context = true
+show_column_numbers = true
+pretty = true
+
+# Import discovery
+namespace_packages = true
+explicit_package_bases = true
+
+# Caching
+cache_dir = ".mypy_cache"
+sqlite_cache = true
+
+# Exclude patterns
+exclude = [
+    '^venv/',
+    '^build/',
+    '^dist/',
+    '^htmlcov/',
+    '^\.mypy_cache/',
+]
+
+# Per-module overrides
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+disable_error_code = ["var-annotated", "has-type"]
+
+# Third-party libraries without type stubs
+[[tool.mypy.overrides]]
+module = [
+    "chromadb.*",
+    "langchain.*",
+    "langchain_community.*",
+    "langchain_openai.*",
+    "langchain_core.*",
+    "langchain_ollama.*",
+    "streamlit.*",
+]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "requests.*"
+ignore_missing_imports = true
+

@@ -72,6 +72,10 @@ class ChromaStore:
                 name=self.collection_name,
                 metadata={"description": "Document embeddings for RAG system"},
             )
+            if self.collection is None:
+                raise ChromaStoreError(
+                    f"Failed to get or create collection '{self.collection_name}'"
+                )
         except Exception as e:
             raise ChromaStoreError(
                 f"Failed to get or create collection '{self.collection_name}': {str(e)}"
@@ -115,17 +119,21 @@ class ChromaStore:
                 f"IDs count ({len(ids)}) does not match documents count ({len(documents)})"
             )
 
+        if self.collection is None:
+            raise ChromaStoreError("Collection is not initialized")
+
         try:
             # Extract texts and metadata
             texts = [doc.page_content for doc in documents]
             metadatas = [doc.metadata for doc in documents]
 
             # Add to collection
+            # Type ignore for ChromaDB API compatibility
             self.collection.add(
                 ids=ids,
-                embeddings=embeddings,
+                embeddings=embeddings,  # type: ignore[arg-type]
                 documents=texts,
-                metadatas=metadatas,
+                metadatas=metadatas,  # type: ignore[arg-type]
             )
 
             return ids
@@ -154,12 +162,16 @@ class ChromaStore:
         Raises:
             ChromaStoreError: If query fails
         """
+        if self.collection is None:
+            raise ChromaStoreError("Collection is not initialized")
+
         try:
+            # Type ignore for ChromaDB API compatibility
             results = self.collection.query(
-                query_embeddings=[query_embedding],
+                query_embeddings=[query_embedding],  # type: ignore[arg-type]
                 n_results=n_results,
                 where=where,
-                where_document=where_document,
+                where_document=where_document,  # type: ignore[arg-type]
                 include=["metadatas", "documents", "distances"],
             )
 
@@ -195,12 +207,16 @@ class ChromaStore:
         Raises:
             ChromaStoreError: If query fails
         """
+        if self.collection is None:
+            raise ChromaStoreError("Collection is not initialized")
+
         try:
+            # Type ignore for ChromaDB API compatibility
             results = self.collection.query(
                 query_texts=[query_text],
                 n_results=n_results,
                 where=where,
-                where_document=where_document,
+                where_document=where_document,  # type: ignore[arg-type]
                 include=["metadatas", "documents", "distances"],
             )
 
@@ -227,6 +243,9 @@ class ChromaStore:
         Raises:
             ChromaStoreError: If retrieval fails
         """
+        if self.collection is None:
+            raise ChromaStoreError("Collection is not initialized")
+
         try:
             results = self.collection.get(
                 ids=ids,
@@ -251,6 +270,9 @@ class ChromaStore:
         Raises:
             ChromaStoreError: If retrieval fails
         """
+        if self.collection is None:
+            raise ChromaStoreError("Collection is not initialized")
+
         try:
             # Get all documents (ChromaDB doesn't have a direct "get all" method)
             # We query with a large n_results or use get() with empty where clause
@@ -276,6 +298,9 @@ class ChromaStore:
         Raises:
             ChromaStoreError: If count fails
         """
+        if self.collection is None:
+            raise ChromaStoreError("Collection is not initialized")
+
         try:
             return self.collection.count()
         except Exception as e:

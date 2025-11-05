@@ -11,7 +11,7 @@ try:
     from langchain_openai import OpenAIEmbeddings
 except ImportError:
     # Fallback to langchain_community for older versions
-    from langchain_community.embeddings import OpenAIEmbeddings
+    from langchain_community.embeddings import OpenAIEmbeddings  # type: ignore[assignment]
 
 from langchain_core.embeddings import Embeddings
 
@@ -79,12 +79,13 @@ class EmbeddingFactory:
             )
 
         try:
+            # OpenAIEmbeddings API may vary between langchain_openai and langchain_community
             return OpenAIEmbeddings(
                 model="text-embedding-3-small",
                 openai_api_key=config.OPENAI_API_KEY,
                 chunk_size=1000,
                 max_retries=3,
-            )
+            )  # type: ignore[call-arg]
         except Exception as e:
             raise EmbeddingError(f"Failed to create OpenAI embeddings: {str(e)}") from e
 
