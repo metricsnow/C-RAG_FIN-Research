@@ -17,7 +17,11 @@ The API documentation is automatically generated from docstrings in the source c
 
 2. Ensure Sphinx is installed:
    ```bash
-   pip install -r requirements.txt
+   # Modern method (recommended)
+   pip install -e ".[docs]"
+   
+   # Legacy method (still supported)
+   # pip install -r requirements.txt
    ```
 
 ### Build Commands

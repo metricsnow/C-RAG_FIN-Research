@@ -107,10 +107,36 @@ venv\Scripts\activate  # On Windows
 
 ### Step 3: Install Dependencies
 
+**Modern Method (Recommended)** - Using `pyproject.toml`:
+
+```bash
+pip install --upgrade pip setuptools wheel
+pip install -e .  # Install in editable mode with core dependencies
+```
+
+**Optional Dependencies**:
+```bash
+# For development (includes mypy, black, flake8, isort, pre-commit)
+pip install -e ".[dev]"
+
+# For testing (includes pytest, pytest-cov)
+pip install -e ".[test]"
+
+# For documentation (includes sphinx, sphinx-rtd-theme)
+pip install -e ".[docs]"
+
+# Install all optional dependencies
+pip install -e ".[dev,test,docs]"
+```
+
+**Legacy Method** - Using `requirements.txt` (still supported as backup):
+
 ```bash
 pip install --upgrade pip
 pip install -r requirements.txt
 ```
+
+**Note**: The project now uses `pyproject.toml` (PEP 621) for modern dependency management. The `requirements.txt` file is maintained for backward compatibility.
 
 ### Step 4: Configure Environment Variables
 

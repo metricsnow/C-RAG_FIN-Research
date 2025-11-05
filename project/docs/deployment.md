@@ -140,9 +140,12 @@ cd project
 python3.11 -m venv venv
 source venv/bin/activate
 
-# Install dependencies
-pip install --upgrade pip
-pip install -r requirements.txt
+# Install dependencies (modern method using pyproject.toml)
+pip install --upgrade pip setuptools wheel
+pip install -e .
+
+# Alternative: Legacy method using requirements.txt (still supported)
+# pip install -r requirements.txt
 
 # Configure environment
 cp .env.example .env

@@ -4,6 +4,26 @@
 
 The application uses **Pydantic-based configuration management** for type-safe configuration with automatic validation. This provides robust configuration handling with clear error messages and prevents runtime errors from invalid configuration.
 
+## Dependency Management
+
+The project uses modern Python dependency management via `pyproject.toml` (PEP 621 standard). Dependencies are organized into groups for better management:
+
+- **Core Dependencies**: Runtime dependencies required for the application
+- **Optional Dependencies**: Development, testing, and documentation tools
+
+**Installation**:
+```bash
+# Install core dependencies
+pip install -e .
+
+# Install with optional dependencies
+pip install -e ".[dev,test,docs]"
+```
+
+**Legacy Support**: The `requirements.txt` file is maintained for backward compatibility.
+
+For more details, see the main [README.md](../README.md#step-3-install-dependencies).
+
 ## Configuration System
 
 ### Key Features

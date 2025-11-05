@@ -1,6 +1,84 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "contextual-rag-financial-research"
+version = "0.1.0"
+description = "A production-ready RAG (Retrieval-Augmented Generation) system for semantic search across financial documents"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+# Note: Using table format for compatibility, but setuptools prefers string format
+# For future: use license = "MIT" when setuptools>=77.0.0 deprecation is resolved
+authors = [
+    { name = "Project Team" }
+]
+keywords = [
+    "rag",
+    "retrieval-augmented-generation",
+    "financial-research",
+    "langchain",
+    "ollama",
+    "chromadb",
+    "streamlit"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Intended Audience :: Developers",
+    "Topic :: Office/Business :: Financial",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+
+# Core dependencies
+dependencies = [
+    "langchain>=0.1.0",
+    "langchain-community>=0.0.20",
+    "langchain-openai>=0.0.5",
+    "streamlit>=1.28.0",
+    "chromadb>=0.4.0",
+    "python-dotenv>=1.0.0",
+    "tiktoken>=0.5.0",
+    "requests>=2.31.0",
+    "openai>=1.0.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+]
+
+# Optional dependencies grouped by purpose
+[project.optional-dependencies]
+dev = [
+    "mypy>=1.18.0",
+    "black>=23.0.0",
+    "flake8>=6.0.0",
+    "isort>=5.12.0",
+    "pre-commit>=3.0.0",
+]
+test = [
+    "pytest>=8.4.2",
+    "pytest-cov>=7.0.0",
+]
+docs = [
+    "sphinx>=8.2.0",
+    "sphinx-rtd-theme>=3.0.0",
+]
+# Note: 'all' group would reference itself, install separately:
+# pip install -e ".[dev,test,docs]"
+
+[project.urls]
+Homepage = "https://github.com/yourusername/contextual-rag-financial-research"
+Documentation = "https://github.com/yourusername/contextual-rag-financial-research#readme"
+Repository = "https://github.com/yourusername/contextual-rag-financial-research"
+Issues = "https://github.com/yourusername/contextual-rag-financial-research/issues"
+
+[tool.setuptools]
+# Explicitly specify packages to include (only the app package)
+packages = ["app"]
 
 [tool.mypy]
 # Python version
