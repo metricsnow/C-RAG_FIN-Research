@@ -133,19 +133,33 @@ OPENAI_API_KEY=your-api-key-here
 EMBEDDING_PROVIDER=openai
 
 # Ollama Configuration (defaults shown)
-OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_BASE_URL=http://localhost:11434  # Must start with http:// or https://
+OLLAMA_TIMEOUT=30                        # Must be >= 1
+OLLAMA_MAX_RETRIES=3                     # Must be >= 0
+OLLAMA_TEMPERATURE=0.7                   # Range: 0.0 - 2.0
+OLLAMA_PRIORITY=1                        # Must be >= 0
+OLLAMA_ENABLED=true                      # true/false, 1/0, yes/no
+
+# LLM Configuration
+LLM_PROVIDER=ollama
 LLM_MODEL=llama3.2
 
 # ChromaDB Configuration (default: ./data/chroma_db)
 CHROMA_DB_PATH=./data/chroma_db
+CHROMA_PERSIST_DIRECTORY=./data/chroma_db
+
+# Logging Configuration (optional)
+LOG_LEVEL=INFO                           # DEBUG, INFO, WARNING, ERROR, CRITICAL
+LOG_FILE=./logs/app.log                  # Optional: log file path (None = console only)
+LOG_FILE_MAX_BYTES=10485760              # 10MB (minimum 1024)
+LOG_FILE_BACKUP_COUNT=5                  # Must be >= 1
 
 # Application Configuration (optional)
-LOG_LEVEL=INFO
-MAX_DOCUMENT_SIZE_MB=10
-DEFAULT_TOP_K=5
+MAX_DOCUMENT_SIZE_MB=10                  # Must be >= 1
+DEFAULT_TOP_K=5                          # Must be >= 1
 ```
 
-**Note**: The system will work with default values if `.env` is not created, but OpenAI embeddings require an API key.
+**Note**: The system will work with default values if `.env` is not created, but OpenAI embeddings require an API key. Invalid configuration values will be caught at startup with clear error messages thanks to Pydantic validation.
 
 ### Step 5: Verify Ollama Installation
 
@@ -179,23 +193,65 @@ This will check:
 
 ## Configuration
 
+### Configuration System
+
+The application uses **Pydantic-based configuration management** for type-safe configuration with automatic validation. Configuration is loaded from environment variables (`.env` file or system environment) with automatic type checking and validation.
+
+**Key Features**:
+- **Type Safety**: All configuration fields are type-annotated and validated automatically
+- **Automatic Validation**: Invalid configuration values are caught at startup with clear error messages
+- **Environment Variables**: Supports both `.env` file and system environment variables
+- **Backward Compatible**: All existing configuration access patterns continue to work
+
 ### Environment Variables
 
-The system uses environment variables loaded from `.env` file. Key configuration options:
+The system uses environment variables loaded from `.env` file (automatically handled by Pydantic Settings). Key configuration options:
 
-| Variable | Description | Default | Required |
-|----------|-------------|---------|----------|
-| `OPENAI_API_KEY` | OpenAI API key for embeddings | None | Optional (required for OpenAI embeddings) |
-| `EMBEDDING_PROVIDER` | Embedding provider: 'openai' or 'ollama' | 'openai' | No |
-| `OLLAMA_BASE_URL` | Ollama server URL | `http://localhost:11434` | No |
-| `LLM_MODEL` | Ollama model name | `llama3.2` | No |
-| `CHROMA_DB_PATH` | ChromaDB storage path | `./data/chroma_db` | No |
-| `LOG_LEVEL` | Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL) | `INFO` | No |
-| `LOG_FILE` | Path to log file (optional, console only if not set) | None | No |
-| `LOG_FILE_MAX_BYTES` | Maximum log file size before rotation | `10485760` (10MB) | No |
-| `LOG_FILE_BACKUP_COUNT` | Number of backup log files to keep | `5` | No |
-| `MAX_DOCUMENT_SIZE_MB` | Maximum document size | `10` | No |
-| `DEFAULT_TOP_K` | Default number of chunks to retrieve | `5` | No |
+| Variable | Type | Description | Default | Constraints |
+|----------|------|-------------|---------|-------------|
+| `OPENAI_API_KEY` | string | OpenAI API key for embeddings | `""` | Optional (required for OpenAI embeddings) |
+| `EMBEDDING_PROVIDER` | string | Embedding provider: 'openai' or 'ollama' | `'openai'` | Must be 'openai' or 'ollama' |
+| `OLLAMA_BASE_URL` | string | Ollama server URL | `http://localhost:11434` | Must start with http:// or https:// |
+| `OLLAMA_TIMEOUT` | integer | Request timeout in seconds | `30` | Must be >= 1 |
+| `OLLAMA_MAX_RETRIES` | integer | Maximum retry attempts | `3` | Must be >= 0 |
+| `OLLAMA_TEMPERATURE` | float | LLM temperature | `0.7` | Range: 0.0 - 2.0 |
+| `OLLAMA_PRIORITY` | integer | Request priority | `1` | Must be >= 0 |
+| `OLLAMA_ENABLED` | boolean | Enable Ollama LLM provider | `true` | true/false, 1/0, yes/no |
+| `LLM_PROVIDER` | string | LLM provider | `'ollama'` | Currently only 'ollama' |
+| `LLM_MODEL` | string | Ollama model name | `'llama3.2'` | - |
+| `CHROMA_DB_PATH` | string | ChromaDB storage path | `./data/chroma_db` | - |
+| `CHROMA_PERSIST_DIRECTORY` | string | ChromaDB persist directory | `./data/chroma_db` | - |
+| `LOG_LEVEL` | string | Logging level | `INFO` | DEBUG, INFO, WARNING, ERROR, CRITICAL |
+| `LOG_FILE` | string | Path to log file (optional) | `None` | Console only if not set |
+| `LOG_FILE_MAX_BYTES` | integer | Maximum log file size before rotation | `10485760` (10MB) | Must be >= 1024 |
+| `LOG_FILE_BACKUP_COUNT` | integer | Number of backup log files to keep | `5` | Must be >= 1 |
+| `MAX_DOCUMENT_SIZE_MB` | integer | Maximum document size in MB | `10` | Must be >= 1 |
+| `DEFAULT_TOP_K` | integer | Default number of chunks to retrieve | `5` | Must be >= 1 |
+
+### Configuration Validation
+
+The Pydantic configuration system automatically validates all configuration values:
+
+- **Type Validation**: Ensures values match their declared types (string, integer, float, boolean)
+- **Constraint Validation**: Enforces numeric ranges, string formats, and allowed values
+- **Custom Validation**: 
+  - Ollama URLs must start with `http://` or `https://`
+  - Log levels must be one of: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  - Boolean values can be specified as: `true`/`false`, `1`/`0`, `yes`/`no`
+- **Business Logic Validation**: 
+  - Warns if OpenAI embeddings are selected but no API key is provided
+  - Validates that Ollama is enabled when LLM provider is set to 'ollama'
+
+**Invalid Configuration Examples**:
+```bash
+# These will cause validation errors at startup:
+OLLAMA_BASE_URL=invalid-url           # Must start with http:// or https://
+LOG_LEVEL=INVALID                     # Must be valid log level
+OLLAMA_TIMEOUT=0                      # Must be >= 1
+OLLAMA_TEMPERATURE=3.0                # Must be <= 2.0
+```
+
+**Error Messages**: Invalid configuration will show clear error messages indicating what's wrong and how to fix it.
 
 ### Embedding Provider Selection
 
@@ -1077,6 +1133,10 @@ mypy app
 - Update README.md for user-facing changes
 - Update docstrings for code changes
 - Add examples for new features
+- **API Documentation**: Automatically generated from docstrings using Sphinx
+  - Build: `cd docs/sphinx && sphinx-build -b html source build`
+  - View: Open `docs/sphinx/build/index.html` in a browser
+  - See `docs/sphinx/README.md` for detailed documentation
 
 ### Reporting Issues
 
@@ -1115,7 +1175,11 @@ project/
 │   ├── deployment.md       # Deployment guide
 │   ├── edgar_integration.md # SEC EDGAR integration docs
 │   ├── prd-phase1.md      # Phase 1 Product Requirements Document
-│   └── prd-phase2.md       # Phase 2 Product Requirements Document
+│   ├── prd-phase2.md       # Phase 2 Product Requirements Document
+│   └── sphinx/            # Sphinx API documentation
+│       ├── source/        # Documentation source files
+│       ├── build/         # Generated HTML documentation
+│       └── README.md      # Sphinx setup and usage guide
 ├── dev/                    # Development tasks and bugs
 │   ├── tasks/              # Task definitions
 │   └── bugs/               # Bug reports

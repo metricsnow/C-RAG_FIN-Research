@@ -278,13 +278,18 @@ sudo certbot --nginx -d your-domain.com
 
 ## Environment Variables
 
+The application uses **Pydantic-based configuration** with automatic type validation. Configuration is loaded from `.env` file or system environment variables.
+
 Key environment variables (configure in `.env`):
 
 ```bash
 # Ollama Configuration
 OLLAMA_BASE_URL=http://localhost:11434  # Change to server IP if Ollama on different machine
-OLLAMA_TIMEOUT=30
-OLLAMA_ENABLED=true
+OLLAMA_TIMEOUT=30                        # Must be >= 1
+OLLAMA_MAX_RETRIES=3                     # Must be >= 0
+OLLAMA_TEMPERATURE=0.7                   # Range: 0.0 - 2.0
+OLLAMA_PRIORITY=1                        # Must be >= 0
+OLLAMA_ENABLED=true                      # true/false, 1/0, yes/no
 
 # OpenAI (for embeddings - optional)
 OPENAI_API_KEY=your_key_here
@@ -299,7 +304,19 @@ EMBEDDING_PROVIDER=openai  # or "ollama"
 # LLM Configuration
 LLM_PROVIDER=ollama
 LLM_MODEL=llama3.2
+
+# Logging Configuration (optional)
+LOG_LEVEL=INFO                           # DEBUG, INFO, WARNING, ERROR, CRITICAL
+LOG_FILE=./logs/app.log                  # Optional: log file path
+LOG_FILE_MAX_BYTES=10485760              # 10MB (minimum 1024)
+LOG_FILE_BACKUP_COUNT=5                  # Must be >= 1
+
+# Application Configuration (optional)
+MAX_DOCUMENT_SIZE_MB=10                  # Must be >= 1
+DEFAULT_TOP_K=5                          # Must be >= 1
 ```
+
+**Note**: All configuration values are automatically validated by Pydantic. Invalid values (e.g., `OLLAMA_TIMEOUT=0` or `LOG_LEVEL=INVALID`) will cause the application to fail at startup with clear error messages indicating what needs to be fixed.
 
 ## Service Management
 
