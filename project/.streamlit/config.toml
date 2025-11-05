@@ -1,0 +1,35 @@
+# Streamlit Configuration for Deployment
+# This file configures Streamlit for production deployment
+
+[server]
+# Port configuration
+port = 8501
+address = "0.0.0.0"  # Allow external connections (for ngrok/VPS)
+enableCORS = false
+enableXsrfProtection = true
+
+# File watcher configuration
+fileWatcherType = "auto"
+runOnSave = false
+
+# Performance settings
+maxUploadSize = 10
+maxMessageSize = 10
+
+[browser]
+# Browser settings
+gatherUsageStats = false
+serverAddress = "localhost"
+serverPort = 8501
+
+[theme]
+# Theme configuration (optional - can be customized)
+primaryColor = "#1A6CE7"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F5F5F5"
+textColor = "#1A1D21"
+
+[client]
+# Client-side settings
+showErrorDetails = true
+

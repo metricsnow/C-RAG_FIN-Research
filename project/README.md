@@ -17,7 +17,16 @@ project/
 │   └── chroma_db/          # ChromaDB persistence directory
 ├── tests/                  # Test files
 ├── docs/                   # Documentation
+│   ├── deployment.md       # Deployment guide
+│   ├── edgar_integration.md # SEC EDGAR integration docs
+│   └── prd.md              # Product requirements document
 ├── dev/                    # Development tasks and bugs
+├── scripts/                # Utility scripts
+│   ├── deploy_local.sh     # Local deployment script
+│   ├── deploy_with_ngrok.sh # ngrok deployment script
+│   └── ...                 # Other utility scripts
+├── .streamlit/             # Streamlit configuration
+│   └── config.toml         # Production configuration
 ├── requirements.txt        # Python dependencies
 ├── .env.example           # Environment variables template
 └── README.md              # This file
@@ -176,6 +185,62 @@ python scripts/validate_setup.py
   - End-to-end integration validated: Document → ingestion → query → citations
   - Bug fixes: LLM factory deprecation warning (langchain-ollama support with fallback)
   - All system components working together correctly
+- ✅ **TASK-012**: Deployment Setup and Configuration
+  - Streamlit production configuration (`.streamlit/config.toml`)
+  - Local deployment script (`scripts/deploy_local.sh`)
+  - ngrok deployment script (`scripts/deploy_with_ngrok.sh`) for external access
+  - Comprehensive deployment documentation (`docs/deployment.md`)
+  - Three deployment options: Local, ngrok tunneling, VPS production
+  - Service management and troubleshooting guides
+  - Security configuration and best practices
+
+### Deployment
+
+The system is ready for deployment with multiple options:
+
+#### Quick Local Deployment
+
+```bash
+# Activate virtual environment
+source venv/bin/activate
+
+# Run local deployment script
+bash scripts/deploy_local.sh
+```
+
+The app will be available at `http://localhost:8501`.
+
+#### External Access with ngrok
+
+For demos or external access, use ngrok tunneling:
+
+```bash
+# Install ngrok first (if not installed)
+# macOS: brew install ngrok/ngrok/ngrok
+
+# Run deployment with ngrok
+bash scripts/deploy_with_ngrok.sh
+```
+
+This provides a public URL for external access.
+
+#### Production VPS Deployment
+
+For production deployment on a VPS, see the comprehensive guide:
+
+```bash
+# See detailed instructions in:
+docs/deployment.md
+```
+
+The deployment guide includes:
+- VPS setup instructions
+- Systemd service configuration
+- Nginx reverse proxy setup
+- SSL certificate configuration
+- Service management and troubleshooting
+
+**For complete deployment documentation, see:** [`docs/deployment.md`](docs/deployment.md)
 
 ### Running the Streamlit App
 
@@ -253,7 +318,7 @@ Then process through the ingestion pipeline.
 ### Next Steps
 
 After setup, proceed with:
-- **TASK-012**: Deployment Setup and Configuration (system tested and validated)
+- **TASK-013**: README and Documentation Creation (deployment setup complete)
 
 ## Architecture
 
@@ -291,6 +356,15 @@ After setup, proceed with:
   - `scripts/example_chromadb_usage.py`: ChromaDB usage examples
 - **Data Collection Scripts**:
   - `scripts/fetch_edgar_data.py`: Automated SEC EDGAR data fetching and ingestion
+- **Deployment Scripts**:
+  - `scripts/deploy_local.sh`: Local deployment automation
+  - `scripts/deploy_with_ngrok.sh`: ngrok tunneling deployment
+- **Deployment Configuration**:
+  - `.streamlit/config.toml`: Streamlit production configuration
+- **Documentation**:
+  - `docs/deployment.md`: Comprehensive deployment guide
+  - `docs/edgar_integration.md`: SEC EDGAR integration documentation
+  - `docs/prd.md`: Product requirements document
 
 ### Notes
 
@@ -305,9 +379,29 @@ After setup, proceed with:
 - EDGAR data can be fetched automatically using `scripts/fetch_edgar_data.py`
 - `.env` file is gitignored - use `.env.example` as template
 
+## Deployment
+
+The system supports multiple deployment options:
+
+1. **Local Deployment**: For development and testing
+   - Script: `scripts/deploy_local.sh`
+   - Access: `http://localhost:8501`
+
+2. **ngrok Deployment**: For external demos and testing
+   - Script: `scripts/deploy_with_ngrok.sh`
+   - Access: Public ngrok URL
+
+3. **VPS Deployment**: For production use
+   - Guide: `docs/deployment.md`
+   - Includes: Systemd, Nginx, SSL configuration
+
+For detailed deployment instructions, see [`docs/deployment.md`](docs/deployment.md).
+
 ## Troubleshooting
 
 - **Import errors**: Ensure virtual environment is activated
 - **Ollama connection**: Verify Ollama is running on `localhost:11434`
 - **ChromaDB issues**: Check `data/chroma_db/` directory permissions
+- **Deployment issues**: See `docs/deployment.md` troubleshooting section
+- **Streamlit not accessible**: Check firewall settings and `.streamlit/config.toml` configuration
 
