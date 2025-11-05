@@ -358,7 +358,7 @@ python scripts/test_streamlit_integration.py
 
 2. **Follow task structure** in `dev/tasks/` directory
 
-3. **Reference PRD** in `docs/prd.md` for requirements
+3. **Reference PRD** in `docs/prd-phase1.md` for requirements
 
 4. **Run tests** before committing changes
 
@@ -811,7 +811,8 @@ project/
 ├── docs/                   # Documentation
 │   ├── deployment.md       # Deployment guide
 │   ├── edgar_integration.md # SEC EDGAR integration docs
-│   └── prd.md              # Product requirements document
+│   ├── prd-phase1.md      # Phase 1 Product Requirements Document
+│   └── prd-phase2.md       # Phase 2 Product Requirements Document
 ├── dev/                    # Development tasks and bugs
 │   ├── tasks/              # Task definitions
 │   └── bugs/               # Bug reports
