@@ -32,4 +32,3 @@ textColor = "#1A1D21"
 [client]
 # Client-side settings
 showErrorDetails = true
-

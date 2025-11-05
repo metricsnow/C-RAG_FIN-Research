@@ -17,11 +17,13 @@ sys.path.insert(0, str(project_root))
 
 from langchain_core.documents import Document
 
-from app.vector_db import ChromaStore
 from app.utils.config import config
+from app.vector_db import ChromaStore
 
 
-def create_dummy_embeddings(texts: list[str], dimensions: int = 384) -> list[list[float]]:
+def create_dummy_embeddings(
+    texts: list[str], dimensions: int = 384
+) -> list[list[float]]:
     """
     Create dummy embeddings for demonstration.
 
@@ -67,7 +69,11 @@ def main():
     documents = [
         Document(
             page_content="Python is a high-level programming language known for its simplicity.",
-            metadata={"source": "python_intro.txt", "topic": "programming", "type": "text"},
+            metadata={
+                "source": "python_intro.txt",
+                "topic": "programming",
+                "type": "text",
+            },
         ),
         Document(
             page_content="Machine learning enables computers to learn from data without explicit programming.",
@@ -75,7 +81,11 @@ def main():
         ),
         Document(
             page_content="Financial markets involve trading securities like stocks and bonds.",
-            metadata={"source": "finance_intro.txt", "topic": "finance", "type": "text"},
+            metadata={
+                "source": "finance_intro.txt",
+                "topic": "finance",
+                "type": "text",
+            },
         ),
     ]
     print(f"   ✓ Created {len(documents)} documents")
@@ -149,4 +159,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

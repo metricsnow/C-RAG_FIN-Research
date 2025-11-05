@@ -46,10 +46,10 @@ The application consists of:
    ```bash
    # Option 1: Using deployment script
    bash scripts/deploy_local.sh
-   
+
    # Option 2: Direct command
    python scripts/run_streamlit.py
-   
+
    # Option 3: Streamlit command
    streamlit run app/ui/app.py
    ```
@@ -71,7 +71,7 @@ The application consists of:
    ```bash
    # macOS
    brew install ngrok/ngrok/ngrok
-   
+
    # Or download from https://ngrok.com/download
    ```
 
@@ -451,4 +451,3 @@ For issues:
 2. Verify all services are running
 3. Check environment variables
 4. Review troubleshooting section above
-

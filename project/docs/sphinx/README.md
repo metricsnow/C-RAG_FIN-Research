@@ -19,7 +19,7 @@ The API documentation is automatically generated from docstrings in the source c
    ```bash
    # Modern method (recommended)
    pip install -e ".[docs]"
-   
+
    # Legacy method (still supported)
    # pip install -r requirements.txt
    ```
@@ -213,4 +213,3 @@ jobs:
 - [Autodoc Extension](https://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html)
 - [Read the Docs Theme](https://sphinx-rtd-theme.readthedocs.io/)
 - [GitHub Pages Documentation](https://docs.github.com/en/pages)
-

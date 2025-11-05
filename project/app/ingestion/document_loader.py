@@ -97,8 +97,7 @@ class DocumentLoader:
         if file_ext not in [".txt", ".md"]:
             logger.error(f"Unsupported file format: {file_ext} for file: {file_path}")
             raise DocumentIngestionError(
-                f"Unsupported file format: {file_ext}. "
-                "Supported formats: .txt, .md"
+                f"Unsupported file format: {file_ext}. " "Supported formats: .txt, .md"
             )
         logger.debug(f"File validation successful: {file_path}")
 
@@ -136,11 +135,15 @@ class DocumentLoader:
             documents = loader.load()
             if not documents:
                 logger.error(f"Failed to load content from: {file_path}")
-                raise DocumentIngestionError(f"Failed to load content from: {file_path}")
+                raise DocumentIngestionError(
+                    f"Failed to load content from: {file_path}"
+                )
             logger.debug(f"Successfully loaded text file: {file_path}")
             return documents[0]
         except Exception as e:
-            logger.error(f"Error loading text file {file_path}: {str(e)}", exc_info=True)
+            logger.error(
+                f"Error loading text file {file_path}: {str(e)}", exc_info=True
+            )
             raise DocumentIngestionError(
                 f"Error loading text file {file_path}: {str(e)}"
             ) from e
@@ -174,7 +177,9 @@ class DocumentLoader:
             logger.debug(f"Successfully loaded Markdown file: {file_path}")
             return documents[0]
         except Exception as e:
-            logger.error(f"Error loading Markdown file {file_path}: {str(e)}", exc_info=True)
+            logger.error(
+                f"Error loading Markdown file {file_path}: {str(e)}", exc_info=True
+            )
             raise DocumentIngestionError(
                 f"Error loading Markdown file {file_path}: {str(e)}"
             ) from e
@@ -225,7 +230,9 @@ class DocumentLoader:
         Returns:
             List of Document chunks with metadata including chunk_index
         """
-        logger.debug(f"Chunking document (source: {document.metadata.get('source', 'unknown')})")
+        logger.debug(
+            f"Chunking document (source: {document.metadata.get('source', 'unknown')})"
+        )
         # Split document into chunks
         chunks = self.text_splitter.split_documents([document])
 
@@ -286,4 +293,3 @@ class DocumentLoader:
                 continue
 
         return all_chunks
-

@@ -8,6 +8,8 @@ This project uses **pytest** for standardized testing with comprehensive coverag
 
 **Type Checking**: The project also uses **mypy** for static type checking. Type checking validates type hints throughout the codebase and catches type errors at development time. See the [Type Checking](#type-checking) section below for details.
 
+**Code Quality**: The project uses **pre-commit hooks** with black, flake8, and isort for automated code formatting and linting. These tools ensure consistent code style and catch issues before commits. See the [Code Quality](#code-quality) section below for details.
+
 **Logging**: The project includes comprehensive logging infrastructure across all modules. Logging is configured centrally and supports environment variable-based configuration. Log levels can be adjusted for testing (e.g., `LOG_LEVEL=DEBUG`) to see detailed operation logs during test execution. See the [Logging](#logging-in-tests) section below for details.
 
 ## Test Coverage
@@ -18,7 +20,7 @@ Test coverage is automatically measured and reported for all test runs. Configur
 
 ```ini
 [pytest]
-addopts = 
+addopts =
     --cov=app
     --cov-report=term-missing
     --cov-report=html:htmlcov
@@ -27,7 +29,7 @@ addopts =
 
 [coverage:run]
 source = app
-omit = 
+omit =
     */tests/*
     */test_*.py
     */__pycache__/*
@@ -297,7 +299,7 @@ tests/
 
 **Note**: All tests are organized in the `tests/` directory following standard Python conventions. Legacy script-based tests in `scripts/` have been removed in favor of pytest-based tests.
 
-**Test Philosophy**: 
+**Test Philosophy**:
 - **Production conditions** for integration tests (real embeddings, production data)
 - **Comprehensive mocking** for external APIs (EDGAR, OpenAI) and UI components
 - **Full error handling** and edge case coverage
@@ -484,6 +486,109 @@ def process_documents(
 - ❌ Add type hints only for new code (fix existing code gradually)
 - ❌ Disable type checking for entire files unnecessarily
 
+## Code Quality
+
+### Overview
+
+The project uses **pre-commit hooks** to automatically enforce code quality standards before commits. This ensures consistent code style, catches issues early, and improves code maintainability.
+
+### Pre-commit Hooks
+
+Pre-commit hooks automatically run code quality checks before each commit. The configured hooks include:
+
+**Code Formatting**:
+- **black**: Automatic code formatting (line length: 88, PEP 8 compatible)
+- **isort**: Automatic import sorting (compatible with black)
+
+**Code Linting**:
+- **flake8**: Code linting with PEP 8 compliance (line length: 88)
+- **General file checks**: Trailing whitespace, end of file, YAML/JSON/TOML validation
+
+### Setup
+
+**One-time installation**:
+```bash
+# Install pre-commit hooks
+pre-commit install
+```
+
+**Manual execution**:
+```bash
+# Run on all files
+pre-commit run --all-files
+
+# Run on staged files only (default)
+pre-commit run
+```
+
+### Workflow Integration
+
+**Before committing code**:
+1. Hooks run automatically on `git commit`
+2. Fix any issues reported by hooks
+3. Re-run hooks if needed: `pre-commit run --all-files`
+4. Commit again once all hooks pass
+
+**Integration with testing**:
+```bash
+# Recommended workflow before committing
+pre-commit run --all-files  # Format and lint code
+mypy app                      # Type checking
+pytest                        # Run tests
+```
+
+### Code Quality Standards
+
+**Formatting**:
+- Line length: 88 characters (black default, PEP 8 compatible)
+- Import sorting: Automatic with isort (black-compatible profile)
+- Code style: Enforced by black (uncompromising code formatter)
+
+**Linting**:
+- PEP 8 compliance: Enforced by flake8
+- Line length: 88 characters (consistent with black)
+- Docstring checks: Disabled initially for gradual adoption
+
+**Configuration**:
+- Pre-commit config: `.pre-commit-config.yaml`
+- Tool configs: `pyproject.toml` (black, isort, flake8 sections)
+
+### Code Quality Best Practices
+
+**DO**:
+- ✅ Let pre-commit hooks format code automatically
+- ✅ Fix linting errors before committing
+- ✅ Run hooks manually before committing if unsure
+- ✅ Keep code formatted consistently
+- ✅ Fix flake8 errors incrementally
+
+**DON'T**:
+- ❌ Bypass hooks with `--no-verify` (unless absolutely necessary)
+- ❌ Ignore formatting inconsistencies
+- ❌ Commit code with linting errors (fix them first)
+- ❌ Disable hooks for entire files unnecessarily
+
+### Troubleshooting
+
+**Hooks failing**:
+1. Check hook output for specific errors
+2. Fix issues reported by hooks
+3. Re-run hooks: `pre-commit run --all-files`
+4. If hooks auto-fix issues, review changes and commit
+
+**Formatting conflicts**:
+- Black and isort are configured to be compatible
+- If conflicts occur, run `black` then `isort` manually
+- Check `.pre-commit-config.yaml` for configuration
+
+**Flake8 errors**:
+- Some existing code may have flake8 errors
+- These will be fixed incrementally as code is updated
+- New code should pass all flake8 checks
+- Docstring checks (D*) are disabled initially
+
+For more details, see the main [README.md](../README.md#pre-commit-hooks-code-formatting-and-linting).
+
 ## Logging in Tests
 
 ### Overview
@@ -573,4 +678,3 @@ LOG_LEVEL=DEBUG pytest tests/test_rag_chain.py -v -s 2>&1 | grep "app.rag.chain"
 - [pytest-cov Documentation](https://pytest-cov.readthedocs.io/)
 - [Mypy Documentation](https://mypy.readthedocs.io/)
 - [Python Logging Documentation](https://docs.python.org/3/library/logging.html)
-

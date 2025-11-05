@@ -134,4 +134,3 @@ MVP focuses on core functionality. Enhanced UI features (conversation history si
 - Chat history stored in session state messages list
 - Citations extracted from RAG query result sources metadata
 - Format: "Source: filename" or "Sources: file1, file2" for multiple sources
-

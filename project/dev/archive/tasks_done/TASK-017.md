@@ -131,4 +131,3 @@ mypy app --show-error-codes
 
 ## Notes
 This enhancement improves code quality by catching type errors at development time. The codebase already had type hints, and mypy now validates them and catches type-related bugs before runtime. The configuration is set up to allow gradual adoption while maintaining code quality standards.
-

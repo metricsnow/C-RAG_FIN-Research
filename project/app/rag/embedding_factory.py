@@ -126,7 +126,9 @@ class EmbeddingFactory:
             logger.info("Ollama embeddings instance created successfully")
             return embeddings
         except ImportError:
-            logger.error("Ollama embeddings not available (langchain-community not installed)")
+            logger.error(
+                "Ollama embeddings not available (langchain-community not installed)"
+            )
             raise EmbeddingError(
                 "Ollama embeddings not available. "
                 "Please install langchain-community or use OpenAI embeddings."
@@ -200,7 +202,9 @@ class EmbeddingGenerator:
             logger.info(f"Generated {len(embeddings)} document embeddings")
             return embeddings
         except Exception as e:
-            logger.error(f"Failed to generate document embeddings: {str(e)}", exc_info=True)
+            logger.error(
+                f"Failed to generate document embeddings: {str(e)}", exc_info=True
+            )
             raise EmbeddingError(
                 f"Failed to generate document embeddings: {str(e)}"
             ) from e
@@ -237,4 +241,3 @@ def get_embedding_generator(provider: Optional[str] = None) -> EmbeddingGenerato
         EmbeddingGenerator instance
     """
     return EmbeddingGenerator(provider=provider)
-

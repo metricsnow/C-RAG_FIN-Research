@@ -104,4 +104,3 @@ setup_logging(
     log_file_max_bytes=config.LOG_FILE_MAX_BYTES,
     log_file_backup_count=config.LOG_FILE_BACKUP_COUNT,
 )
-

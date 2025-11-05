@@ -96,7 +96,7 @@ Integrate pytest framework for standardized testing to replace script-based test
 
 ## Implementation Summary
 
-**Completed**: 2025-01-27  
+**Completed**: 2025-01-27
 **Updated**: 2025-01-27 (Coverage improvement)
 
 **Key Achievements**:
@@ -510,7 +510,7 @@ If reorganizing existing tests:
 
 While maintaining the current flat structure:
 
-1. **Naming Consistency**: 
+1. **Naming Consistency**:
    - Use descriptive names: `test_<module>_<feature>.py`
    - Use `_comprehensive` suffix for extensive tests
    - Group related tests in the same file
@@ -627,4 +627,3 @@ This enhancement improves the testing infrastructure by standardizing on pytest,
 The test suite has been significantly expanded with comprehensive tests covering all main functionalities using production conditions. Core business logic modules now have 80-92% coverage. To reach the 80-90% overall coverage target, additional tests are needed for EDGAR fetcher (external API) and UI components (Streamlit integration). See "Missing Tests" section above for detailed implementation plan.
 
 **Test Folder Structure**: Currently using a flat structure which is acceptable for the current test suite size (~87 tests). As the test suite grows, consider organizing tests by module/feature into `unit/`, `integration/`, and `e2e/` directories. See "Test Folder Structure Guidelines" section above for detailed recommendations.
-

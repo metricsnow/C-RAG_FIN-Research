@@ -65,4 +65,3 @@ echo "Next steps:"
 echo "1. Review changes: git diff gh-pages"
 echo "2. Push to GitHub: git push origin gh-pages"
 echo "3. Enable GitHub Pages in repository settings"
-

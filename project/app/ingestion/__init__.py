@@ -8,15 +8,15 @@ from app.ingestion.document_loader import (
     DocumentIngestionError,
     DocumentLoader,
 )
-from app.ingestion.pipeline import (
-    IngestionPipeline,
-    IngestionPipelineError,
-    create_pipeline,
-)
 from app.ingestion.edgar_fetcher import (
     EdgarFetcher,
     EdgarFetcherError,
     create_edgar_fetcher,
+)
+from app.ingestion.pipeline import (
+    IngestionPipeline,
+    IngestionPipelineError,
+    create_pipeline,
 )
 
 __all__ = [
@@ -29,4 +29,3 @@ __all__ = [
     "EdgarFetcherError",
     "create_edgar_fetcher",
 ]
-

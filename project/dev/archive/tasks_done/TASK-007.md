@@ -144,4 +144,3 @@ Response time target is <5 seconds, which is realistic for local Ollama. Perform
 - Uses RunnablePassthrough.assign for context retrieval
 - Integrates EmbeddingGenerator, ChromaStore, and Ollama LLM
 - Ready for Streamlit UI integration (TASK-008)
-

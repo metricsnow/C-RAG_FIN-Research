@@ -68,7 +68,9 @@ class TestConfigPydantic:
         # Test via environment variable (where validation actually runs)
         os.environ["OLLAMA_BASE_URL"] = "invalid-url"
         try:
-            with pytest.raises(ValidationError, match="must start with http:// or https://"):
+            with pytest.raises(
+                ValidationError, match="must start with http:// or https://"
+            ):
                 Config()
         finally:
             os.environ.pop("OLLAMA_BASE_URL", None)
@@ -198,4 +200,3 @@ class TestConfigPydantic:
             assert config.OLLAMA_BASE_URL == "http://test:11434"
         finally:
             os.environ.pop("OLLAMA_BASE_URL", None)
-

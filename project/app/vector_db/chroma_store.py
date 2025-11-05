@@ -6,7 +6,7 @@ Handles ChromaDB setup, document storage, and similarity search operations.
 
 import uuid
 from pathlib import Path
-from typing import List, Optional, Dict, Any
+from typing import Any, Dict, List, Optional
 
 import chromadb
 from chromadb import Collection
@@ -55,14 +55,18 @@ class ChromaStore:
         persist_directory.mkdir(parents=True, exist_ok=True)
 
         # Initialize persistent client
-        logger.info(f"Initializing ChromaDB client: persist_directory={persist_directory}")
+        logger.info(
+            f"Initializing ChromaDB client: persist_directory={persist_directory}"
+        )
         try:
             self.client = chromadb.PersistentClient(
                 path=str(persist_directory),
             )
             logger.debug("ChromaDB client initialized successfully")
         except Exception as e:
-            logger.error(f"Failed to initialize ChromaDB client: {str(e)}", exc_info=True)
+            logger.error(
+                f"Failed to initialize ChromaDB client: {str(e)}", exc_info=True
+            )
             raise ChromaStoreError(
                 f"Failed to initialize ChromaDB client: {str(e)}"
             ) from e
@@ -80,15 +84,19 @@ class ChromaStore:
                 metadata={"description": "Document embeddings for RAG system"},
             )
             if self.collection is None:
-                logger.error(f"Failed to get or create collection '{self.collection_name}'")
+                logger.error(
+                    f"Failed to get or create collection '{self.collection_name}'"
+                )
                 raise ChromaStoreError(
                     f"Failed to get or create collection '{self.collection_name}'"
                 )
-            logger.info(f"Collection '{self.collection_name}' ready (count: {self.collection.count()})")
+            logger.info(
+                f"Collection '{self.collection_name}' ready (count: {self.collection.count()})"
+            )
         except Exception as e:
             logger.error(
                 f"Failed to get or create collection '{self.collection_name}': {str(e)}",
-                exc_info=True
+                exc_info=True,
             )
             raise ChromaStoreError(
                 f"Failed to get or create collection '{self.collection_name}': {str(e)}"
@@ -159,8 +167,12 @@ class ChromaStore:
             logger.info(f"Successfully added {len(ids)} documents to ChromaDB")
             return ids
         except Exception as e:
-            logger.error(f"Failed to add documents to ChromaDB: {str(e)}", exc_info=True)
-            raise ChromaStoreError(f"Failed to add documents to ChromaDB: {str(e)}") from e
+            logger.error(
+                f"Failed to add documents to ChromaDB: {str(e)}", exc_info=True
+            )
+            raise ChromaStoreError(
+                f"Failed to add documents to ChromaDB: {str(e)}"
+            ) from e
 
     def query_by_embedding(
         self,
@@ -197,7 +209,9 @@ class ChromaStore:
                 where_document=where_document,  # type: ignore[arg-type]
                 include=["metadatas", "documents", "distances"],
             )
-            logger.debug(f"Query returned {len(results.get('ids', [])[0] if results.get('ids') else [])} results")
+            logger.debug(
+                f"Query returned {len(results.get('ids', [])[0] if results.get('ids') else [])} results"
+            )
 
             # Convert to simpler format (single query result)
             return {
@@ -235,7 +249,9 @@ class ChromaStore:
         if self.collection is None:
             raise ChromaStoreError("Collection is not initialized")
 
-        logger.debug(f"Querying ChromaDB by text: n_results={n_results}, query='{query_text[:50]}...'")
+        logger.debug(
+            f"Querying ChromaDB by text: n_results={n_results}, query='{query_text[:50]}...'"
+        )
         try:
             # Type ignore for ChromaDB API compatibility
             results = self.collection.query(
@@ -245,7 +261,9 @@ class ChromaStore:
                 where_document=where_document,  # type: ignore[arg-type]
                 include=["metadatas", "documents", "distances"],
             )
-            logger.debug(f"Query returned {len(results.get('ids', [])[0] if results.get('ids') else [])} results")
+            logger.debug(
+                f"Query returned {len(results.get('ids', [])[0] if results.get('ids') else [])} results"
+            )
 
             # Convert to simpler format (single query result)
             return {
@@ -338,7 +356,9 @@ class ChromaStore:
 
         try:
             count = self.collection.count()
-            logger.debug(f"Collection '{self.collection_name}' contains {count} documents")
+            logger.debug(
+                f"Collection '{self.collection_name}' contains {count} documents"
+            )
             return count
         except Exception as e:
             logger.error(f"Failed to count documents: {str(e)}", exc_info=True)
@@ -357,7 +377,10 @@ class ChromaStore:
             self.collection = None
             logger.info(f"Successfully deleted collection '{self.collection_name}'")
         except Exception as e:
-            logger.error(f"Failed to delete collection '{self.collection_name}': {str(e)}", exc_info=True)
+            logger.error(
+                f"Failed to delete collection '{self.collection_name}': {str(e)}",
+                exc_info=True,
+            )
             raise ChromaStoreError(
                 f"Failed to delete collection '{self.collection_name}': {str(e)}"
             ) from e
@@ -376,4 +399,3 @@ class ChromaStore:
         except Exception as e:
             logger.error(f"Failed to reset collection: {str(e)}", exc_info=True)
             raise ChromaStoreError(f"Failed to reset collection: {str(e)}") from e
-

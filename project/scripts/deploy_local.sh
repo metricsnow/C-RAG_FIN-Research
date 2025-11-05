@@ -64,4 +64,3 @@ echo "Press Ctrl+C to stop the server"
 echo ""
 
 python scripts/run_streamlit.py
-

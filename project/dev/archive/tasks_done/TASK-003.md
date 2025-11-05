@@ -92,4 +92,3 @@ Learn LangChain framework basics, integrate LangChain with Ollama, and implement
 
 ## Notes
 This task focuses on learning and basic integration. The RAG chain will be simplified initially (no vector database yet). Focus on understanding LangChain patterns before moving to Milestone 2.
-

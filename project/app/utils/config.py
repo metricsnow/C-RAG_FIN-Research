@@ -63,13 +63,23 @@ class Config(BaseSettings):
         description="Ollama base URL",
     )
     ollama_timeout: int = Field(
-        default=30, ge=1, alias="OLLAMA_TIMEOUT", description="Request timeout in seconds"
+        default=30,
+        ge=1,
+        alias="OLLAMA_TIMEOUT",
+        description="Request timeout in seconds",
     )
     ollama_max_retries: int = Field(
-        default=3, ge=0, alias="OLLAMA_MAX_RETRIES", description="Maximum retry attempts"
+        default=3,
+        ge=0,
+        alias="OLLAMA_MAX_RETRIES",
+        description="Maximum retry attempts",
     )
     ollama_temperature: float = Field(
-        default=0.7, ge=0.0, le=2.0, alias="OLLAMA_TEMPERATURE", description="LLM temperature"
+        default=0.7,
+        ge=0.0,
+        le=2.0,
+        alias="OLLAMA_TEMPERATURE",
+        description="LLM temperature",
     )
     ollama_priority: int = Field(
         default=1, ge=0, alias="OLLAMA_PRIORITY", description="Request priority"
@@ -85,7 +95,9 @@ class Config(BaseSettings):
 
     # ChromaDB Configuration
     chroma_db_path: str = Field(
-        default="./data/chroma_db", alias="CHROMA_DB_PATH", description="ChromaDB database path"
+        default="./data/chroma_db",
+        alias="CHROMA_DB_PATH",
+        description="ChromaDB database path",
     )
     chroma_persist_directory: str = Field(
         default="./data/chroma_db",
@@ -95,10 +107,16 @@ class Config(BaseSettings):
 
     # Application Configuration
     max_document_size_mb: int = Field(
-        default=10, ge=1, alias="MAX_DOCUMENT_SIZE_MB", description="Maximum document size in MB"
+        default=10,
+        ge=1,
+        alias="MAX_DOCUMENT_SIZE_MB",
+        description="Maximum document size in MB",
     )
     default_top_k: int = Field(
-        default=5, ge=1, alias="DEFAULT_TOP_K", description="Default number of documents to retrieve"
+        default=5,
+        ge=1,
+        alias="DEFAULT_TOP_K",
+        description="Default number of documents to retrieve",
     )
 
     # Embedding Configuration
@@ -109,13 +127,21 @@ class Config(BaseSettings):
     )
 
     # LLM Configuration
-    llm_provider: str = Field(default="ollama", alias="LLM_PROVIDER", description="LLM provider")
-    llm_model: str = Field(default="llama3.2", alias="LLM_MODEL", description="LLM model name")
+    llm_provider: str = Field(
+        default="ollama", alias="LLM_PROVIDER", description="LLM provider"
+    )
+    llm_model: str = Field(
+        default="llama3.2", alias="LLM_MODEL", description="LLM model name"
+    )
 
     # Logging Configuration
-    log_level: str = Field(default="INFO", alias="LOG_LEVEL", description="Logging level")
+    log_level: str = Field(
+        default="INFO", alias="LOG_LEVEL", description="Logging level"
+    )
     log_file: Optional[str] = Field(
-        default=None, alias="LOG_FILE", description="Log file path (None = console only)"
+        default=None,
+        alias="LOG_FILE",
+        description="Log file path (None = console only)",
     )
     log_file_max_bytes: int = Field(
         default=10 * 1024 * 1024,
@@ -124,7 +150,10 @@ class Config(BaseSettings):
         description="Maximum log file size in bytes (10MB)",
     )
     log_file_backup_count: int = Field(
-        default=5, ge=1, alias="LOG_FILE_BACKUP_COUNT", description="Number of backup log files to keep"
+        default=5,
+        ge=1,
+        alias="LOG_FILE_BACKUP_COUNT",
+        description="Number of backup log files to keep",
     )
 
     # Project paths (computed fields)

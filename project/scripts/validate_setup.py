@@ -4,8 +4,8 @@ Validation script to verify environment setup and dependencies.
 Run this after setting up the virtual environment and installing dependencies.
 """
 
-import sys
 import importlib
+import sys
 from pathlib import Path
 
 
@@ -13,7 +13,9 @@ def check_python_version():
     """Verify Python version is 3.11+"""
     version = sys.version_info
     if version.major < 3 or (version.major == 3 and version.minor < 11):
-        print(f"❌ Python version {version.major}.{version.minor} is below required 3.11+")
+        print(
+            f"❌ Python version {version.major}.{version.minor} is below required 3.11+"
+        )
         return False
     print(f"✅ Python version {version.major}.{version.minor}.{version.micro}")
     return True
@@ -23,7 +25,7 @@ def check_dependency(package_name, import_name=None):
     """Check if a Python package is installed and importable"""
     if import_name is None:
         import_name = package_name
-    
+
     try:
         importlib.import_module(import_name)
         print(f"✅ {package_name}")
@@ -58,7 +60,7 @@ def check_directory_structure():
         "data/chroma_db",
         "tests",
     ]
-    
+
     all_exist = True
     for dir_path in required_dirs:
         path = Path(dir_path)
@@ -67,7 +69,7 @@ def check_directory_structure():
         else:
             print(f"❌ {dir_path}/ - Missing")
             all_exist = False
-    
+
     return all_exist
 
 
@@ -77,13 +79,13 @@ def main():
     print("Environment Setup Validation")
     print("=" * 60)
     print()
-    
+
     results = []
-    
+
     print("Python Version:")
     results.append(check_python_version())
     print()
-    
+
     print("Dependencies:")
     dependencies = [
         ("langchain", "langchain"),
@@ -93,19 +95,19 @@ def main():
         ("python-dotenv", "dotenv"),
         ("openai", "openai"),
     ]
-    
+
     for package, import_name in dependencies:
         results.append(check_dependency(package, import_name))
     print()
-    
+
     print("Configuration:")
     results.append(check_env_file())
     print()
-    
+
     print("Directory Structure:")
     results.append(check_directory_structure())
     print()
-    
+
     print("=" * 60)
     if all(results):
         print("✅ All checks passed! Environment is ready.")
@@ -117,4 +119,3 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
-

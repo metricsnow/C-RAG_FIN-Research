@@ -6,18 +6,18 @@ retrieves top-k relevant document chunks from ChromaDB, and generates answers
 using retrieved context with Ollama LLM via LangChain.
 """
 
-from typing import List, Optional, Dict, Any
+from typing import Any, Dict, List, Optional
 
+from langchain_core.documents import Document
+from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.documents import Document
 
+from app.rag.embedding_factory import EmbeddingError, EmbeddingGenerator
 from app.rag.llm_factory import get_llm
-from app.rag.embedding_factory import EmbeddingGenerator, EmbeddingError
-from app.vector_db import ChromaStore, ChromaStoreError
 from app.utils.config import config
 from app.utils.logger import get_logger
+from app.vector_db import ChromaStore, ChromaStoreError
 
 logger = get_logger(__name__)
 
@@ -58,23 +58,27 @@ class RAGQuerySystem:
         Raises:
             RAGQueryError: If initialization fails
         """
-        logger.info(f"Initializing RAG query system: collection={collection_name}, top_k={top_k}")
+        logger.info(
+            f"Initializing RAG query system: collection={collection_name}, top_k={top_k}"
+        )
         try:
             self.top_k = top_k
             logger.debug("Creating LLM instance")
             self.llm = get_llm()
-            logger.debug(f"Creating embedding generator with provider={embedding_provider or config.EMBEDDING_PROVIDER}")
+            logger.debug(
+                f"Creating embedding generator with provider={embedding_provider or config.EMBEDDING_PROVIDER}"
+            )
             self.embedding_generator = EmbeddingGenerator(provider=embedding_provider)
             logger.debug(f"Creating ChromaDB store with collection={collection_name}")
             self.chroma_store = ChromaStore(collection_name=collection_name)
 
             # Financial domain-optimized prompt template
             self.prompt_template = ChatPromptTemplate.from_template(
-                """You are a helpful financial research assistant specializing in 
+                """You are a helpful financial research assistant specializing in
 financial analysis, market research, and investment insights.
 
-Use the following context from financial documents to answer the question. 
-If the context doesn't contain enough information to answer the question, 
+Use the following context from financial documents to answer the question.
+If the context doesn't contain enough information to answer the question,
 clearly state that you don't have sufficient information in the provided context.
 
 Context:
@@ -82,7 +86,7 @@ Context:
 
 Question: {question}
 
-Provide a clear, accurate answer based on the context provided. If multiple 
+Provide a clear, accurate answer based on the context provided. If multiple
 sources are referenced, synthesize the information cohesively.
 
 Answer:"""
@@ -94,8 +98,12 @@ Answer:"""
             logger.info("RAG query system initialized successfully")
 
         except Exception as e:
-            logger.error(f"Failed to initialize RAG query system: {str(e)}", exc_info=True)
-            raise RAGQueryError(f"Failed to initialize RAG query system: {str(e)}") from e
+            logger.error(
+                f"Failed to initialize RAG query system: {str(e)}", exc_info=True
+            )
+            raise RAGQueryError(
+                f"Failed to initialize RAG query system: {str(e)}"
+            ) from e
 
     def _format_docs(self, docs: List[Document]) -> str:
         """
@@ -109,7 +117,12 @@ Answer:"""
         """
         if not docs:
             return "No relevant context found."
-        return "\n\n".join([f"[Source: {doc.metadata.get('source', 'unknown')}]\n{doc.page_content}" for doc in docs])
+        return "\n\n".join(
+            [
+                f"[Source: {doc.metadata.get('source', 'unknown')}]\n{doc.page_content}"
+                for doc in docs
+            ]
+        )
 
     def _retrieve_context(self, question: str) -> List[Document]:
         """
@@ -156,11 +169,19 @@ Answer:"""
             logger.error(f"Failed to generate query embedding: {str(e)}", exc_info=True)
             raise RAGQueryError(f"Failed to generate query embedding: {str(e)}") from e
         except ChromaStoreError as e:
-            logger.error(f"Failed to retrieve context from ChromaDB: {str(e)}", exc_info=True)
-            raise RAGQueryError(f"Failed to retrieve context from ChromaDB: {str(e)}") from e
+            logger.error(
+                f"Failed to retrieve context from ChromaDB: {str(e)}", exc_info=True
+            )
+            raise RAGQueryError(
+                f"Failed to retrieve context from ChromaDB: {str(e)}"
+            ) from e
         except Exception as e:
-            logger.error(f"Unexpected error during context retrieval: {str(e)}", exc_info=True)
-            raise RAGQueryError(f"Unexpected error during context retrieval: {str(e)}") from e
+            logger.error(
+                f"Unexpected error during context retrieval: {str(e)}", exc_info=True
+            )
+            raise RAGQueryError(
+                f"Unexpected error during context retrieval: {str(e)}"
+            ) from e
 
     def _build_chain(self):
         """
@@ -169,6 +190,7 @@ Answer:"""
         Returns:
             Configured RAG chain
         """
+
         # Build chain using RunnablePassthrough.assign for context retrieval
         # The lambda captures self to access retrieval methods
         def format_context(x: Dict[str, Any]) -> str:
@@ -313,4 +335,3 @@ def create_rag_system(
         top_k=top_k,
         embedding_provider=embedding_provider,
     )
-

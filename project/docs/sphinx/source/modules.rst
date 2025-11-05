@@ -60,4 +60,3 @@ Utility Modules
 .. automodule:: app.utils.logger
    :members:
    :show-inheritance:
-

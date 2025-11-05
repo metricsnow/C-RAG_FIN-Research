@@ -139,4 +139,3 @@ Page numbers and chunk indices explicitly deferred to Phase 2 per PRD. Filename-
 - Citation formatter extracts unique filenames from source metadata
 - Streamlit UI calls `format_citations()` to display citations with answers
 - All chunks used in answer are tracked via `chunks_used` field
-

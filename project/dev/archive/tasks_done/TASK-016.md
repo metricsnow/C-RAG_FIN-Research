@@ -130,4 +130,3 @@ Reorganize tests from scattered `scripts/` directory into dedicated `tests/` dir
 
 ## Notes
 This enhancement improves project organization by following standard Python conventions. All tests are now organized in the `tests/` directory using pytest framework, providing better organization, clearer separation of concerns, and standard Python project structure.
-

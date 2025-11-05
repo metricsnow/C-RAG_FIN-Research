@@ -9,15 +9,19 @@ import warnings
 # Try to use langchain-ollama (recommended), fallback to langchain-community
 try:
     from langchain_ollama import OllamaLLM
+
     OLLAMA_AVAILABLE = True
     OLLAMA_CLASS = OllamaLLM
 except ImportError:
     # Fallback to deprecated langchain-community
     from langchain_community.llms import Ollama
+
     OLLAMA_AVAILABLE = False
     OLLAMA_CLASS = Ollama
     # Suppress deprecation warning for compatibility
-    warnings.filterwarnings("ignore", category=DeprecationWarning, module="langchain_community.llms")
+    warnings.filterwarnings(
+        "ignore", category=DeprecationWarning, module="langchain_community.llms"
+    )
 
 from app.utils.config import config
 from app.utils.logger import get_logger
@@ -71,4 +75,3 @@ def get_llm():
     else:
         logger.error(f"Unsupported LLM provider: {config.LLM_PROVIDER}")
         raise ValueError(f"Unsupported LLM provider: {config.LLM_PROVIDER}")
-

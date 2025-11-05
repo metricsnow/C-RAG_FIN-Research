@@ -42,7 +42,7 @@ def test_documents_dir(project_root_path):
 def embedding_generator():
     """Create real embedding generator for production testing."""
     from app.rag.embedding_factory import EmbeddingGenerator
-    
+
     try:
         generator = EmbeddingGenerator()
         # Verify it works by getting dimensions
@@ -225,4 +225,3 @@ def reset_paths():
         sys.path.insert(0, str(project_root))
     yield
     # Cleanup if needed
-

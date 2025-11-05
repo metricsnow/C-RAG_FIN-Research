@@ -260,11 +260,11 @@ The Pydantic configuration system automatically validates all configuration valu
 
 - **Type Validation**: Ensures values match their declared types (string, integer, float, boolean)
 - **Constraint Validation**: Enforces numeric ranges, string formats, and allowed values
-- **Custom Validation**: 
+- **Custom Validation**:
   - Ollama URLs must start with `http://` or `https://`
   - Log levels must be one of: DEBUG, INFO, WARNING, ERROR, CRITICAL
   - Boolean values can be specified as: `true`/`false`, `1`/`0`, `yes`/`no`
-- **Business Logic Validation**: 
+- **Business Logic Validation**:
   - Warns if OpenAI embeddings are selected but no API key is provided
   - Validates that Ollama is enabled when LLM provider is set to 'ollama'
 
@@ -370,7 +370,7 @@ gatherUsageStats = false
    ```bash
    # Option 1: Fetch SEC EDGAR filings automatically
    python -u scripts/fetch_edgar_data.py
-   
+
    # Option 2: Place documents in data/documents/ and process manually
    ```
 
@@ -378,7 +378,7 @@ gatherUsageStats = false
    ```bash
    # Using deployment script
    bash scripts/deploy_local.sh
-   
+
    # Or directly
    streamlit run app/ui/app.py
    ```
@@ -445,10 +445,10 @@ python -u scripts/verify_document_indexing.py
    ```python
    from app.ingestion import create_pipeline
    from app.ingestion.document_loader import load_documents
-   
+
    # Load documents
    documents = load_documents("data/documents/")
-   
+
    # Process through pipeline
    pipeline = create_pipeline()
    chunk_ids = pipeline.process_document_objects(documents)
@@ -511,7 +511,7 @@ pytest -m ollama
    ```bash
    # Type checking
    mypy app
-   
+
    # Tests with coverage
    pytest --cov=app --cov-report=term-missing
    ```
@@ -623,7 +623,7 @@ pytest -m ollama
 
 2. **Query Processing Flow**:
    ```
-   User Query → Query Embedding → Vector Search → Context Retrieval → 
+   User Query → Query Embedding → Vector Search → Context Retrieval →
    Prompt Construction → LLM Generation → Answer + Citations
    ```
 
@@ -989,7 +989,7 @@ tests/
 
 **Total**: **174 tests** covering all main functionalities
 
-**Test Philosophy**: 
+**Test Philosophy**:
 - Production conditions for integration tests (real embeddings, production data)
 - Comprehensive mocking for external APIs (EDGAR, OpenAI) and UI components
 - Full error handling and edge case coverage
@@ -1103,24 +1103,87 @@ We welcome contributions! Here's how you can help:
    - Write docstrings (Google style)
    - Include tests for new features
 
-4. **Run quality checks** before submitting:
+4. **Install pre-commit hooks** (automated code quality checks):
    ```bash
+   # Install hooks (one-time setup)
+   pre-commit install
+
+   # Hooks will automatically run on every commit
+   # You can also run manually:
+   pre-commit run --all-files
+   ```
+
+5. **Run quality checks** before submitting:
+   ```bash
+   # Pre-commit hooks (automatic formatting and linting)
+   pre-commit run --all-files
+
    # Type checking
    mypy app
-   
+
    # Tests
    pytest
-   
+
    # Tests with coverage
    pytest --cov=app --cov-report=term-missing
    ```
 
-5. **Submit a pull request** with clear description
+6. **Submit a pull request** with clear description
+
+### Pre-commit Hooks (Code Formatting and Linting)
+
+The project uses **pre-commit hooks** to automatically enforce code quality standards before commits. This ensures consistent code style across the project.
+
+**What pre-commit does:**
+- Automatically formats code with `black` (code formatter)
+- Sorts imports with `isort` (import sorter)
+- Lints code with `flake8` (code linter)
+- Fixes common issues (trailing whitespace, end of file, etc.)
+
+**Setup (one-time):**
+```bash
+# Install pre-commit hooks
+pre-commit install
+```
+
+**Usage:**
+- Hooks run **automatically** on every `git commit`
+- You can also run manually:
+  ```bash
+  # Run on all files
+  pre-commit run --all-files
+
+  # Run on staged files only (default)
+  pre-commit run
+  ```
+
+**Hooks configured:**
+- `black`: Code formatting (line length: 88, PEP 8 compatible)
+- `isort`: Import sorting (compatible with black)
+- `flake8`: Code linting (line length: 88, excludes docstring checks initially)
+- General file checks (trailing whitespace, end of file, YAML/JSON/TOML validation)
+
+**Configuration:**
+- Pre-commit config: `.pre-commit-config.yaml`
+- Tool configurations: `pyproject.toml` (black, isort, flake8 sections)
+
+**Note on flake8 errors:**
+- Some existing code may have flake8 errors (unused imports, long lines)
+- These will be fixed incrementally as code is updated
+- New code should pass all flake8 checks
+- Docstring checks (D*) are disabled initially for gradual adoption
+
+**Bypassing hooks (not recommended):**
+```bash
+# Only if absolutely necessary
+git commit --no-verify
+```
 
 ### Code Style
 
-- **Formatting**: Use `black` for code formatting
-- **Linting**: Follow PEP 8 guidelines
+- **Formatting**: Use `black` for code formatting (automated via pre-commit)
+- **Linting**: Follow PEP 8 guidelines (enforced by flake8)
+- **Import Sorting**: Use `isort` (automated via pre-commit, compatible with black)
 - **Type Hints**: Add type hints to all functions
 - **Type Checking**: Run `mypy app` to validate type hints
 - **Docstrings**: Use Google-style docstrings
@@ -1237,6 +1300,6 @@ project/
 
 ---
 
-**Last Updated**: 2025-01-27 (Coverage improved to 82.75%)  
-**Version**: 1.0.0  
+**Last Updated**: 2025-01-27 (Coverage improved to 82.75%)
+**Version**: 1.0.0
 **Status**: Production Ready

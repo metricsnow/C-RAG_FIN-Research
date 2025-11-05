@@ -16,11 +16,10 @@ sys.path.insert(0, str(project_root))
 
 if __name__ == "__main__":
     import streamlit.web.cli as stcli
-    
+
     # Get path to app
     app_path = project_root / "app" / "ui" / "app.py"
-    
+
     # Run Streamlit
     sys.argv = ["streamlit", "run", str(app_path)]
     stcli.main()
-

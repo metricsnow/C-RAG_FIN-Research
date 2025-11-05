@@ -5,8 +5,8 @@ Handles query processing, document retrieval, and answer generation.
 """
 
 from app.rag.chain import (
-    RAGQuerySystem,
     RAGQueryError,
+    RAGQuerySystem,
     create_rag_system,
 )
 from app.rag.embedding_factory import (

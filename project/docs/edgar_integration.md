@@ -262,4 +262,3 @@ Potential improvements for Phase 2:
 - SEC EDGAR: https://www.sec.gov/edgar/searchedgar/companysearch.html
 - SEC API Documentation: https://www.sec.gov/edgar/sec-api-documentation
 - Company CIK Lookup: https://www.sec.gov/edgar/searchedgar/companysearch
-

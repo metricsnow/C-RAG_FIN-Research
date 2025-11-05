@@ -125,4 +125,3 @@ trap "echo ''; echo -e '${YELLOW}Stopping services...${NC}'; kill $STREAMLIT_PID
 
 # Keep script running
 wait
-

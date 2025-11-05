@@ -140,4 +140,3 @@ PDF support is explicitly deferred to Phase 2 per PRD optimization. Focus on tex
 - Comprehensive error handling for edge cases
 - Full metadata preservation across chunks
 - Configurable chunk size and overlap
-

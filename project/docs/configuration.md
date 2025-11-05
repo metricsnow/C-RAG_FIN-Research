@@ -20,6 +20,22 @@ pip install -e .
 pip install -e ".[dev,test,docs]"
 ```
 
+**Development Dependencies** (`[dev]` group) include:
+- **Code Quality Tools**: black (formatter), flake8 (linter), isort (import sorter), pre-commit (hooks)
+- **Type Checking**: mypy (static type checker)
+- **Testing**: pytest, pytest-cov (see `[test]` group)
+- **Documentation**: sphinx, sphinx-rtd-theme (see `[docs]` group)
+
+**Code Quality Tools**:
+The project uses pre-commit hooks with black, flake8, and isort for automated code formatting and linting. After installing dev dependencies, set up hooks:
+```bash
+pre-commit install
+```
+
+For more details on code quality tools, see:
+- [README.md](../README.md#pre-commit-hooks-code-formatting-and-linting)
+- [Testing Documentation](testing.md#code-quality)
+
 **Legacy Support**: The `requirements.txt` file is maintained for backward compatibility.
 
 For more details, see the main [README.md](../README.md#step-3-install-dependencies).
@@ -123,7 +139,7 @@ Numeric constraints are enforced:
 Custom validators enforce business rules:
 - **Ollama URL**: Must start with `http://` or `https://`
 - **Log Level**: Must be one of: `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`
-- **Business Logic**: 
+- **Business Logic**:
   - Warns if OpenAI embeddings are selected but no API key is provided
   - Validates that Ollama is enabled when LLM provider is set to 'ollama'
 
@@ -285,4 +301,3 @@ The configuration class (`app.utils.config.Config`) extends `BaseSettings` and p
 - Constraint validation
 - Custom field validators
 - Backward-compatible property accessors
-

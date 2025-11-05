@@ -143,4 +143,3 @@ Modernize dependency management by adding `pyproject.toml` with Poetry or pip-to
 
 ## Notes
 This enhancement modernizes the project structure to follow current Python best practices (PEP 621). The implementation uses the standard `pyproject.toml` format without requiring Poetry or pip-tools, making it compatible with existing pip workflows while providing modern dependency management. The `requirements.txt` file is maintained as a backup for compatibility.
-

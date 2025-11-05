@@ -141,4 +141,3 @@ Persistent storage is recommended but in-memory is acceptable for MVP. The decis
 - Document retrieval by ID or get all
 - Comprehensive error handling
 - Ready for embedding integration (TASK-006)
-

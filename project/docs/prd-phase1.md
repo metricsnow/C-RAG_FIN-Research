@@ -1366,8 +1366,8 @@ Note: FastAPI backend deferred to Phase 2. Streamlit calls LangChain directly.
 
 ---
 
-**Document Status:** Draft  
-**Next Review:** After Milestone 2 (Core Integration) completion  
+**Document Status:** Draft
+**Next Review:** After Milestone 2 (Core Integration) completion
 **Approval Required:** Before Milestone 4 (Deployment) completion
 
 ---
@@ -1375,4 +1375,3 @@ Note: FastAPI backend deferred to Phase 2. Streamlit calls LangChain directly.
 **End of Phase 1 PRD**
 
 **Note**: For Phase 2 planning and enhancements, see `prd-phase2.md`
-

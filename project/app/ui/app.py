@@ -4,11 +4,12 @@ Streamlit frontend application for RAG-powered financial research assistant.
 Provides a basic chat interface for querying documents with simple citations.
 """
 
-import streamlit as st
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
-from app.rag import RAGQuerySystem, RAGQueryError, create_rag_system
+import streamlit as st
+
+from app.rag import RAGQueryError, RAGQuerySystem, create_rag_system
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -17,7 +18,7 @@ logger = get_logger(__name__)
 def initialize_rag_system() -> RAGQuerySystem:
     """
     Initialize RAG query system.
-    
+
     Returns:
         RAGQuerySystem instance
     """
@@ -36,16 +37,16 @@ def initialize_rag_system() -> RAGQuerySystem:
 def format_citations(sources: List[Dict[str, Any]]) -> str:
     """
     Format source citations as simple string.
-    
+
     Args:
         sources: List of source metadata dictionaries
-        
+
     Returns:
         Formatted citation string (e.g., "Source: document.pdf")
     """
     if not sources:
         return ""
-    
+
     # Extract unique source filenames
     source_names = set()
     for source in sources:
@@ -55,7 +56,7 @@ def format_citations(sources: List[Dict[str, Any]]) -> str:
         if isinstance(filename, str) and "/" in filename:
             filename = Path(filename).name
         source_names.add(filename)
-    
+
     # Format as simple string
     if len(source_names) == 1:
         return f"Source: {list(source_names)[0]}"
@@ -73,21 +74,21 @@ def main():
         page_icon="📊",
         layout="wide",
     )
-    
+
     # Title and description
     st.title("📊 Financial Research Assistant")
     st.markdown(
         "Ask questions about your financial documents. "
         "Answers are generated using RAG (Retrieval-Augmented Generation) technology."
     )
-    
+
     # Initialize RAG system
     rag_system = initialize_rag_system()
-    
+
     # Initialize chat history in session state
     if "messages" not in st.session_state:
         st.session_state.messages = []
-    
+
     # Display chat history
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
@@ -99,16 +100,16 @@ def main():
                     citation = format_citations(sources)
                     if citation:
                         st.caption(citation)
-    
+
     # Chat input
     if prompt := st.chat_input("Ask a question about your documents..."):
         # Add user message to chat history
         st.session_state.messages.append({"role": "user", "content": prompt})
-        
+
         # Display user message
         with st.chat_message("user"):
             st.markdown(prompt)
-        
+
         # Generate assistant response
         with st.chat_message("assistant"):
             with st.spinner("Searching documents and generating answer..."):
@@ -116,48 +117,55 @@ def main():
                     logger.info(f"Processing user query: '{prompt[:50]}...'")
                     # Query RAG system
                     result = rag_system.query(prompt)
-                    
-                    answer = result.get("answer", "I'm sorry, I couldn't generate an answer.")
+
+                    answer = result.get(
+                        "answer", "I'm sorry, I couldn't generate an answer."
+                    )
                     sources = result.get("sources", [])
-                    
+
                     logger.info(f"Generated answer with {len(sources)} sources")
-                    
+
                     # Display answer
                     st.markdown(answer)
-                    
+
                     # Display citations
                     if sources:
                         citation = format_citations(sources)
                         if citation:
                             st.caption(citation)
-                    
+
                     # Add assistant message to chat history
-                    st.session_state.messages.append({
-                        "role": "assistant",
-                        "content": answer,
-                        "sources": sources,
-                    })
-                    
+                    st.session_state.messages.append(
+                        {
+                            "role": "assistant",
+                            "content": answer,
+                            "sources": sources,
+                        }
+                    )
+
                 except RAGQueryError as e:
                     error_msg = f"Error processing query: {str(e)}"
                     logger.error(f"RAG query error: {str(e)}", exc_info=True)
                     st.error(error_msg)
-                    st.session_state.messages.append({
-                        "role": "assistant",
-                        "content": error_msg,
-                        "sources": [],
-                    })
+                    st.session_state.messages.append(
+                        {
+                            "role": "assistant",
+                            "content": error_msg,
+                            "sources": [],
+                        }
+                    )
                 except Exception as e:
                     error_msg = f"Unexpected error: {str(e)}"
                     logger.error(f"Unexpected error in UI: {str(e)}", exc_info=True)
                     st.error(error_msg)
-                    st.session_state.messages.append({
-                        "role": "assistant",
-                        "content": error_msg,
-                        "sources": [],
-                    })
+                    st.session_state.messages.append(
+                        {
+                            "role": "assistant",
+                            "content": error_msg,
+                            "sources": [],
+                        }
+                    )
 
 
 if __name__ == "__main__":
     main()
-

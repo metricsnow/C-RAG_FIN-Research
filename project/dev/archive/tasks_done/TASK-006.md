@@ -141,4 +141,3 @@ Embedding model decision must be made before Milestone 2 per PRD pre-development
 - Similarity search integration
 - Comprehensive error handling
 - Ready for RAG query system (TASK-007)
-
