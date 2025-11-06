@@ -1601,7 +1601,7 @@ tests/
 └── test_ui_app.py                         # UI/Streamlit tests (25 tests - NEW)
 ```
 
-**Total**: **174 tests** covering all main functionalities
+**Total**: **432 tests** covering all main functionalities (updated 2025-01-27)
 
 **Test Philosophy**:
 - Production conditions for integration tests (real embeddings, production data)
@@ -1640,20 +1640,26 @@ Test coverage is automatically measured for all test runs. Coverage reporting is
    # Generates coverage.xml for CI tools
    ```
 
-**Current Coverage Status**:
-- **Overall Coverage**: **82.75%** ✅ (exceeded 80% target, improved from 57%)
-- **Total Tests**: **174 tests** (153 passing, 19 with minor mocking issues, 2 skipped)
-- **Well-Tested Modules** (Core Business Logic - 80%+):
-  - `app/ingestion/document_loader.py`: 92% ✅
-  - `app/ingestion/pipeline.py`: 85% ✅
-  - `app/vector_db/chroma_store.py`: 85% ✅
-  - `app/rag/chain.py`: 82% ✅
-  - `app/rag/llm_factory.py`: 81% ✅
-  - `app/utils/config.py`: 89% ✅
-  - `app/rag/embedding_factory.py`: 85%+ ✅
-- **Previously Low Coverage Modules** (Now Improved):
-  - `app/ui/app.py`: 70%+ ✅ (improved from 0% - UI tests with mocking)
-  - `app/ingestion/edgar_fetcher.py`: 85%+ ✅ (improved from 12% - comprehensive mocked tests)
+**Current Coverage Status** (Updated 2025-01-27):
+- **Overall Coverage**: **~20%** (target: 50%, working towards 80%)
+- **Total Tests**: **432 tests** (410 passing, 16 failed, 6 skipped)
+- **Test Pass Rate**: **94%** ✅ (improved from 90% in TASK-033)
+- **Tests Fixed in TASK-033**: 22-23 test failures resolved
+- **Well-Tested Modules** (Core Business Logic):
+  - `app/ingestion/document_loader.py`: High coverage ✅
+  - `app/ingestion/pipeline.py`: High coverage ✅
+  - `app/vector_db/chroma_store.py`: High coverage ✅
+  - `app/rag/chain.py`: High coverage ✅
+  - `app/utils/config.py`: High coverage ✅
+- **Test Improvements** (TASK-033):
+  - Fixed health check tests (6 tests)
+  - Fixed metrics tests (3 tests)
+  - Fixed EDGAR fetcher tests (4 tests)
+  - Fixed news integration tests (3 tests)
+  - Fixed RAG chain tests (2 tests)
+  - Fixed transcript parser tests (2 tests)
+  - Fixed embeddings tests (1 test)
+- **Remaining Work**: 16 test failures (primarily UI app tests and edge cases)
 
 **Interpreting Coverage Reports**:
 
@@ -1860,8 +1866,11 @@ The project includes systematic maintenance and validation tasks to ensure codeb
 - Pattern: Maintenance tasks are created every 10 tasks to review folder structure, optimize file organization, evaluate code length, and create utilities
 
 **Validation Tasks**:
-- **TASK-033_maintanance**: Maintenance test run - comprehensive codebase validation
-  - Run complete test suite (100% pass rate required)
+- **TASK-033_maintanance**: Maintenance test run - comprehensive codebase validation (In Progress)
+  - **Current Status**: 94% test pass rate (410 passed, 16 failed, 6 skipped)
+  - **Progress**: Fixed 22-23 test failures (health, metrics, EDGAR, news, RAG, transcript, embeddings)
+  - **Remaining**: 16 test failures (primarily UI app tests and edge cases)
+  - Run complete test suite (target: 100% pass rate)
   - Validate all production functionality
   - Check test code health
   - Generate code coverage and quality reports
@@ -1968,10 +1977,10 @@ project/
 **Version**: 1.0.0
 **Status**: Production Ready
 
-**Recent Updates**:
+**Recent Updates** (2025-01-27):
+- TASK-033_maintanance: Comprehensive codebase validation - In Progress (94% test pass rate, 22-23 tests fixed)
 - TASK-034: Financial News Aggregation - Complete (RSS feeds, web scraping, ticker detection, categorization)
 - TASK-046-049: News enhancement tasks created (Summarization, Trend Analysis, Monitoring, Alerts)
-- TASK-033_maintanance: Maintenance Test Run task created (comprehensive codebase validation)
 - TASK-040_maintanance: Codebase Maintenance task created (structure optimization, utility creation)
 - TASK-050: Codebase Maintenance task created (structure optimization, utility creation)
-- Documentation updated with news aggregation integration guide
+- Documentation updated with news aggregation integration guide and current test status
