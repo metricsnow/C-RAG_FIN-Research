@@ -578,31 +578,42 @@ For complete EDGAR integration documentation, see: **[EDGAR Integration Guide](.
 
 ### Earnings Call Transcripts Configuration (TASK-033)
 
-The system includes earnings call transcript integration for fetching and indexing earnings call transcripts. All transcript settings are configurable via environment variables.
+The system includes earnings call transcript integration for fetching and indexing earnings call transcripts using the **API Ninjas Earnings Call Transcript API** (recommended) with optional web scraping fallback. All transcript settings are configurable via environment variables.
 
 | Variable | Type | Default | Constraints | Description |
 |----------|------|---------|------------|-------------|
 | `TRANSCRIPT_ENABLED` | boolean | `true` | `true`/`false`, `1`/`0`, `yes`/`no` | Enable earnings call transcript integration |
+| `API_NINJAS_API_KEY` | string | `""` | String | API Ninjas API key for earnings call transcripts (free tier available at https://api-ninjas.com) |
+| `TRANSCRIPT_USE_API_NINJAS` | boolean | `true` | `true`/`false`, `1`/`0`, `yes`/`no` | Use API Ninjas API for transcripts (recommended, default: true) |
+| `TRANSCRIPT_USE_WEB_SCRAPING` | boolean | `false` | `true`/`false`, `1`/`0`, `yes`/`no` | Enable web scraping fallback (not recommended, default: false) |
 | `TRANSCRIPT_RATE_LIMIT_SECONDS` | float | `1.0` | Range: 0.1 - 60.0 | Rate limit between transcript requests in seconds |
-| `TRANSCRIPT_USE_WEB_SCRAPING` | boolean | `true` | `true`/`false`, `1`/`0`, `yes`/`no` | Enable web scraping for transcripts (required) |
 
-**⚠️ IMPORTANT**: Current implementation uses web scraping (temporary). **URGENT**: Replace with API Ninjas API integration. See TASK-033 for details.
+**✅ IMPLEMENTED**: API Ninjas integration is complete and enabled by default. Web scraping is available as fallback but disabled by default.
 
 **Example Configuration**:
 ```bash
 # Enable transcript integration
 TRANSCRIPT_ENABLED=true
 
+# API Ninjas API Key (required for transcript fetching)
+# Get free API key at: https://api-ninjas.com
+API_NINJAS_API_KEY=your-api-key-here
+
+# Use API Ninjas API (recommended, default: true)
+TRANSCRIPT_USE_API_NINJAS=true
+
+# Enable web scraping fallback (not recommended, default: false)
+TRANSCRIPT_USE_WEB_SCRAPING=false
+
 # Rate limiting for transcript requests
 TRANSCRIPT_RATE_LIMIT_SECONDS=1.0
-
-# Enable web scraping (required, but should be replaced with API)
-TRANSCRIPT_USE_WEB_SCRAPING=true
 ```
 
 **Backward Compatibility**: Transcript integration is optional and can be disabled by setting `TRANSCRIPT_ENABLED=false`. The system continues to work normally without transcript integration.
 
-For complete transcript integration documentation, see: **[Transcript Integration Guide](../integrations/transcript_integration.md)** (if available).
+**API Ninjas Integration**: The system uses API Ninjas as the primary source for earnings call transcripts (enabled by default). Web scraping is available as a fallback but is disabled by default due to potential Terms of Service violations. Users should obtain a free API key from https://api-ninjas.com and add it to their `.env` file.
+
+For complete transcript integration documentation, see: **[Transcript Integration Guide](../integrations/transcript_integration.md)**.
 
 ### Financial News Aggregation Configuration (TASK-034)
 

@@ -364,7 +364,8 @@ class Config(BaseSettings):
     )
 
     # Earnings Call Transcripts Configuration (TASK-033)
-    # Note: TIKR does not offer an API. This implementation uses web scraping only.
+    # Uses API Ninjas Earnings Call Transcript API (recommended)
+    # with web scraping fallback
     transcript_enabled: bool = Field(
         default=True,
         alias="TRANSCRIPT_ENABLED",
@@ -377,10 +378,27 @@ class Config(BaseSettings):
         alias="TRANSCRIPT_RATE_LIMIT_SECONDS",
         description="Rate limit between transcript requests in seconds",
     )
-    transcript_use_web_scraping: bool = Field(
+    api_ninjas_api_key: str = Field(
+        default="",
+        alias="API_NINJAS_API_KEY",
+        description=(
+            "API Ninjas API key for earnings call transcripts " "(free tier available)"
+        ),
+    )
+    transcript_use_api_ninjas: bool = Field(
         default=True,
+        alias="TRANSCRIPT_USE_API_NINJAS",
+        description=(
+            "Use API Ninjas API for transcripts "
+            "(recommended, requires API_NINJAS_API_KEY)"
+        ),
+    )
+    transcript_use_web_scraping: bool = Field(
+        default=False,
         alias="TRANSCRIPT_USE_WEB_SCRAPING",
-        description="Enable web scraping for transcripts (required)",
+        description=(
+            "Enable web scraping for transcripts " "(fallback only, not recommended)"
+        ),
     )
 
     # Financial News Aggregation Configuration (TASK-034)

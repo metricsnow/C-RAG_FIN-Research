@@ -1,9 +1,10 @@
 """
 Earnings call transcript fetcher.
 
-Fetches earnings call transcripts from web scraping sources.
+Fetches earnings call transcripts from API Ninjas API (recommended) or
+web scraping sources (fallback).
 Note: TIKR does not offer an API and scraping TIKR is prohibited.
-This implementation uses legitimate public sources only.
+This implementation uses legitimate APIs and public sources only.
 """
 
 import re
@@ -14,6 +15,7 @@ from typing import Any, Dict, List, Optional
 import requests
 from bs4 import BeautifulSoup
 
+from app.utils.config import config
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -29,27 +31,47 @@ class TranscriptFetcher:
     """
     Earnings call transcript fetcher.
 
-    Fetches transcripts from legitimate web sources with proper rate limiting.
+    Fetches transcripts from API Ninjas API (recommended) or
+    web scraping sources (fallback).
     Note: Respects robots.txt and implements rate limiting to avoid overloading servers.
     """
 
+    API_NINJAS_BASE_URL = "https://api.api-ninjas.com/v1/earningscalltranscript"
     SEEKING_ALPHA_BASE_URL = "https://seekingalpha.com"
     YAHOO_FINANCE_BASE_URL = "https://finance.yahoo.com"
 
     def __init__(
         self,
-        rate_limit_delay: float = 1.0,
-        use_web_scraping: bool = True,
+        rate_limit_delay: Optional[float] = None,
+        use_api_ninjas: Optional[bool] = None,
+        use_web_scraping: Optional[bool] = None,
+        api_key: Optional[str] = None,
     ):
         """
         Initialize transcript fetcher.
 
         Args:
-            rate_limit_delay: Delay between requests in seconds (default: 1.0)
-            use_web_scraping: Enable web scraping (default: True)
+            rate_limit_delay: Delay between requests in seconds (default: from config)
+            use_api_ninjas: Use API Ninjas API (default: from config)
+            use_web_scraping: Enable web scraping fallback (default: from config)
+            api_key: API Ninjas API key (default: from config)
         """
-        self.rate_limit_delay = rate_limit_delay
-        self.use_web_scraping = use_web_scraping
+        self.rate_limit_delay = (
+            rate_limit_delay
+            if rate_limit_delay is not None
+            else config.transcript_rate_limit_seconds
+        )
+        self.use_api_ninjas = (
+            use_api_ninjas
+            if use_api_ninjas is not None
+            else config.transcript_use_api_ninjas
+        )
+        self.use_web_scraping = (
+            use_web_scraping
+            if use_web_scraping is not None
+            else config.transcript_use_web_scraping
+        )
+        self.api_key = api_key if api_key is not None else config.api_ninjas_api_key
         self.session = requests.Session()
         self.session.headers.update(
             {
@@ -66,7 +88,10 @@ class TranscriptFetcher:
         )
 
     def _make_request(
-        self, url: str, params: Optional[Dict[str, Any]] = None
+        self,
+        url: str,
+        params: Optional[Dict[str, Any]] = None,
+        headers: Optional[Dict[str, str]] = None,
     ) -> requests.Response:
         """
         Make HTTP request with rate limiting and error handling.
@@ -74,6 +99,7 @@ class TranscriptFetcher:
         Args:
             url: URL to request
             params: Query parameters
+            headers: Optional headers to add to request
 
         Returns:
             Response object
@@ -83,12 +109,115 @@ class TranscriptFetcher:
         """
         try:
             time.sleep(self.rate_limit_delay)
-            response = self.session.get(url, params=params, timeout=30)
+            request_headers = self.session.headers.copy()
+            if headers:
+                request_headers.update(headers)
+            response = self.session.get(
+                url, params=params, headers=request_headers, timeout=30
+            )
             response.raise_for_status()
             return response
         except requests.exceptions.RequestException as e:
             logger.error(f"Request failed for {url}: {str(e)}")
             raise TranscriptFetcherError(f"Request failed: {str(e)}") from e
+
+    def _fetch_api_ninjas_transcript(
+        self, ticker: str, date: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Fetch transcript from API Ninjas Earnings Call Transcript API.
+
+        Args:
+            ticker: Stock ticker symbol
+            date: Transcript date (YYYY-MM-DD format, optional)
+
+        Returns:
+            Transcript data dictionary or None if not found
+
+        Raises:
+            TranscriptFetcherError: If API key is missing or request fails
+        """
+        if not self.api_key:
+            logger.warning(
+                "API Ninjas API key not configured. "
+                "Set API_NINJAS_API_KEY in .env file or disable API Ninjas."
+            )
+            return None
+
+        try:
+            params = {"ticker": ticker.upper()}
+            if date:
+                params["date"] = date
+
+            headers = {"X-Api-Key": self.api_key}
+
+            logger.info(
+                f"Fetching transcript from API Ninjas for {ticker} (date: {date})"
+            )
+            response = self._make_request(
+                self.API_NINJAS_BASE_URL, params=params, headers=headers
+            )
+
+            data = response.json()
+
+            # API Ninjas returns a list of transcripts
+            if not data or len(data) == 0:
+                logger.warning(
+                    f"No transcript found on API Ninjas for {ticker} "
+                    f"on {date or 'latest'}"
+                )
+                return None
+
+            # Use first result (most recent if date not specified)
+            transcript_data = data[0]
+
+            # Extract transcript text
+            transcript_text = transcript_data.get("transcript", "")
+            if not transcript_text:
+                logger.warning(
+                    f"Empty transcript from API Ninjas for {ticker} "
+                    f"on {date or 'latest'}"
+                )
+                return None
+
+            # Extract speakers from transcript text
+            speakers = []
+            speaker_pattern = re.compile(
+                r"^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*):", re.MULTILINE
+            )
+            matches = speaker_pattern.findall(transcript_text)
+            speakers = list(set(matches))
+
+            # Extract metadata
+            result = {
+                "ticker": ticker.upper(),
+                "date": transcript_data.get("date")
+                or date
+                or datetime.now().strftime("%Y-%m-%d"),
+                "transcript": transcript_text,
+                "speakers": speakers,
+                "source": "api_ninjas",
+                "url": transcript_data.get("url", ""),
+                "quarter": transcript_data.get("quarter"),
+                "fiscal_year": transcript_data.get("fiscal_year"),
+            }
+
+            logger.info(f"Successfully fetched transcript from API Ninjas for {ticker}")
+            return result
+
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 401:
+                logger.error("API Ninjas API key is invalid or unauthorized")
+                raise TranscriptFetcherError("API Ninjas API key is invalid") from e
+            elif e.response.status_code == 429:
+                logger.warning("API Ninjas rate limit exceeded")
+                raise TranscriptFetcherError("API Ninjas rate limit exceeded") from e
+            else:
+                logger.warning(f"API Ninjas request failed: {str(e)}")
+                return None
+        except Exception as e:
+            logger.warning(f"API Ninjas fetching failed for {ticker}: {str(e)}")
+            return None
 
     def _scrape_seeking_alpha_transcript(
         self, ticker: str, date: Optional[str] = None
@@ -203,16 +332,18 @@ class TranscriptFetcher:
         source: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
         """
-        Fetch transcript from available web sources.
+        Fetch transcript from available sources.
 
         Tries sources in order:
-        1. Seeking Alpha (if enabled)
-        2. Yahoo Finance (if enabled)
+        1. API Ninjas (if enabled and API key configured) - RECOMMENDED
+        2. Seeking Alpha (if web scraping enabled) - FALLBACK
+        3. Yahoo Finance (if web scraping enabled) - FALLBACK
 
         Args:
             ticker: Stock ticker symbol
             date: Transcript date (YYYY-MM-DD format, optional)
-            source: Preferred source ('seeking_alpha', 'yahoo_finance', None for auto)
+            source: Preferred source ('api_ninjas', 'seeking_alpha',
+                'yahoo_finance', None for auto)
 
         Returns:
             Transcript data dictionary or None if not found
@@ -224,8 +355,31 @@ class TranscriptFetcher:
             f"Fetching transcript for {ticker} (date: {date}, source: {source})"
         )
 
+        # Try API Ninjas first (recommended)
+        if self.use_api_ninjas and (not source or source == "api_ninjas"):
+            try:
+                result = self._fetch_api_ninjas_transcript(ticker, date)
+                if result:
+                    logger.info(
+                        f"Successfully fetched transcript from API Ninjas for {ticker}"
+                    )
+                    return result
+            except TranscriptFetcherError:
+                # Re-raise if it's an API key error
+                raise
+            except Exception as e:
+                logger.warning(f"API Ninjas fetching failed: {str(e)}")
+
+        # Fallback to web scraping if enabled
         if not self.use_web_scraping:
-            raise TranscriptFetcherError("Web scraping is disabled")
+            logger.error(
+                f"Failed to fetch transcript for {ticker}: "
+                f"API Ninjas unavailable and web scraping is disabled"
+            )
+            raise TranscriptFetcherError(
+                f"Failed to fetch transcript for {ticker}: "
+                f"API Ninjas unavailable and web scraping is disabled"
+            )
 
         # Try Seeking Alpha
         if not source or source == "seeking_alpha":

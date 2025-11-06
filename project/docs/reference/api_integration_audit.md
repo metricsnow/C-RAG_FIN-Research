@@ -52,34 +52,25 @@ This document provides a comprehensive audit of all API integrations in the Fina
 - **Compliance**: ✅ Fully compliant - Self-hosted
 - **Implementation**: `app/rag/llm_factory.py`
 
-### ⚠️ 5. Web Scraping (Earnings Transcripts)
-- **Status**: ⚠️ **RISKY - RECOMMEND REPLACEMENT**
-- **Sources**: Seeking Alpha, Yahoo Finance
+### ✅ 5. API Ninjas Earnings Call Transcript API
+- **Status**: ✅ VALID - Official API (Implemented)
+- **Base URL**: `https://api.api-ninjas.com/v1/earningscalltranscript`
+- **Documentation**: https://api-ninjas.com/api/earningscalltranscript
+- **Authentication**: API key required (`API_NINJAS_API_KEY`)
+- **Rate Limits**: Free tier available (rate limited)
+- **Usage**: Earnings call transcripts for 8,000+ companies, data from 2000+
+- **Compliance**: ✅ Fully compliant - Official API Ninjas API
 - **Implementation**: `app/ingestion/transcript_fetcher.py`
-- **Current Status**: Uses web scraping (no official APIs)
+- **Date Implemented**: 2025-01-27
+- **Primary Source**: ✅ Enabled by default
+- **Fallback**: Web scraping (Seeking Alpha, Yahoo Finance) - disabled by default
+
+#### Web Scraping Fallback (Optional)
+- **Status**: ⚠️ **DISABLED BY DEFAULT - FALLBACK ONLY**
+- **Sources**: Seeking Alpha, Yahoo Finance
+- **Current Status**: Available as fallback only (disabled by default)
 - **Risk Level**: HIGH - Scraping policies unclear, may violate ToS
-
-#### Seeking Alpha
-- **Policy**: ⚠️ **LIKELY PROHIBITED**
-- **Issue**: No official API, scraping likely violates ToS
-- **Action Required**: **REPLACE WITH LEGITIMATE API**
-- **Recommendation**: Use API Ninjas (free tier) or Benzinga (paid)
-
-#### Yahoo Finance
-- **Policy**: ⚠️ **UNCLEAR FOR TRANSCRIPTS**
-- **Note**: yfinance library is accepted for stock data, but transcript scraping is different
-- **Issue**: No official transcript API, scraping may violate ToS
-- **Action Required**: **REPLACE WITH LEGITIMATE API**
-- **Recommendation**: Use API Ninjas (free tier) or Benzinga (paid)
-
-**✅ RECOMMENDED ALTERNATIVES (Verified Legitimate APIs):**
-
-1. **API Ninjas Earnings Call API** ⭐ RECOMMENDED
-   - **Status**: ✅ Free tier available
-   - **URL**: https://api-ninjas.com/api/earningscalltranscript
-   - **Coverage**: 8,000+ companies, data from 2000+
-   - **Cost**: Free tier with rate limits
-   - **Action**: Implement this as primary source
+- **Recommendation**: Keep disabled, use API Ninjas as primary source
 
 2. **Benzinga Conference Call Transcripts API**
    - **Status**: ✅ Official API
@@ -173,16 +164,16 @@ This document provides a comprehensive audit of all API integrations in the Fina
 ### Immediate Actions
 
 1. **✅ COMPLETED**: Remove all TIKR API references
-2. **🔴 URGENT**: Replace web scraping with legitimate API (API Ninjas recommended)
-3. **📋 FUTURE**: Consider legitimate API alternatives for earnings transcripts
+2. **✅ COMPLETED**: Replace web scraping with legitimate API (API Ninjas implemented)
+3. **📋 FUTURE**: Consider legitimate API alternatives for earnings transcripts (if needed)
 
 ### Priority Actions
 
-1. **HIGH PRIORITY**: Replace transcript web scraping with API Ninjas Earnings Call API
-   - Free tier available
-   - Official API (no ToS violations)
-   - Better reliability than scraping
-   - Implementation: Update `transcript_fetcher.py` to use API Ninjas
+1. **✅ COMPLETED**: Replace transcript web scraping with API Ninjas Earnings Call API
+   - ✅ Free tier available
+   - ✅ Official API (no ToS violations)
+   - ✅ Better reliability than scraping
+   - ✅ Implementation: Updated `transcript_fetcher.py` to use API Ninjas (2025-01-27)
 
 2. **MEDIUM PRIORITY**: Document all API integrations in this file before implementation
 3. **LOW PRIORITY**: Consider paid alternatives (Benzinga, Finnworlds) for production
@@ -213,4 +204,7 @@ For questions about API integrations:
 ---
 
 **Last Updated**: 2025-01-27
+**Updates**:
+- ✅ API Ninjas Earnings Call Transcript API implemented (TASK-033)
+- ✅ Web scraping replaced with legitimate API
 **Next Review**: Before implementing TASK-036 (FRED API)

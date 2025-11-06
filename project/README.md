@@ -248,6 +248,12 @@ API_VERSION=1.0.0
 API_KEY=                                 # API key for authentication (empty = disabled)
 API_RATE_LIMIT_PER_MINUTE=60             # Requests per minute per API key/IP
 API_CORS_ORIGINS=*                       # CORS allowed origins (comma-separated, * for all)
+
+# Earnings Call Transcripts Configuration (TASK-033)
+API_NINJAS_API_KEY=                      # API Ninjas API key for earnings call transcripts (free tier available at https://api-ninjas.com)
+TRANSCRIPT_USE_API_NINJAS=true           # Use API Ninjas API for transcripts (recommended, default: true)
+TRANSCRIPT_USE_WEB_SCRAPING=false       # Enable web scraping fallback (not recommended, default: false)
+TRANSCRIPT_RATE_LIMIT_SECONDS=1.0       # Rate limit between transcript requests in seconds
 ```
 
 **Note**: The system will work with default values if `.env` is not created, but OpenAI embeddings require an API key. Invalid configuration values will be caught at startup with clear error messages thanks to Pydantic validation.

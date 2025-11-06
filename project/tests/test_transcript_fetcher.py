@@ -14,15 +14,91 @@ class TestTranscriptFetcher:
 
     def test_init(self):
         """Test fetcher initialization."""
-        fetcher = TranscriptFetcher(use_web_scraping=False)
+        fetcher = TranscriptFetcher(use_api_ninjas=False, use_web_scraping=False)
+        assert fetcher.use_api_ninjas is False
         assert fetcher.use_web_scraping is False
         assert fetcher.rate_limit_delay == 1.0
 
     def test_init_with_custom_rate_limit(self):
         """Test fetcher initialization with custom rate limit."""
-        fetcher = TranscriptFetcher(rate_limit_delay=2.0, use_web_scraping=True)
+        fetcher = TranscriptFetcher(
+            rate_limit_delay=2.0, use_api_ninjas=True, use_web_scraping=True
+        )
         assert fetcher.rate_limit_delay == 2.0
+        assert fetcher.use_api_ninjas is True
         assert fetcher.use_web_scraping is True
+
+    def test_init_with_api_key(self):
+        """Test fetcher initialization with API key."""
+        fetcher = TranscriptFetcher(api_key="test-key-123")
+        assert fetcher.api_key == "test-key-123"
+        assert fetcher.use_api_ninjas is True  # Default from config
+
+    @patch("app.ingestion.transcript_fetcher.requests.Session")
+    def test_fetch_api_ninjas_success(self, mock_session):
+        """Test successful API Ninjas fetching."""
+        # Mock API response
+        mock_response = Mock()
+        mock_response.json.return_value = [
+            {
+                "ticker": "AAPL",
+                "date": "2025-01-15",
+                "transcript": "Speaker: Test transcript content",
+                "quarter": "Q1 2025",
+                "fiscal_year": "2025",
+                "url": "https://example.com/transcript",
+            }
+        ]
+        mock_response.raise_for_status = Mock()
+
+        mock_session_instance = Mock()
+        mock_session_instance.get.return_value = mock_response
+        mock_session_instance.headers = {}
+        mock_session.return_value = mock_session_instance
+
+        fetcher = TranscriptFetcher(
+            use_api_ninjas=True, use_web_scraping=False, api_key="test-key"
+        )
+        fetcher.session = mock_session_instance
+
+        result = fetcher._fetch_api_ninjas_transcript("AAPL", "2025-01-15")
+
+        assert result is not None
+        assert result["ticker"] == "AAPL"
+        assert result["source"] == "api_ninjas"
+        assert result["date"] == "2025-01-15"
+        assert "transcript" in result
+
+    @patch("app.ingestion.transcript_fetcher.requests.Session")
+    def test_fetch_api_ninjas_no_api_key(self, mock_session):
+        """Test API Ninjas fetching without API key."""
+        fetcher = TranscriptFetcher(
+            use_api_ninjas=True, use_web_scraping=False, api_key=""
+        )
+
+        result = fetcher._fetch_api_ninjas_transcript("AAPL")
+
+        assert result is None
+
+    @patch("app.ingestion.transcript_fetcher.requests.Session")
+    def test_fetch_api_ninjas_not_found(self, mock_session):
+        """Test API Ninjas fetching when transcript not found."""
+        mock_response = Mock()
+        mock_response.json.return_value = []
+        mock_response.raise_for_status = Mock()
+
+        mock_session_instance = Mock()
+        mock_session_instance.get.return_value = mock_response
+        mock_session_instance.headers = {}
+        mock_session.return_value = mock_session_instance
+
+        fetcher = TranscriptFetcher(
+            use_api_ninjas=True, use_web_scraping=False, api_key="test-key"
+        )
+        fetcher.session = mock_session_instance
+
+        result = fetcher._fetch_api_ninjas_transcript("AAPL")
+        assert result is None
 
     @patch("app.ingestion.transcript_fetcher.requests.Session")
     @patch("app.ingestion.transcript_fetcher.BeautifulSoup")
@@ -48,7 +124,7 @@ class TestTranscriptFetcher:
         mock_soup_instance.find.return_value = mock_div
         mock_soup.return_value = mock_soup_instance
 
-        fetcher = TranscriptFetcher(use_web_scraping=True)
+        fetcher = TranscriptFetcher(use_api_ninjas=False, use_web_scraping=True)
         fetcher.session = mock_session_instance
 
         result = fetcher._scrape_seeking_alpha_transcript("AAPL", "2025-01-15")
@@ -74,7 +150,7 @@ class TestTranscriptFetcher:
         mock_soup_instance.find.return_value = None
         mock_soup.return_value = mock_soup_instance
 
-        fetcher = TranscriptFetcher(use_web_scraping=True)
+        fetcher = TranscriptFetcher(use_api_ninjas=False, use_web_scraping=True)
         fetcher.session = mock_session_instance
 
         result = fetcher._scrape_seeking_alpha_transcript("AAPL")
@@ -82,10 +158,33 @@ class TestTranscriptFetcher:
 
     @patch(
         "app.ingestion.transcript_fetcher."
+        "TranscriptFetcher._fetch_api_ninjas_transcript"
+    )
+    def test_fetch_transcript_api_ninjas_success(self, mock_api):
+        """Test fetch_transcript with API Ninjas success."""
+        mock_api.return_value = {
+            "ticker": "AAPL",
+            "date": "2025-01-15",
+            "transcript": "Test",
+            "source": "api_ninjas",
+        }
+
+        fetcher = TranscriptFetcher(
+            use_api_ninjas=True, use_web_scraping=False, api_key="test-key"
+        )
+        result = fetcher.fetch_transcript("AAPL", "2025-01-15", source="api_ninjas")
+
+        assert result is not None
+        assert result["ticker"] == "AAPL"
+        assert result["source"] == "api_ninjas"
+        mock_api.assert_called_once()
+
+    @patch(
+        "app.ingestion.transcript_fetcher."
         "TranscriptFetcher._scrape_seeking_alpha_transcript"
     )
     def test_fetch_transcript_seeking_alpha_success(self, mock_sa):
-        """Test fetch_transcript with Seeking Alpha success."""
+        """Test fetch_transcript with Seeking Alpha success (fallback)."""
         mock_sa.return_value = {
             "ticker": "AAPL",
             "date": "2025-01-15",
@@ -93,7 +192,7 @@ class TestTranscriptFetcher:
             "source": "seeking_alpha",
         }
 
-        fetcher = TranscriptFetcher(use_web_scraping=True)
+        fetcher = TranscriptFetcher(use_api_ninjas=False, use_web_scraping=True)
         result = fetcher.fetch_transcript("AAPL", "2025-01-15", source="seeking_alpha")
 
         assert result is not None
@@ -103,15 +202,20 @@ class TestTranscriptFetcher:
 
     @patch(
         "app.ingestion.transcript_fetcher."
+        "TranscriptFetcher._fetch_api_ninjas_transcript"
+    )
+    @patch(
+        "app.ingestion.transcript_fetcher."
         "TranscriptFetcher._scrape_seeking_alpha_transcript"
     )
     @patch(
         "app.ingestion.transcript_fetcher."
         "TranscriptFetcher._scrape_yahoo_finance_transcript"
     )
-    def test_fetch_transcript_fallback(self, mock_yahoo, mock_sa):
+    def test_fetch_transcript_fallback(self, mock_yahoo, mock_sa, mock_api):
         """Test fetch_transcript with fallback between sources."""
-        mock_sa.return_value = None
+        mock_api.return_value = None  # API Ninjas fails
+        mock_sa.return_value = None  # Seeking Alpha fails
         mock_yahoo.return_value = {
             "ticker": "AAPL",
             "date": "2025-01-15",
@@ -119,12 +223,18 @@ class TestTranscriptFetcher:
             "source": "yahoo_finance",
         }
 
-        fetcher = TranscriptFetcher(use_web_scraping=True)
+        fetcher = TranscriptFetcher(
+            use_api_ninjas=True, use_web_scraping=True, api_key="test-key"
+        )
         result = fetcher.fetch_transcript("AAPL", "2025-01-15")
 
         assert result is not None
         assert result["source"] == "yahoo_finance"
 
+    @patch(
+        "app.ingestion.transcript_fetcher."
+        "TranscriptFetcher._fetch_api_ninjas_transcript"
+    )
     @patch(
         "app.ingestion.transcript_fetcher."
         "TranscriptFetcher._scrape_seeking_alpha_transcript"
@@ -133,21 +243,27 @@ class TestTranscriptFetcher:
         "app.ingestion.transcript_fetcher."
         "TranscriptFetcher._scrape_yahoo_finance_transcript"
     )
-    def test_fetch_transcript_all_sources_fail(self, mock_yahoo, mock_sa):
+    def test_fetch_transcript_all_sources_fail(self, mock_yahoo, mock_sa, mock_api):
         """Test fetch_transcript when all sources fail."""
+        mock_api.return_value = None
         mock_sa.return_value = None
         mock_yahoo.return_value = None
 
-        fetcher = TranscriptFetcher(use_web_scraping=True)
+        fetcher = TranscriptFetcher(
+            use_api_ninjas=True, use_web_scraping=True, api_key="test-key"
+        )
 
         with pytest.raises(TranscriptFetcherError):
             fetcher.fetch_transcript("AAPL", "2025-01-15")
 
-    def test_fetch_transcript_web_scraping_disabled(self):
-        """Test fetch_transcript when web scraping is disabled."""
-        fetcher = TranscriptFetcher(use_web_scraping=False)
+    def test_fetch_transcript_all_sources_disabled(self):
+        """Test fetch_transcript when all sources are disabled."""
+        fetcher = TranscriptFetcher(use_api_ninjas=False, use_web_scraping=False)
 
-        with pytest.raises(TranscriptFetcherError, match="Web scraping is disabled"):
+        with pytest.raises(
+            TranscriptFetcherError,
+            match="API Ninjas unavailable and web scraping is disabled",
+        ):
             fetcher.fetch_transcript("AAPL", "2025-01-15")
 
     def test_fetch_transcripts_by_date_range(self):
@@ -159,7 +275,7 @@ class TestTranscriptFetcher:
                 {"ticker": "AAPL", "date": "2025-01-17", "transcript": "Test2"},
             ]
 
-            fetcher = TranscriptFetcher(use_web_scraping=False)
+            fetcher = TranscriptFetcher(use_api_ninjas=False, use_web_scraping=False)
             results = fetcher.fetch_transcripts_by_date_range(
                 "AAPL", "2025-01-15", "2025-01-17"
             )
