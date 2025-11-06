@@ -56,6 +56,12 @@ fredapi>=0.5.1
 # IMF and World Bank Data Integration (TASK-037)
 world_bank_data>=1.0.0
 
+# Financial Sentiment Analysis (TASK-039)
+transformers>=4.40.0
+torch>=2.0.0
+textblob>=0.17.1
+vaderSentiment>=3.3.2
+
 # Documentation
 sphinx>=8.2.0
 sphinx-rtd-theme>=3.0.0

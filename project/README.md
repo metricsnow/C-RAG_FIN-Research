@@ -92,6 +92,7 @@ A production-ready RAG (Retrieval-Augmented Generation) system for semantic sear
 - **FRED API Integration**: 840,000+ economic time series including interest rates, exchange rates, inflation, employment, GDP (TASK-036)
 - **IMF and World Bank Data Integration**: Global economic data from IMF Data Portal and World Bank Open Data APIs including GDP, inflation, unemployment, trade balance for 188+ countries (TASK-037)
 - **Central Bank Data Integration**: FOMC statements, meeting minutes, press conference transcripts, and forward guidance extraction for monetary policy analysis (TASK-038)
+- **Financial Sentiment Analysis**: Comprehensive sentiment analysis using FinBERT, TextBlob, and VADER for earnings calls, MD&A sections, and news articles with forward guidance and risk factor extraction (TASK-039)
 - **Manual Document Ingestion**: Support for text and Markdown files
 - **Chunking Strategy**: Intelligent text splitting with configurable chunk size and overlap
 - **Indexing Verification**: Tools to verify document indexing and searchability
@@ -282,6 +283,14 @@ IMF_RATE_LIMIT_SECONDS=1.0                            # Rate limit between IMF A
 CENTRAL_BANK_ENABLED=true                             # Enable central bank data integration (FOMC statements, minutes, press conferences)
 CENTRAL_BANK_RATE_LIMIT_SECONDS=2.0                   # Rate limit between central bank web scraping requests in seconds
 CENTRAL_BANK_USE_WEB_SCRAPING=true                    # Enable web scraping for central bank data (FOMC website)
+
+# Financial Sentiment Analysis Configuration (TASK-039)
+SENTIMENT_ENABLED=true                                # Enable financial sentiment analysis
+SENTIMENT_USE_FINBERT=true                            # Use FinBERT model for financial sentiment analysis (recommended)
+SENTIMENT_USE_TEXTBLOB=true                           # Use TextBlob for rule-based sentiment scoring
+SENTIMENT_USE_VADER=true                              # Use VADER sentiment analyzer for financial text
+SENTIMENT_EXTRACT_GUIDANCE=true                       # Extract forward guidance statements from documents
+SENTIMENT_EXTRACT_RISKS=true                          # Extract risk factors from documents
 ```
 
 **Note**: The system will work with default values if `.env` is not created, but OpenAI embeddings require an API key. Invalid configuration values will be caught at startup with clear error messages thanks to Pydantic validation.
@@ -766,6 +775,36 @@ python scripts/fetch_transcripts.py --ticker AAPL --no-store
 ```
 
 **⚠️ IMPORTANT**: Current implementation uses web scraping (temporary). **URGENT**: Replace with API Ninjas API integration. See TASK-033 for details.
+
+#### Financial Sentiment Analysis (TASK-039)
+
+Analyze sentiment of financial documents including earnings calls, MD&A sections, and news articles:
+
+```bash
+# Sentiment analysis is automatically applied during document ingestion
+# No separate script needed - sentiment scores are added to document metadata
+```
+
+**Sentiment Analysis Features**:
+- **FinBERT**: Financial domain-specific BERT model for accurate financial sentiment
+- **TextBlob**: Rule-based sentiment scoring for general text analysis
+- **VADER**: Financial text-optimized sentiment analyzer
+- **Forward Guidance Extraction**: Automatically extracts forward guidance statements
+- **Risk Factor Analysis**: Identifies and extracts risk factors from documents
+
+**Configuration**: See [Configuration Documentation](docs/reference/configuration.md#sentiment-analysis-configuration-task-039) for sentiment analysis settings.
+
+**Metadata Added to Documents**:
+- `sentiment`: Overall sentiment (positive/negative/neutral)
+- `sentiment_score`: Overall sentiment score (-1.0 to 1.0)
+- `sentiment_model`: Model used for overall sentiment (finbert/vader/textblob)
+- `sentiment_finbert`: FinBERT-specific sentiment
+- `sentiment_vader`: VADER-specific sentiment
+- `sentiment_textblob`: TextBlob-specific sentiment
+- `forward_guidance_count`: Number of forward guidance statements found
+- `has_forward_guidance`: Boolean indicating presence of forward guidance
+- `risk_factors_count`: Number of risk factors identified
+- `has_risk_factors`: Boolean indicating presence of risk factors
 
 **Programmatic Usage**:
 ```python

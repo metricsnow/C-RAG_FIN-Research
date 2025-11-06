@@ -383,13 +383,27 @@ chunk_ids = pipeline.process_news(
 
 ## Integration with Other Features
 
-### Sentiment Analysis (TASK-039)
+### Sentiment Analysis (TASK-039) ✅
 
-When TASK-039 (Sentiment Analysis) is complete, news articles can be enhanced with sentiment scores:
+**Status**: Complete - Sentiment analysis is automatically applied to news articles during ingestion.
 
-- Sentiment analysis can be integrated into `NewsFetcher.to_documents()`
-- Sentiment scores stored as metadata
-- Enable sentiment-based queries
+**Features**:
+- Automatic sentiment scoring using FinBERT, TextBlob, and VADER
+- Sentiment scores stored as metadata (`sentiment`, `sentiment_score`, `sentiment_model`)
+- Model-specific scores available (`sentiment_finbert`, `sentiment_vader`, `sentiment_textblob`)
+- Forward guidance extraction from news articles
+- Risk factor identification in news content
+
+**Metadata Added**:
+- `sentiment`: Overall sentiment (positive/negative/neutral)
+- `sentiment_score`: Overall sentiment score (-1.0 to 1.0)
+- `sentiment_model`: Model used (finbert/vader/textblob)
+- `forward_guidance_count`: Number of forward guidance statements
+- `has_forward_guidance`: Boolean flag
+- `risk_factors_count`: Number of risk factors identified
+- `has_risk_factors`: Boolean flag
+
+**Usage**: Sentiment analysis is automatically applied - no additional configuration needed. See [Sentiment Analysis Integration](sentiment_analysis.md) for details.
 
 ### Query Interface
 

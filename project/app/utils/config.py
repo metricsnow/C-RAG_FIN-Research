@@ -538,6 +538,38 @@ class Config(BaseSettings):
         description="Enable web scraping for central bank data (FOMC website)",
     )
 
+    # Financial Sentiment Analysis Configuration (TASK-039)
+    sentiment_enabled: bool = Field(
+        default=True,
+        alias="SENTIMENT_ENABLED",
+        description="Enable financial sentiment analysis",
+    )
+    sentiment_use_finbert: bool = Field(
+        default=True,
+        alias="SENTIMENT_USE_FINBERT",
+        description="Use FinBERT model for financial sentiment analysis (recommended)",
+    )
+    sentiment_use_textblob: bool = Field(
+        default=True,
+        alias="SENTIMENT_USE_TEXTBLOB",
+        description="Use TextBlob for rule-based sentiment scoring",
+    )
+    sentiment_use_vader: bool = Field(
+        default=True,
+        alias="SENTIMENT_USE_VADER",
+        description="Use VADER sentiment analyzer for financial text",
+    )
+    sentiment_extract_guidance: bool = Field(
+        default=True,
+        alias="SENTIMENT_EXTRACT_GUIDANCE",
+        description="Extract forward guidance statements from documents",
+    )
+    sentiment_extract_risks: bool = Field(
+        default=True,
+        alias="SENTIMENT_EXTRACT_RISKS",
+        description="Extract risk factors from documents",
+    )
+
     # Project paths (computed fields)
     _project_root: Optional[Path] = None
     _data_dir: Optional[Path] = None

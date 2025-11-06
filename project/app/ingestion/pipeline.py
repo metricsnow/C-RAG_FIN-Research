@@ -21,6 +21,10 @@ from app.ingestion.economic_calendar_fetcher import (
 from app.ingestion.fred_fetcher import FREDFetcher, FREDFetcherError
 from app.ingestion.imf_fetcher import IMFFetcher, IMFFetcherError
 from app.ingestion.news_fetcher import NewsFetcher, NewsFetcherError
+from app.ingestion.sentiment_analyzer import (
+    SentimentAnalyzer,
+    SentimentAnalyzerError,
+)
 from app.ingestion.stock_data_normalizer import StockDataNormalizer
 from app.ingestion.transcript_fetcher import TranscriptFetcher, TranscriptFetcherError
 from app.ingestion.transcript_parser import TranscriptParser, TranscriptParserError
@@ -105,6 +109,15 @@ class IngestionPipeline:
                 scrape_full_content=config.news_scrape_full_content,
             )
             if config.news_enabled
+            else None
+        )
+        self.sentiment_analyzer = (
+            SentimentAnalyzer(
+                use_finbert=config.sentiment_use_finbert,
+                use_textblob=config.sentiment_use_textblob,
+                use_vader=config.sentiment_use_vader,
+            )
+            if config.sentiment_enabled
             else None
         )
         self.economic_calendar_fetcher = (
@@ -293,6 +306,9 @@ class IngestionPipeline:
         for idx, doc in enumerate(documents, 1):
             try:
                 logger.debug(f"Processing document {idx}/{len(documents)}")
+                # Enrich document with sentiment analysis if enabled
+                if self.sentiment_analyzer is not None:
+                    doc = self._enrich_with_sentiment(doc)
                 # Chunk the document
                 chunks = self.document_loader.chunk_document(doc)
 
@@ -346,6 +362,91 @@ class IngestionPipeline:
         )
 
         return all_ids
+
+    def _enrich_with_sentiment(self, document: Document) -> Document:
+        """
+        Enrich document metadata with sentiment analysis.
+
+        Args:
+            document: Document to enrich
+
+        Returns:
+            Document with enriched metadata
+        """
+        if self.sentiment_analyzer is None:
+            return document
+
+        try:
+            text = document.page_content
+            if not text or not text.strip():
+                return document
+
+            # Perform comprehensive sentiment analysis
+            analysis = self.sentiment_analyzer.analyze_document(
+                text,
+                extract_guidance=config.sentiment_extract_guidance,
+                extract_risks=config.sentiment_extract_risks,
+            )
+
+            # Add sentiment metadata
+            overall = analysis["sentiment"]
+            sentiment_metadata = {
+                "sentiment": overall["overall_sentiment"],
+                "sentiment_score": overall["overall_score"],
+                "sentiment_model": overall.get("model", "unknown"),
+            }
+
+            # Add model-specific scores if available
+            if analysis["sentiment"].get("finbert"):
+                finbert = analysis["sentiment"]["finbert"]
+                sentiment_metadata["sentiment_finbert"] = finbert["sentiment"]
+                sentiment_metadata["sentiment_finbert_score"] = finbert["score"]
+                sentiment_metadata["sentiment_finbert_confidence"] = finbert.get(
+                    "confidence", 0.0
+                )
+
+            if analysis["sentiment"].get("vader"):
+                vader = analysis["sentiment"]["vader"]
+                sentiment_metadata["sentiment_vader"] = vader["sentiment"]
+                sentiment_metadata["sentiment_vader_score"] = vader["score"]
+
+            if analysis["sentiment"].get("textblob"):
+                textblob = analysis["sentiment"]["textblob"]
+                sentiment_metadata["sentiment_textblob"] = textblob["sentiment"]
+                sentiment_metadata["sentiment_textblob_score"] = textblob["score"]
+
+            # Add forward guidance metadata
+            if config.sentiment_extract_guidance:
+                sentiment_metadata["forward_guidance_count"] = analysis.get(
+                    "forward_guidance_count", 0
+                )
+                sentiment_metadata["has_forward_guidance"] = (
+                    analysis.get("forward_guidance_count", 0) > 0
+                )
+
+            # Add risk factors metadata
+            if config.sentiment_extract_risks:
+                sentiment_metadata["risk_factors_count"] = analysis.get(
+                    "risk_factors_count", 0
+                )
+                sentiment_metadata["has_risk_factors"] = (
+                    analysis.get("risk_factors_count", 0) > 0
+                )
+
+            # Merge with existing metadata
+            enriched_metadata = {**document.metadata, **sentiment_metadata}
+
+            # Create new document with enriched metadata
+            return Document(
+                page_content=document.page_content, metadata=enriched_metadata
+            )
+
+        except SentimentAnalyzerError as e:
+            logger.warning(f"Sentiment analysis failed: {str(e)}")
+            return document
+        except Exception as e:
+            logger.warning(f"Unexpected error in sentiment analysis: {str(e)}")
+            return document
 
     def get_document_count(self) -> int:
         """

@@ -1022,6 +1022,95 @@ The system includes central bank data integration for fetching and indexing FOMC
 | `CENTRAL_BANK_RATE_LIMIT_SECONDS` | float | `2.0` | Range: 0.1 - 60.0 | Rate limit between central bank web scraping requests in seconds |
 | `CENTRAL_BANK_USE_WEB_SCRAPING` | boolean | `true` | `true`/`false`, `1`/`0`, `yes`/`no` | Enable web scraping for central bank data (FOMC website) |
 
+### Financial Sentiment Analysis Configuration (TASK-039)
+
+The system includes comprehensive financial sentiment analysis using multiple models (FinBERT, TextBlob, VADER) for analyzing earnings calls, MD&A sections, and news articles. Sentiment analysis is automatically applied during document ingestion and results are stored as metadata.
+
+| Variable | Type | Default | Constraints | Description |
+|----------|------|---------|------------|-------------|
+| `SENTIMENT_ENABLED` | boolean | `true` | `true`/`false`, `1`/`0`, `yes`/`no` | Enable financial sentiment analysis |
+| `SENTIMENT_USE_FINBERT` | boolean | `true` | `true`/`false`, `1`/`0`, `yes`/`no` | Use FinBERT model for financial sentiment analysis (recommended) |
+| `SENTIMENT_USE_TEXTBLOB` | boolean | `true` | `true`/`false`, `1`/`0`, `yes`/`no` | Use TextBlob for rule-based sentiment scoring |
+| `SENTIMENT_USE_VADER` | boolean | `true` | `true`/`false`, `1`/`0`, `yes`/`no` | Use VADER sentiment analyzer for financial text |
+| `SENTIMENT_EXTRACT_GUIDANCE` | boolean | `true` | `true`/`false`, `1`/`0`, `yes`/`no` | Extract forward guidance statements from documents |
+| `SENTIMENT_EXTRACT_RISKS` | boolean | `true` | `true`/`false`, `1`/`0`, `yes`/`no` | Extract risk factors from documents |
+
+**Sentiment Analysis Features**:
+
+1. **Multiple Model Support**: Three sentiment analysis models for comprehensive analysis
+   - **FinBERT**: Financial domain-specific BERT model (ProsusAI/finbert) - recommended for financial text
+   - **TextBlob**: Rule-based sentiment scoring with polarity and subjectivity
+   - **VADER**: Financial text-optimized sentiment analyzer with compound scores
+   - Automatic model selection (prefers FinBERT → VADER → TextBlob)
+
+2. **Forward Guidance Extraction**: Automatic extraction of forward-looking statements
+   - Keyword-based detection (guidance, outlook, forecast, expect, anticipate, etc.)
+   - Sentence-level extraction
+   - Count and presence metadata
+
+3. **Risk Factor Analysis**: Automatic identification of risk factors
+   - Keyword-based detection (risk, uncertainty, volatility, challenge, concern, etc.)
+   - Sentence-level extraction
+   - Count and presence metadata
+
+4. **Metadata Storage**: Sentiment scores stored as document metadata
+   - Overall sentiment (positive/negative/neutral)
+   - Overall sentiment score (-1.0 to 1.0)
+   - Model-specific scores (FinBERT, VADER, TextBlob)
+   - Forward guidance count and presence flags
+   - Risk factors count and presence flags
+
+**Example Configuration**:
+```bash
+# Enable all sentiment analysis features (recommended)
+SENTIMENT_ENABLED=true
+SENTIMENT_USE_FINBERT=true
+SENTIMENT_USE_TEXTBLOB=true
+SENTIMENT_USE_VADER=true
+SENTIMENT_EXTRACT_GUIDANCE=true
+SENTIMENT_EXTRACT_RISKS=true
+
+# Use only FinBERT for faster processing
+SENTIMENT_USE_FINBERT=true
+SENTIMENT_USE_TEXTBLOB=false
+SENTIMENT_USE_VADER=false
+
+# Disable extraction features for faster processing
+SENTIMENT_EXTRACT_GUIDANCE=false
+SENTIMENT_EXTRACT_RISKS=false
+```
+
+**Performance Considerations**:
+- FinBERT: Requires model download on first use (~400MB), slower but most accurate for financial text
+- TextBlob: Fast, lightweight, good for general sentiment
+- VADER: Fast, optimized for financial text, good balance of speed and accuracy
+- Forward guidance extraction: Minimal overhead, keyword-based matching
+- Risk factor extraction: Minimal overhead, keyword-based matching
+
+**Model Requirements**:
+- FinBERT requires `transformers` and `torch` libraries
+- TextBlob requires `textblob` library
+- VADER requires `vaderSentiment` library
+- All dependencies are included in `requirements.txt`
+
+**Metadata Fields Added to Documents**:
+- `sentiment`: Overall sentiment label (positive/negative/neutral)
+- `sentiment_score`: Overall sentiment score (-1.0 to 1.0)
+- `sentiment_model`: Model used for overall sentiment (finbert/vader/textblob)
+- `sentiment_finbert`: FinBERT-specific sentiment label
+- `sentiment_finbert_score`: FinBERT-specific score
+- `sentiment_finbert_confidence`: FinBERT confidence score
+- `sentiment_vader`: VADER-specific sentiment label
+- `sentiment_vader_score`: VADER compound score
+- `sentiment_textblob`: TextBlob-specific sentiment label
+- `sentiment_textblob_score`: TextBlob polarity score
+- `forward_guidance_count`: Number of forward guidance statements found
+- `has_forward_guidance`: Boolean indicating presence of forward guidance
+- `risk_factors_count`: Number of risk factors identified
+- `has_risk_factors`: Boolean indicating presence of risk factors
+
+For complete sentiment analysis integration documentation, see: **[Sentiment Analysis Integration Guide](../integrations/sentiment_analysis.md)**.
+
 **Central Bank Data Features**:
 
 1. **FOMC Communications**: Access to Federal Reserve monetary policy communications
