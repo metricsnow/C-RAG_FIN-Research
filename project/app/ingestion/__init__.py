@@ -18,6 +18,11 @@ from app.ingestion.pipeline import (
     IngestionPipelineError,
     create_pipeline,
 )
+from app.ingestion.stock_data_normalizer import StockDataNormalizer
+from app.ingestion.yfinance_fetcher import (
+    YFinanceFetcher,
+    YFinanceFetcherError,
+)
 
 __all__ = [
     "DocumentLoader",
@@ -28,4 +33,7 @@ __all__ = [
     "EdgarFetcher",
     "EdgarFetcherError",
     "create_edgar_fetcher",
+    "YFinanceFetcher",
+    "YFinanceFetcherError",
+    "StockDataNormalizer",
 ]

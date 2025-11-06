@@ -10,6 +10,8 @@ from typing import List, Optional
 from langchain_core.documents import Document
 
 from app.ingestion.document_loader import DocumentIngestionError, DocumentLoader
+from app.ingestion.stock_data_normalizer import StockDataNormalizer
+from app.ingestion.yfinance_fetcher import YFinanceFetcher, YFinanceFetcherError
 from app.rag.embedding_factory import EmbeddingError, EmbeddingGenerator
 from app.utils.config import config
 from app.utils.logger import get_logger
@@ -64,6 +66,8 @@ class IngestionPipeline:
         )
         self.embedding_generator = EmbeddingGenerator(provider=embedding_provider)
         self.chroma_store = ChromaStore(collection_name=collection_name)
+        self.yfinance_fetcher = YFinanceFetcher() if config.yfinance_enabled else None
+        self.stock_normalizer = StockDataNormalizer()
 
     def process_document(
         self, file_path: Path, store_embeddings: bool = True
@@ -130,7 +134,7 @@ class IngestionPipeline:
                     return ids
                 else:
                     # Return placeholder IDs if not storing
-                    logger.debug(f"Skipping ChromaDB storage (store_embeddings=False)")
+                    logger.debug("Skipping ChromaDB storage (store_embeddings=False)")
                     track_success(document_ingestion_total)
                     return [f"chunk_{i}" for i in range(len(chunks))]
 
@@ -186,7 +190,8 @@ class IngestionPipeline:
                 logger.warning(f"Failed to process {file_path}: {str(e)}")
                 continue
         logger.info(
-            f"Completed processing {len(file_paths)} documents, stored {len(all_ids)} chunks"
+            f"Completed processing {len(file_paths)} documents, "
+            f"stored {len(all_ids)} chunks"
         )
 
         return all_ids
@@ -218,7 +223,7 @@ class IngestionPipeline:
 
                 if not chunks:
                     logger.error("No chunks generated from document")
-                    raise IngestionPipelineError(f"No chunks generated from document")
+                    raise IngestionPipelineError("No chunks generated from document")
 
                 # Generate embeddings
                 texts = [chunk.page_content for chunk in chunks]
@@ -261,7 +266,8 @@ class IngestionPipeline:
                 logger.warning(f"Failed to process document: {str(e)}", exc_info=True)
                 continue
         logger.info(
-            f"Completed processing {len(documents)} document objects, stored {len(all_ids)} chunks"
+            f"Completed processing {len(documents)} document objects, "
+            f"stored {len(all_ids)} chunks"
         )
 
         return all_ids
@@ -292,7 +298,8 @@ class IngestionPipeline:
             IngestionPipelineError: If search fails
         """
         logger.info(
-            f"Searching for similar documents: query='{query_text[:50]}...', n_results={n_results}"
+            f"Searching for similar documents: query='{query_text[:50]}...', "
+            f"n_results={n_results}"
         )
         try:
             # Generate query embedding
@@ -307,7 +314,7 @@ class IngestionPipeline:
 
             # Convert to Document objects
             documents = []
-            for i, (doc_id, doc_text, metadata) in enumerate(
+            for _, (_, doc_text, metadata) in enumerate(
                 zip(results["ids"], results["documents"], results["metadatas"])
             ):
                 doc = Document(page_content=doc_text, metadata=metadata)
@@ -325,6 +332,175 @@ class IngestionPipeline:
         except Exception as e:
             logger.error(f"Unexpected error in search: {str(e)}", exc_info=True)
             raise IngestionPipelineError(f"Unexpected error in search: {str(e)}") from e
+
+    def process_stock_data(
+        self,
+        ticker_symbol: str,
+        include_history: bool = True,
+        store_embeddings: bool = True,
+    ) -> List[str]:
+        """
+        Process stock data for a ticker symbol: fetch, normalize, and store.
+
+        Args:
+            ticker_symbol: Stock ticker symbol (e.g., 'AAPL', 'MSFT')
+            include_history: Whether to include historical price data (default: True)
+            store_embeddings: Whether to store embeddings in ChromaDB (default: True)
+
+        Returns:
+            List of document chunk IDs stored in ChromaDB
+
+        Raises:
+            IngestionPipelineError: If processing fails
+        """
+        if not config.yfinance_enabled:
+            raise IngestionPipelineError(
+                "yfinance integration is disabled in configuration"
+            )
+
+        if self.yfinance_fetcher is None:
+            raise IngestionPipelineError("yfinance fetcher is not initialized")
+
+        logger.info(f"Processing stock data for {ticker_symbol}")
+        try:
+            # Step 1: Fetch stock data
+            logger.debug(f"Fetching stock data for {ticker_symbol}")
+            stock_data = self.yfinance_fetcher.fetch_all_data(
+                ticker_symbol, include_history=include_history
+            )
+
+            # Step 2: Normalize data to text documents
+            logger.debug(f"Normalizing stock data for {ticker_symbol}")
+            normalized_docs = self.stock_normalizer.normalize_all_data(
+                stock_data, ticker_symbol
+            )
+
+            if not normalized_docs:
+                logger.warning(
+                    f"No documents generated from stock data for {ticker_symbol}"
+                )
+                return []
+
+            # Step 3: Convert to LangChain Document objects
+            from langchain_core.documents import Document
+
+            documents = [
+                Document(page_content=doc["text"], metadata=doc["metadata"])
+                for doc in normalized_docs
+            ]
+
+            # Step 4: Chunk documents (if needed)
+            all_chunks = []
+            for doc in documents:
+                chunks = self.document_loader.chunk_document(doc)
+                all_chunks.extend(chunks)
+
+            if not all_chunks:
+                logger.warning(
+                    f"No chunks generated from stock data for {ticker_symbol}"
+                )
+                return []
+
+            logger.info(
+                f"Generated {len(all_chunks)} chunks from stock data "
+                f"for {ticker_symbol}"
+            )
+
+            # Step 5: Generate embeddings
+            logger.debug(f"Generating embeddings for {len(all_chunks)} chunks")
+            texts = [chunk.page_content for chunk in all_chunks]
+            embeddings = self.embedding_generator.embed_documents(texts)
+
+            if len(embeddings) != len(all_chunks):
+                logger.error(
+                    f"Embedding count ({len(embeddings)}) does not match "
+                    f"chunk count ({len(all_chunks)})"
+                )
+                raise IngestionPipelineError(
+                    f"Embedding count ({len(embeddings)}) does not match "
+                    f"chunk count ({len(all_chunks)})"
+                )
+
+            # Step 6: Store in ChromaDB (if requested)
+            if store_embeddings:
+                logger.debug(f"Storing {len(all_chunks)} chunks in ChromaDB")
+                ids = self.chroma_store.add_documents(all_chunks, embeddings)
+                logger.info(
+                    f"Successfully stored {len(ids)} stock data chunks "
+                    f"in ChromaDB for {ticker_symbol}"
+                )
+                track_success(document_ingestion_total)
+                return ids
+            else:
+                logger.debug("Skipping ChromaDB storage (store_embeddings=False)")
+                track_success(document_ingestion_total)
+                return [f"chunk_{i}" for i in range(len(all_chunks))]
+
+        except YFinanceFetcherError as e:
+            logger.error(f"yfinance fetching failed: {str(e)}", exc_info=True)
+            track_error(document_ingestion_total)
+            raise IngestionPipelineError(f"yfinance fetching failed: {str(e)}") from e
+        except EmbeddingError as e:
+            logger.error(f"Embedding generation failed: {str(e)}", exc_info=True)
+            track_error(document_ingestion_total)
+            raise IngestionPipelineError(
+                f"Embedding generation failed: {str(e)}"
+            ) from e
+        except ChromaStoreError as e:
+            logger.error(f"ChromaDB storage failed: {str(e)}", exc_info=True)
+            track_error(document_ingestion_total)
+            raise IngestionPipelineError(f"ChromaDB storage failed: {str(e)}") from e
+        except Exception as e:
+            logger.error(
+                f"Unexpected error processing stock data: {str(e)}", exc_info=True
+            )
+            track_error(document_ingestion_total)
+            raise IngestionPipelineError(
+                f"Unexpected error processing stock data: {str(e)}"
+            ) from e
+
+    def process_stock_tickers(
+        self,
+        ticker_symbols: List[str],
+        include_history: bool = True,
+        store_embeddings: bool = True,
+    ) -> List[str]:
+        """
+        Process stock data for multiple ticker symbols.
+
+        Args:
+            ticker_symbols: List of stock ticker symbols
+            include_history: Whether to include historical price data (default: True)
+            store_embeddings: Whether to store embeddings in ChromaDB (default: True)
+
+        Returns:
+            List of all document chunk IDs stored in ChromaDB
+
+        Raises:
+            IngestionPipelineError: If processing fails
+        """
+        all_ids = []
+
+        logger.info(f"Processing stock data for {len(ticker_symbols)} tickers")
+        for idx, ticker in enumerate(ticker_symbols, 1):
+            try:
+                logger.info(f"Processing ticker {idx}/{len(ticker_symbols)}: {ticker}")
+                ids = self.process_stock_data(
+                    ticker,
+                    include_history=include_history,
+                    store_embeddings=store_embeddings,
+                )
+                all_ids.extend(ids)
+            except IngestionPipelineError as e:
+                # Log error but continue processing other tickers
+                logger.warning(f"Failed to process {ticker}: {str(e)}")
+                continue
+
+        logger.info(
+            f"Completed processing {len(ticker_symbols)} tickers, "
+            f"stored {len(all_ids)} chunks"
+        )
+        return all_ids
 
 
 def create_pipeline(

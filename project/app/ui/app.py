@@ -288,6 +288,19 @@ def render_chat_interface(
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
+    # Memory status display
+    if hasattr(rag_system, "memory") and rag_system.memory:
+        try:
+            memory_stats = rag_system.memory.get_memory_stats()
+            st.caption(
+                f"Memory: {memory_stats['message_count']} messages, "
+                f"{memory_stats['token_count']} tokens "
+                f"(max: {memory_stats['max_tokens']} tokens, "
+                f"{memory_stats['max_history']} messages)"
+            )
+        except Exception as e:
+            logger.debug(f"Could not get memory stats: {e}")
+
     # Conversation management buttons
     col1, col2, col3 = st.columns([1, 1, 2])
     with col1:
@@ -298,6 +311,12 @@ def render_chat_interface(
         if st.session_state.show_clear_confirm:
             if st.button("✅ Confirm Clear", type="primary", key="confirm_clear"):
                 st.session_state.messages = []
+                # Clear LangChain memory if available
+                if hasattr(rag_system, "memory") and rag_system.memory:
+                    try:
+                        rag_system.memory.clear()
+                    except Exception as e:
+                        logger.debug(f"Could not clear memory: {e}")
                 st.session_state.show_clear_confirm = False
                 st.rerun()
             if st.button("❌ Cancel", key="cancel_clear"):

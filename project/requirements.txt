@@ -38,6 +38,10 @@ fastapi>=0.115.0
 uvicorn[standard]>=0.30.0
 python-multipart>=0.0.9
 
+# Stock Data Integration (TASK-030)
+yfinance>=0.2.50
+pandas>=2.0.0
+
 # Documentation
 sphinx>=8.2.0
 sphinx-rtd-theme>=3.0.0

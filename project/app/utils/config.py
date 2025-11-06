@@ -265,6 +265,11 @@ class Config(BaseSettings):
         alias="CONVERSATION_MAX_HISTORY",
         description="Maximum number of previous messages to include",
     )
+    conversation_use_langchain_memory: bool = Field(
+        default=True,
+        alias="CONVERSATION_USE_LANGCHAIN_MEMORY",
+        description="Use LangChain memory components for conversation management",
+    )
 
     # API Configuration (TASK-029)
     api_host: str = Field(
@@ -309,6 +314,36 @@ class Config(BaseSettings):
         default="*",
         alias="API_CORS_ORIGINS",
         description="CORS allowed origins (comma-separated, * for all)",
+    )
+
+    # yfinance Configuration (TASK-030)
+    yfinance_enabled: bool = Field(
+        default=True,
+        alias="YFINANCE_ENABLED",
+        description="Enable yfinance stock data integration",
+    )
+    yfinance_rate_limit_seconds: float = Field(
+        default=1.0,
+        ge=0.1,
+        le=60.0,
+        alias="YFINANCE_RATE_LIMIT_SECONDS",
+        description="Rate limit between yfinance API calls in seconds",
+    )
+    yfinance_history_period: str = Field(
+        default="1y",
+        alias="YFINANCE_HISTORY_PERIOD",
+        description=(
+            "Default period for historical data "
+            "(1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, ytd, max)"
+        ),
+    )
+    yfinance_history_interval: str = Field(
+        default="1d",
+        alias="YFINANCE_HISTORY_INTERVAL",
+        description=(
+            "Default interval for historical data "
+            "(1m, 2m, 5m, 15m, 30m, 60m, 90m, 1h, 1d, 5d, 1wk, 1mo, 3mo)"
+        ),
     )
 
     # Project paths (computed fields)
@@ -494,6 +529,11 @@ class Config(BaseSettings):
     def CONVERSATION_MAX_HISTORY(self) -> int:
         """Conversation max history (backward compatibility)."""
         return self.conversation_max_history
+
+    @property
+    def CONVERSATION_USE_LANGCHAIN_MEMORY(self) -> bool:
+        """Use LangChain memory (backward compatibility)."""
+        return self.conversation_use_langchain_memory
 
     @property
     def PROJECT_ROOT(self) -> Path:

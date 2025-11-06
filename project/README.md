@@ -646,6 +646,56 @@ This script:
 python -u scripts/verify_document_indexing.py
 ```
 
+#### Stock Data Integration (TASK-030)
+
+Fetch and index stock market data using yfinance:
+
+```bash
+# Fetch data for single ticker
+python scripts/fetch_stock_data.py AAPL
+
+# Fetch data for multiple tickers
+python scripts/fetch_stock_data.py AAPL MSFT GOOGL AMZN
+
+# Skip historical price data (faster)
+python scripts/fetch_stock_data.py AAPL --no-history
+
+# Dry run (don't store in ChromaDB)
+python scripts/fetch_stock_data.py AAPL --no-store
+```
+
+This script:
+- Fetches comprehensive stock data (company info, financial metrics, historical prices, dividends, earnings, recommendations)
+- Normalizes data to text format suitable for RAG queries
+- Stores data in ChromaDB with proper metadata tagging
+- Supports rate limiting to avoid API issues
+- Provides progress tracking and error handling
+
+**Programmatic Usage**:
+```python
+from app.ingestion.pipeline import IngestionPipeline
+
+# Create pipeline
+pipeline = IngestionPipeline()
+
+# Process single ticker
+chunk_ids = pipeline.process_stock_data("AAPL", include_history=True)
+
+# Process multiple tickers
+tickers = ["AAPL", "MSFT", "GOOGL"]
+chunk_ids = pipeline.process_stock_tickers(tickers, include_history=True)
+```
+
+**Data Types Fetched**:
+- **Company Information**: Name, sector, industry, business summary
+- **Financial Metrics**: Market cap, P/E ratio, P/B ratio, dividend yield, profit margins
+- **Historical Prices**: OHLCV data with configurable period and interval
+- **Dividends**: Dividend history and payment dates
+- **Earnings**: Quarterly and annual earnings data
+- **Analyst Recommendations**: Recent analyst ratings and price targets
+
+**Configuration**: See [Configuration Documentation](docs/configuration.md#yfinance-configuration-task-030) for yfinance settings.
+
 #### Manual Document Ingestion
 
 1. **Place documents** in `data/documents/`:

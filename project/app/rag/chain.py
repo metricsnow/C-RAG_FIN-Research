@@ -20,6 +20,7 @@ from app.rag.query_refinement import QueryRefiner
 from app.rag.retrieval_optimizer import RetrievalOptimizer, RetrievalOptimizerError
 from app.utils.config import config
 from app.utils.conversation_memory import get_conversation_context
+from app.utils.langchain_memory import ConversationBufferMemory
 from app.utils.logger import get_logger
 from app.utils.metrics import (
     rag_context_chunks_retrieved,
@@ -59,6 +60,7 @@ class RAGQuerySystem:
         embedding_provider: Optional[str] = None,
         llm_provider: Optional[str] = None,
         llm_model: Optional[str] = None,
+        memory: Optional[ConversationBufferMemory] = None,
     ):
         """
         Initialize RAG query system.
@@ -71,6 +73,9 @@ class RAGQuerySystem:
             llm_provider: LLM provider ('ollama' or 'openai').
                 If None, uses config.LLM_PROVIDER
             llm_model: LLM model name. If None, uses default for provider
+            memory: Optional ConversationBufferMemory instance for conversation
+                history management. If None and LangChain memory is enabled,
+                creates a new instance.
 
         Raises:
             RAGQueryError: If initialization fails
@@ -161,6 +166,27 @@ Use the format "Company Name (TICKER)" for each company.
 List all companies found, not just a subset.
 
 Answer:"""
+                )
+
+            # Initialize LangChain memory if enabled
+            if config.conversation_use_langchain_memory:
+                if memory is None:
+                    from app.utils.langchain_memory import StreamlitChatMessageHistory
+
+                    # Create empty memory (will be populated from conversation_history)
+                    chat_history = StreamlitChatMessageHistory()
+                    self.memory = ConversationBufferMemory(
+                        chat_memory=chat_history,
+                        max_token_limit=config.conversation_max_tokens,
+                        max_history=config.conversation_max_history,
+                    )
+                else:
+                    self.memory = memory
+                logger.info("LangChain memory initialized")
+            else:
+                self.memory = None
+                logger.info(
+                    "LangChain memory disabled, using legacy conversation memory"
                 )
 
             # Create RAG chain using LCEL (LangChain Expression Language)
@@ -477,26 +503,66 @@ Answer:"""
             logger.debug("Formatting context documents")
             context = self._format_docs(retrieved_docs)
 
-            # Get conversation context if enabled and history provided
+            # Get conversation context - use LangChain memory if enabled
             conversation_context = None
-            if conversation_history:
+            conversation_history_str = ""
+
+            if config.conversation_use_langchain_memory and self.memory:
+                # Use LangChain memory
+                if conversation_history:
+                    # Load conversation history into memory
+                    from app.utils.langchain_memory import StreamlitChatMessageHistory
+
+                    chat_history = StreamlitChatMessageHistory(
+                        messages=conversation_history
+                    )
+                    self.memory.chat_memory = chat_history
+
+                # Load memory variables
+                memory_vars = self.memory.load_memory_variables({})
+                if isinstance(memory_vars.get("history"), str):
+                    conversation_history_str = memory_vars.get("history", "")
+                    if conversation_history_str:
+                        conversation_history_str = (
+                            f"Previous conversation:\n{conversation_history_str}\n\n"
+                        )
+                elif memory_vars.get("history"):
+                    # If it's a list of messages, format them
+                    history_msgs = memory_vars.get("history", [])
+                    if history_msgs:
+                        formatted = []
+                        for msg in history_msgs:
+                            if hasattr(msg, "content"):
+                                role = (
+                                    "User"
+                                    if hasattr(msg, "__class__")
+                                    and "Human" in str(type(msg))
+                                    else "Assistant"
+                                )
+                                formatted.append(f"{role}: {msg.content}")
+                        conversation_history_str = (
+                            "Previous conversation:\n" + "\n".join(formatted) + "\n\n"
+                        )
+
+                logger.debug(
+                    f"Using LangChain memory: "
+                    f"{len(self.memory.chat_memory.messages)} messages"
+                )
+            elif conversation_history:
+                # Fallback to legacy conversation memory
                 conversation_context = get_conversation_context(
                     messages=conversation_history,
                     current_question=question,
                     enabled=config.conversation_enabled,
                 )
                 if conversation_context:
+                    conversation_history_str = conversation_context + "\n\n"
                     logger.debug(
                         f"Including conversation context "
                         f"({len(conversation_context)} chars)"
                     )
                 else:
                     logger.debug("No conversation context to include")
-
-            # Format conversation history for prompt (empty string if None)
-            conversation_history_str = (
-                conversation_context + "\n\n" if conversation_context else ""
-            )
 
             # Generate answer using LLM
             logger.debug("Generating answer using LLM")
@@ -510,6 +576,13 @@ Answer:"""
                 )
                 answer = response if isinstance(response, str) else str(response)
                 logger.info(f"Successfully generated answer ({len(answer)} chars)")
+
+                # Save to LangChain memory if enabled
+                if config.conversation_use_langchain_memory and self.memory:
+                    self.memory.save_context(
+                        inputs={"input": question}, outputs={"output": answer}
+                    )
+                    logger.debug("Saved conversation to LangChain memory")
             except Exception as e:
                 # Handle LLM failures gracefully
                 logger.error(f"LLM generation failed: {str(e)}", exc_info=True)

@@ -407,8 +407,83 @@ uvicorn app.api.main:app --host 0.0.0.0 --port 8000
 - Use strong, randomly generated API keys in production
 - Restrict CORS origins to known domains in production
 - Use HTTPS in production (configure reverse proxy with SSL/TLS)
-- Monitor rate limits and adjust as needed
-- Rotate API keys regularly
+
+### yfinance Configuration (TASK-030)
+
+The system includes yfinance integration for fetching stock market data from Yahoo Finance. All yfinance settings are configurable via environment variables.
+
+| Variable | Type | Default | Constraints | Description |
+|----------|------|---------|------------|-------------|
+| `YFINANCE_ENABLED` | boolean | `true` | `true`/`false`, `1`/`0`, `yes`/`no` | Enable yfinance stock data integration |
+| `YFINANCE_RATE_LIMIT_SECONDS` | float | `1.0` | Range: 0.1 - 60.0 | Rate limit between yfinance API calls in seconds |
+| `YFINANCE_HISTORY_PERIOD` | string | `1y` | Valid periods: `1d`, `5d`, `1mo`, `3mo`, `6mo`, `1y`, `2y`, `5y`, `10y`, `ytd`, `max` | Default period for historical price data |
+| `YFINANCE_HISTORY_INTERVAL` | string | `1d` | Valid intervals: `1m`, `2m`, `5m`, `15m`, `30m`, `60m`, `90m`, `1h`, `1d`, `5d`, `1wk`, `1mo`, `3mo` | Default interval for historical price data |
+
+**yfinance Features**:
+
+1. **Stock Data Fetching**: Comprehensive stock market data retrieval
+   - Company information and financial metrics (P/E, P/B, market cap, etc.)
+   - Historical price data (OHLCV) with configurable period and interval
+   - Dividend history and payment dates
+   - Earnings data (quarterly and annual)
+   - Analyst recommendations and price targets
+
+2. **Rate Limiting**: Built-in rate limiting to prevent API abuse
+   - Default: 1 second between API calls
+   - Configurable via `YFINANCE_RATE_LIMIT_SECONDS`
+   - Prevents Yahoo Finance API rate limiting issues
+
+3. **Data Normalization**: Automatic conversion to text format
+   - All data types normalized to searchable text
+   - Proper metadata tagging (ticker, data type, date, source)
+   - Optimized for RAG queries and vector search
+
+4. **Error Handling**: Robust error handling for API failures
+   - Graceful handling of missing data
+   - Continues processing other tickers if one fails
+   - Comprehensive logging for debugging
+
+**Example Configuration**:
+```bash
+# Enable yfinance integration (default)
+YFINANCE_ENABLED=true
+
+# Adjust rate limiting (conservative to avoid API issues)
+YFINANCE_RATE_LIMIT_SECONDS=1.0
+
+# Configure historical data period
+YFINANCE_HISTORY_PERIOD=1y  # 1 year of historical data
+YFINANCE_HISTORY_INTERVAL=1d  # Daily intervals
+
+# For more historical data
+YFINANCE_HISTORY_PERIOD=5y  # 5 years
+YFINANCE_HISTORY_INTERVAL=1wk  # Weekly intervals
+
+# For recent data only
+YFINANCE_HISTORY_PERIOD=1mo  # 1 month
+YFINANCE_HISTORY_INTERVAL=1d  # Daily intervals
+```
+
+**Usage**:
+```bash
+# Fetch stock data via script
+python scripts/fetch_stock_data.py AAPL MSFT GOOGL
+
+# Programmatic usage
+from app.ingestion.pipeline import IngestionPipeline
+
+pipeline = IngestionPipeline()
+chunk_ids = pipeline.process_stock_data("AAPL", include_history=True)
+```
+
+**Performance Considerations**:
+- Rate limiting: Conservative default (1 second) prevents API issues but slows batch processing
+- Historical data: Larger periods/intervals increase processing time and storage
+- Data volume: Each ticker generates multiple document chunks (info, history, dividends, earnings, recommendations)
+
+**Backward Compatibility**: yfinance integration is optional and can be disabled by setting `YFINANCE_ENABLED=false`. The system continues to work normally without stock data integration.
+
+For complete yfinance integration documentation, see: **[yfinance Integration Guide](yfinance_integration.md)**
 
 For complete API documentation, see [API Documentation](api.md).
 
