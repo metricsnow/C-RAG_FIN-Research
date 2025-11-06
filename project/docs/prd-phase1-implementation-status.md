@@ -200,11 +200,10 @@ This **exceeds** PRD requirements which specified "Ollama only" for MVP.
 
 **Additional Features (Beyond PRD):** ⭐ **EXCEEDS REQUIREMENTS**
 - ✅ **Chat history persistence** (session state)
+- ✅ **Conversation context usage** (TASK-024 - context included in queries)
 - ✅ **Model selection toggle** (Ollama ↔ OpenAI)
 - ✅ **Available companies sidebar** (shows indexed tickers)
 - ✅ **Enhanced UI layout** (wide layout, better organization)
-
-**Note:** Conversation history is stored but not used for context in queries (see F8 below).
 
 ---
 

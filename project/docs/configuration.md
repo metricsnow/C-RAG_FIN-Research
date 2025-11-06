@@ -255,6 +255,8 @@ Numeric constraints are enforced:
 - `RAG_CHUNK_OVERLAP` must be between 0 and 500
 - `RAG_TOP_K_INITIAL` must be between 5 and 100
 - `RAG_TOP_K_FINAL` must be between 1 and 20
+- `CONVERSATION_MAX_TOKENS` must be between 500 and 8000
+- `CONVERSATION_MAX_HISTORY` must be between 1 and 50
 
 ### Custom Validation
 
@@ -350,6 +352,11 @@ LOG_FILE_BACKUP_COUNT=5
 # Application Configuration
 MAX_DOCUMENT_SIZE_MB=10
 DEFAULT_TOP_K=5
+
+# Conversation Memory Configuration (TASK-024)
+CONVERSATION_ENABLED=true
+CONVERSATION_MAX_TOKENS=2000
+CONVERSATION_MAX_HISTORY=10
 ```
 
 ### Path Properties
