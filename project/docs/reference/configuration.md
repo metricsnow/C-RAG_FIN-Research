@@ -710,6 +710,112 @@ For complete news aggregation documentation, see: **[News Aggregation Integratio
 
 For complete API documentation, see [API Documentation](api.md).
 
+### FRED API Configuration (TASK-036)
+
+The system includes FRED (Federal Reserve Economic Data) API integration for fetching and indexing economic time series data. All FRED settings are configurable via environment variables.
+
+| Variable | Type | Default | Constraints | Description |
+|----------|------|---------|------------|-------------|
+| `FRED_ENABLED` | boolean | `true` | `true`/`false`, `1`/`0`, `yes`/`no` | Enable FRED API integration |
+| `FRED_API_KEY` | string | `""` | Non-empty string | FRED API key (required for API access) |
+| `FRED_RATE_LIMIT_SECONDS` | float | `0.2` | Range: 0.0 - 60.0 | Rate limit between FRED API requests in seconds |
+
+**FRED API Features**:
+
+1. **Time Series Fetching**: Access to 840,000+ economic time series
+   - Interest rates (Federal Funds Rate, Treasury yields)
+   - Exchange rates (USD/EUR, USD/JPY, USD/GBP, etc.)
+   - Inflation indicators (CPI, PPI, Core inflation)
+   - Employment data (Unemployment rate, Non-farm payrolls)
+   - GDP and economic growth indicators
+   - Monetary indicators (Money supply M1, M2, Bank reserves)
+   - And many more economic indicators
+
+2. **Series Search**: Text-based search for discovering series
+   - Search by keywords (e.g., "unemployment rate", "inflation")
+   - Returns series ID, title, units, frequency
+   - Helps discover relevant series for your use case
+
+3. **Date Range Filtering**: Flexible date range support
+   - Filter by start and end dates
+   - Supports historical data retrieval
+   - Automatic handling of date formats
+
+4. **Rate Limiting**: Built-in rate limiting to respect API limits
+   - Default: 0.2 seconds between API calls (300 requests per minute)
+   - Free tier: 120 requests per minute
+   - Configurable via `FRED_RATE_LIMIT_SECONDS`
+   - Prevents API rate limiting issues
+
+5. **Data Formatting**: Automatic conversion to text format
+   - All time series normalized to searchable text
+   - Rich metadata tagging (series_id, title, units, frequency, etc.)
+   - Summary statistics included (mean, min, max, latest value)
+   - Optimized for RAG queries and vector search
+
+6. **Error Handling**: Robust error handling for API failures
+   - Graceful handling of missing data
+   - Continues processing other series if one fails
+   - Comprehensive logging for debugging
+
+**Example Configuration**:
+```bash
+# Enable FRED integration (default)
+FRED_ENABLED=true
+
+# FRED API key (required - get free key at https://fred.stlouisfed.org/docs/api/api_key.html)
+FRED_API_KEY=your-fred-api-key-here
+
+# Adjust rate limiting (default: 0.2 seconds = 300 requests/min)
+# For free tier (120 requests/min), use 0.5 seconds
+FRED_RATE_LIMIT_SECONDS=0.2
+
+# For more conservative rate limiting
+FRED_RATE_LIMIT_SECONDS=0.5  # 120 requests per minute
+FRED_RATE_LIMIT_SECONDS=1.0  # 60 requests per minute
+```
+
+**Usage**:
+```bash
+# Fetch specific series via script
+python scripts/fetch_fred_data.py --series GDP UNRATE FEDFUNDS
+
+# Fetch with date range
+python scripts/fetch_fred_data.py --series GDP --start-date 2020-01-01 --end-date 2024-12-31
+
+# Search for series
+python scripts/fetch_fred_data.py --search "unemployment rate"
+
+# Programmatic usage
+from app.ingestion.pipeline import IngestionPipeline
+
+pipeline = IngestionPipeline()
+chunk_ids = pipeline.process_fred_series(
+    series_ids=["GDP", "UNRATE", "FEDFUNDS"],
+    start_date="2020-01-01",
+    end_date="2024-12-31",
+    store_embeddings=True
+)
+```
+
+**Common Series IDs**:
+- `GDP`: Gross Domestic Product
+- `UNRATE`: Unemployment Rate
+- `FEDFUNDS`: Federal Funds Rate
+- `CPIAUCSL`: Consumer Price Index for All Urban Consumers
+- `PPIACO`: Producer Price Index for All Commodities
+- `M2SL`: M2 Money Stock
+- `DEXUSEU`: U.S. / Euro Foreign Exchange Rate
+- `DEXJPUS`: Japanese Yen to U.S. Dollar Spot Exchange Rate
+- `DGS10`: 10-Year Treasury Constant Maturity Rate
+- `DGS30`: 30-Year Treasury Constant Maturity Rate
+
+**Backward Compatibility**: FRED integration is optional and can be disabled by setting `FRED_ENABLED=false`. The system continues to work normally without FRED integration.
+
+**API Key**: A free FRED API key is available at https://fred.stlouisfed.org/docs/api/api_key.html. The free tier provides 120 requests per minute, which is sufficient for most use cases.
+
+For complete FRED integration documentation, see: **[FRED API Integration Guide](../integrations/fred_integration.md)**.
+
 ### Conversation History Management (TASK-025)
 
 The system includes conversation history management features that allow users to clear and export their conversation history.

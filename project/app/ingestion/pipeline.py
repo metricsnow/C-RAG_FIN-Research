@@ -10,6 +10,11 @@ from typing import List, Optional
 from langchain_core.documents import Document
 
 from app.ingestion.document_loader import DocumentIngestionError, DocumentLoader
+from app.ingestion.economic_calendar_fetcher import (
+    EconomicCalendarFetcher,
+    EconomicCalendarFetcherError,
+)
+from app.ingestion.fred_fetcher import FREDFetcher, FREDFetcherError
 from app.ingestion.news_fetcher import NewsFetcher, NewsFetcherError
 from app.ingestion.stock_data_normalizer import StockDataNormalizer
 from app.ingestion.transcript_fetcher import TranscriptFetcher, TranscriptFetcherError
@@ -91,6 +96,20 @@ class IngestionPipeline:
                 scrape_full_content=config.news_scrape_full_content,
             )
             if config.news_enabled
+            else None
+        )
+        self.economic_calendar_fetcher = (
+            EconomicCalendarFetcher(
+                rate_limit_delay=config.economic_calendar_rate_limit_seconds,
+            )
+            if config.economic_calendar_enabled
+            else None
+        )
+        self.fred_fetcher = (
+            FREDFetcher(
+                rate_limit_delay=config.fred_rate_limit_seconds,
+            )
+            if config.fred_enabled
             else None
         )
 
@@ -838,6 +857,261 @@ class IngestionPipeline:
             track_error(document_ingestion_total)
             raise IngestionPipelineError(
                 f"Unexpected error processing news: {str(e)}"
+            ) from e
+
+    def process_economic_calendar(
+        self,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        country: Optional[str] = None,
+        importance: Optional[str] = None,
+        store_embeddings: bool = True,
+    ) -> List[str]:
+        """
+        Process economic calendar events: fetch, parse, and store.
+
+        Args:
+            start_date: Start date (YYYY-MM-DD format, optional)
+            end_date: End date (YYYY-MM-DD format, optional)
+            country: Country code (e.g., 'united states', optional)
+            importance: Importance filter ('High', 'Medium', 'Low', optional)
+            store_embeddings: Whether to store embeddings in ChromaDB (default: True)
+
+        Returns:
+            List of document chunk IDs stored in ChromaDB
+
+        Raises:
+            IngestionPipelineError: If processing fails
+        """
+        if not config.economic_calendar_enabled:
+            raise IngestionPipelineError(
+                "Economic calendar integration is disabled in configuration"
+            )
+
+        if self.economic_calendar_fetcher is None:
+            raise IngestionPipelineError("Economic calendar fetcher is not initialized")
+
+        logger.info("Processing economic calendar events")
+        try:
+            # Step 1: Fetch economic calendar events
+            logger.debug("Fetching economic calendar events")
+            events = self.economic_calendar_fetcher.fetch_calendar(
+                start_date=start_date,
+                end_date=end_date,
+                country=country,
+                importance=importance,
+            )
+
+            if not events:
+                logger.warning("No economic calendar events fetched")
+                return []
+
+            # Step 2: Convert to Document objects
+            logger.debug(f"Converting {len(events)} events to Document objects")
+            documents = []
+            for event in events:
+                formatted_text = self.economic_calendar_fetcher.format_event_for_rag(
+                    event
+                )
+                metadata = self.economic_calendar_fetcher.get_event_metadata(event)
+                document = Document(page_content=formatted_text, metadata=metadata)
+                documents.append(document)
+
+            if not documents:
+                logger.warning("No documents generated from economic calendar events")
+                return []
+
+            # Step 3: Chunk documents
+            all_chunks = []
+            for doc in documents:
+                chunks = self.document_loader.chunk_document(doc)
+                all_chunks.extend(chunks)
+
+            if not all_chunks:
+                logger.warning("No chunks generated from economic calendar events")
+                return []
+
+            logger.info(
+                f"Generated {len(all_chunks)} chunks from economic calendar events"
+            )
+
+            # Step 4: Generate embeddings
+            logger.debug(f"Generating embeddings for {len(all_chunks)} chunks")
+            texts = [chunk.page_content for chunk in all_chunks]
+            embeddings = self.embedding_generator.embed_documents(texts)
+
+            if len(embeddings) != len(all_chunks):
+                logger.error(
+                    f"Embedding count ({len(embeddings)}) does not match "
+                    f"chunk count ({len(all_chunks)})"
+                )
+                raise IngestionPipelineError(
+                    f"Embedding count ({len(embeddings)}) does not match "
+                    f"chunk count ({len(all_chunks)})"
+                )
+
+            # Step 5: Store in ChromaDB (if requested)
+            if store_embeddings:
+                logger.debug(f"Storing {len(all_chunks)} chunks in ChromaDB")
+                ids = self.chroma_store.add_documents(all_chunks, embeddings)
+                logger.info(
+                    f"Successfully stored {len(ids)} economic calendar "
+                    f"chunks in ChromaDB"
+                )
+                track_success(document_ingestion_total)
+                return ids
+            else:
+                logger.debug("Skipping ChromaDB storage (store_embeddings=False)")
+                track_success(document_ingestion_total)
+                return [f"chunk_{i}" for i in range(len(all_chunks))]
+
+        except EconomicCalendarFetcherError as e:
+            logger.error(f"Economic calendar fetching failed: {str(e)}", exc_info=True)
+            track_error(document_ingestion_total)
+            raise IngestionPipelineError(
+                f"Economic calendar fetching failed: {str(e)}"
+            ) from e
+        except EmbeddingError as e:
+            logger.error(f"Embedding generation failed: {str(e)}", exc_info=True)
+            track_error(document_ingestion_total)
+            raise IngestionPipelineError(
+                f"Embedding generation failed: {str(e)}"
+            ) from e
+        except ChromaStoreError as e:
+            logger.error(f"ChromaDB storage failed: {str(e)}", exc_info=True)
+            track_error(document_ingestion_total)
+            raise IngestionPipelineError(f"ChromaDB storage failed: {str(e)}") from e
+        except Exception as e:
+            logger.error(
+                f"Unexpected error processing economic calendar: {str(e)}",
+                exc_info=True,
+            )
+            track_error(document_ingestion_total)
+            raise IngestionPipelineError(
+                f"Unexpected error processing economic calendar: {str(e)}"
+            ) from e
+
+    def process_fred_series(
+        self,
+        series_ids: List[str],
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        store_embeddings: bool = True,
+    ) -> List[str]:
+        """
+        Process FRED time series: fetch, format, and store.
+
+        Args:
+            series_ids: List of FRED series IDs (e.g., ['GDP', 'UNRATE', 'FEDFUNDS'])
+            start_date: Start date (YYYY-MM-DD format, optional)
+            end_date: End date (YYYY-MM-DD format, optional)
+            store_embeddings: Whether to store embeddings in ChromaDB (default: True)
+
+        Returns:
+            List of document chunk IDs stored in ChromaDB
+
+        Raises:
+            IngestionPipelineError: If processing fails
+        """
+        if not config.fred_enabled:
+            raise IngestionPipelineError(
+                "FRED integration is disabled in configuration"
+            )
+
+        if self.fred_fetcher is None:
+            raise IngestionPipelineError("FRED fetcher is not initialized")
+
+        logger.info(f"Processing {len(series_ids)} FRED series")
+        try:
+            # Step 1: Fetch FRED series data
+            logger.debug(f"Fetching FRED series: {series_ids}")
+            series_data = self.fred_fetcher.fetch_multiple_series(
+                series_ids, start_date=start_date, end_date=end_date
+            )
+
+            if not series_data:
+                logger.warning("No FRED series data fetched")
+                return []
+
+            # Step 2: Convert to Document objects
+            logger.debug(f"Converting {len(series_data)} series to Document objects")
+            documents = []
+            for series_id, data in series_data.items():
+                if data.get("data") is None:
+                    logger.warning(f"Skipping series {series_id}: no data available")
+                    continue
+
+                formatted_text = self.fred_fetcher.format_series_for_rag(data)
+                metadata = self.fred_fetcher.get_series_metadata(data)
+                document = Document(page_content=formatted_text, metadata=metadata)
+                documents.append(document)
+
+            if not documents:
+                logger.warning("No documents generated from FRED series")
+                return []
+
+            # Step 3: Chunk documents
+            all_chunks = []
+            for doc in documents:
+                chunks = self.document_loader.chunk_document(doc)
+                all_chunks.extend(chunks)
+
+            if not all_chunks:
+                logger.warning("No chunks generated from FRED series")
+                return []
+
+            logger.info(f"Generated {len(all_chunks)} chunks from FRED series")
+
+            # Step 4: Generate embeddings
+            logger.debug(f"Generating embeddings for {len(all_chunks)} chunks")
+            texts = [chunk.page_content for chunk in all_chunks]
+            embeddings = self.embedding_generator.embed_documents(texts)
+
+            if len(embeddings) != len(all_chunks):
+                logger.error(
+                    f"Embedding count ({len(embeddings)}) does not match "
+                    f"chunk count ({len(all_chunks)})"
+                )
+                raise IngestionPipelineError(
+                    f"Embedding count ({len(embeddings)}) does not match "
+                    f"chunk count ({len(all_chunks)})"
+                )
+
+            # Step 5: Store in ChromaDB (if requested)
+            if store_embeddings:
+                logger.debug(f"Storing {len(all_chunks)} chunks in ChromaDB")
+                ids = self.chroma_store.add_documents(all_chunks, embeddings)
+                logger.info(
+                    f"Successfully stored {len(ids)} FRED series chunks in ChromaDB"
+                )
+                track_success(document_ingestion_total)
+                return ids
+            else:
+                logger.debug("Skipping ChromaDB storage (store_embeddings=False)")
+                track_success(document_ingestion_total)
+                return [f"chunk_{i}" for i in range(len(all_chunks))]
+
+        except FREDFetcherError as e:
+            logger.error(f"FRED fetching failed: {str(e)}", exc_info=True)
+            track_error(document_ingestion_total)
+            raise IngestionPipelineError(f"FRED fetching failed: {str(e)}") from e
+        except EmbeddingError as e:
+            logger.error(f"Embedding generation failed: {str(e)}", exc_info=True)
+            track_error(document_ingestion_total)
+            raise IngestionPipelineError(
+                f"Embedding generation failed: {str(e)}"
+            ) from e
+        except ChromaStoreError as e:
+            logger.error(f"ChromaDB storage failed: {str(e)}", exc_info=True)
+            track_error(document_ingestion_total)
+            raise IngestionPipelineError(f"ChromaDB storage failed: {str(e)}") from e
+        except Exception as e:
+            logger.error(
+                f"Unexpected error processing FRED series: {str(e)}", exc_info=True
+            )
+            track_error(document_ingestion_total)
+            raise IngestionPipelineError(
+                f"Unexpected error processing FRED series: {str(e)}"
             ) from e
 
 

@@ -96,14 +96,15 @@ This document provides a comprehensive audit of all API integrations in the Fina
 ## Planned API Integrations (Future Tasks)
 
 ### 📋 TASK-036: FRED API
-- **Status**: ✅ VALID - Official Federal Reserve API
+- **Status**: ✅ COMPLETE - Official Federal Reserve API
 - **API**: Federal Reserve Economic Data (FRED)
 - **Documentation**: https://fred.stlouisfed.org/docs/api/
 - **Authentication**: Free API key required
-- **Rate Limits**: Per FRED's terms
+- **Rate Limits**: 120 requests/minute (free tier)
 - **Usage**: Economic data (840,000+ time series)
 - **Compliance**: ✅ Official government API
 - **Library**: `fredapi` (Python wrapper)
+- **Implementation**: ✅ Complete - See [FRED Integration Guide](../integrations/fred_integration.md)
 
 ### 📋 TASK-037: IMF and World Bank APIs
 - **Status**: ✅ VALID - Official International Organization APIs

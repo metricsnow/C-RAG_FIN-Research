@@ -50,6 +50,9 @@ lxml>=5.0.0
 # Financial News Aggregation (TASK-034)
 feedparser>=6.0.10
 
+# FRED API Integration (TASK-036)
+fredapi>=0.5.1
+
 # Documentation
 sphinx>=8.2.0
 sphinx-rtd-theme>=3.0.0

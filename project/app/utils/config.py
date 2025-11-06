@@ -437,6 +437,57 @@ class Config(BaseSettings):
         description="Scrape full article content (not just RSS summaries)",
     )
 
+    # Economic Calendar Configuration (TASK-035)
+    economic_calendar_enabled: bool = Field(
+        default=True,
+        alias="ECONOMIC_CALENDAR_ENABLED",
+        description="Enable economic calendar integration",
+    )
+    economic_calendar_rate_limit_seconds: float = Field(
+        default=1.0,
+        ge=0.1,
+        le=60.0,
+        alias="ECONOMIC_CALENDAR_RATE_LIMIT_SECONDS",
+        description="Rate limit between economic calendar requests in seconds",
+    )
+    trading_economics_api_key: str = Field(
+        default="",
+        alias="TRADING_ECONOMICS_API_KEY",
+        description=(
+            "Trading Economics API key for economic calendar "
+            "(free tier available at https://tradingeconomics.com/api)"
+        ),
+    )
+    economic_calendar_use_trading_economics: bool = Field(
+        default=True,
+        alias="ECONOMIC_CALENDAR_USE_TRADING_ECONOMICS",
+        description=(
+            "Use Trading Economics API for economic calendar "
+            "(recommended, requires TRADING_ECONOMICS_API_KEY)"
+        ),
+    )
+
+    # FRED API Configuration (TASK-036)
+    fred_enabled: bool = Field(
+        default=True,
+        alias="FRED_ENABLED",
+        description="Enable FRED API integration for economic data",
+    )
+    fred_api_key: str = Field(
+        default="",
+        alias="FRED_API_KEY",
+        description=(
+            "FRED API key (free API key available at "
+            "https://fred.stlouisfed.org/docs/api/api_key.html)"
+        ),
+    )
+    fred_rate_limit_seconds: float = Field(
+        default=0.2,
+        ge=0.0,
+        alias="FRED_RATE_LIMIT_SECONDS",
+        description="Rate limit between FRED API requests in seconds",
+    )
+
     # Project paths (computed fields)
     _project_root: Optional[Path] = None
     _data_dir: Optional[Path] = None

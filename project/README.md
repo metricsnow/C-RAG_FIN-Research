@@ -88,6 +88,8 @@ A production-ready RAG (Retrieval-Augmented Generation) system for semantic sear
 - **Stock Data Integration**: Comprehensive stock market data via yfinance (TASK-030)
 - **Earnings Call Transcripts**: Fetch and index earnings call transcripts (TASK-033)
 - **Financial News Aggregation**: RSS feeds and web scraping for financial news (TASK-034)
+- **Economic Calendar Integration**: Macroeconomic indicators and events via Trading Economics API (TASK-035)
+- **FRED API Integration**: 840,000+ economic time series including interest rates, exchange rates, inflation, employment, GDP (TASK-036)
 - **Manual Document Ingestion**: Support for text and Markdown files
 - **Chunking Strategy**: Intelligent text splitting with configurable chunk size and overlap
 - **Indexing Verification**: Tools to verify document indexing and searchability
@@ -254,6 +256,12 @@ API_NINJAS_API_KEY=                      # API Ninjas API key for earnings call 
 TRANSCRIPT_USE_API_NINJAS=true           # Use API Ninjas API for transcripts (recommended, default: true)
 TRANSCRIPT_USE_WEB_SCRAPING=false       # Enable web scraping fallback (not recommended, default: false)
 TRANSCRIPT_RATE_LIMIT_SECONDS=1.0       # Rate limit between transcript requests in seconds
+
+# Economic Calendar Configuration (TASK-035)
+ECONOMIC_CALENDAR_ENABLED=true                        # Enable economic calendar integration
+ECONOMIC_CALENDAR_RATE_LIMIT_SECONDS=1.0              # Rate limit between economic calendar requests in seconds
+TRADING_ECONOMICS_API_KEY=                            # Trading Economics API key for economic calendar (free tier available at https://tradingeconomics.com/api)
+ECONOMIC_CALENDAR_USE_TRADING_ECONOMICS=true          # Use Trading Economics API for economic calendar (recommended, requires TRADING_ECONOMICS_API_KEY)
 ```
 
 **Note**: The system will work with default values if `.env` is not created, but OpenAI embeddings require an API key. Invalid configuration values will be caught at startup with clear error messages thanks to Pydantic validation.
@@ -764,6 +772,110 @@ chunk_ids = pipeline.process_transcripts(tickers, date="2025-01-15")
 **⚠️ Current Status**: Uses web scraping (risky - may violate ToS). API Ninjas integration pending.
 
 **Configuration**: See [Configuration Documentation](docs/reference/configuration.md#transcript-configuration-task-033) for transcript settings.
+
+#### Economic Calendar Integration (TASK-035)
+
+Fetch and index economic calendar events and macroeconomic indicators:
+
+```bash
+# Default (today to 30 days ahead)
+python scripts/fetch_economic_calendar.py
+
+# Specific date range
+python scripts/fetch_economic_calendar.py --start-date 2025-01-27 --end-date 2025-01-31
+
+# Filter by country
+python scripts/fetch_economic_calendar.py --country "united states"
+
+# Filter by importance
+python scripts/fetch_economic_calendar.py --importance High
+
+# Combined filters
+python scripts/fetch_economic_calendar.py \
+  --start-date 2025-01-27 \
+  --end-date 2025-01-31 \
+  --country "united states" \
+  --importance High
+
+# Dry run (don't store in ChromaDB)
+python scripts/fetch_economic_calendar.py --no-store
+```
+
+**Programmatic Usage**:
+```python
+from app.ingestion.pipeline import IngestionPipeline
+
+# Create pipeline
+pipeline = IngestionPipeline()
+
+# Process economic calendar (default: today to 30 days ahead)
+chunk_ids = pipeline.process_economic_calendar(store_embeddings=True)
+
+# With date range and filters
+chunk_ids = pipeline.process_economic_calendar(
+    start_date="2025-01-27",
+    end_date="2025-01-31",
+    country="united states",
+    importance="High",
+    store_embeddings=True
+)
+```
+
+**Data Types Fetched**:
+- **Economic Indicators**: GDP Growth Rate, Inflation (CPI, PPI), Unemployment Rate, Interest Rates, Trade Balance, Consumer Confidence, Manufacturing PMI, Retail Sales, and more
+- **Event Information**: Event name, country, date/time, actual value, forecast value, previous value, importance level, category
+- **Filtering**: By date range, country/region, importance level (High/Medium/Low)
+
+**Configuration**: See [Configuration Documentation](docs/reference/configuration.md#economic-calendar-configuration-task-035) for economic calendar settings. Requires `TRADING_ECONOMICS_API_KEY` (free tier available at https://tradingeconomics.com/api).
+
+**Documentation**: See [Economic Calendar Integration Documentation](docs/integrations/economic_calendar_integration.md) for detailed usage and API reference.
+
+#### FRED API Integration (TASK-036)
+
+Fetch and index FRED (Federal Reserve Economic Data) time series:
+
+```bash
+# Fetch specific series
+python scripts/fetch_fred_data.py --series GDP UNRATE FEDFUNDS
+
+# Fetch with date range
+python scripts/fetch_fred_data.py --series GDP --start-date 2020-01-01 --end-date 2024-12-31
+
+# Search for series
+python scripts/fetch_fred_data.py --search "unemployment rate"
+
+# Dry run (don't store in ChromaDB)
+python scripts/fetch_fred_data.py --series GDP --no-store
+```
+
+**Programmatic Usage**:
+```python
+from app.ingestion.pipeline import IngestionPipeline
+
+# Create pipeline
+pipeline = IngestionPipeline()
+
+# Process FRED series
+chunk_ids = pipeline.process_fred_series(
+    series_ids=["GDP", "UNRATE", "FEDFUNDS"],
+    start_date="2020-01-01",
+    end_date="2024-12-31",
+    store_embeddings=True
+)
+```
+
+**Data Types Fetched**:
+- **Interest Rates**: Federal Funds Rate, Treasury yields, Prime rate
+- **Exchange Rates**: USD/EUR, USD/JPY, USD/GBP, and major currency pairs
+- **Inflation Indicators**: CPI, PPI, Core inflation measures
+- **Employment Data**: Unemployment rate, Non-farm payrolls, Labor force participation
+- **GDP and Economic Growth**: Gross Domestic Product, Real GDP growth, GDP components
+- **Monetary Indicators**: Money supply (M1, M2), Bank reserves, Currency in circulation
+- **Other Indicators**: Consumer confidence, Industrial production, Retail sales, Housing starts, and 840,000+ more time series
+
+**Configuration**: See [Configuration Documentation](docs/reference/configuration.md#fred-api-configuration-task-036) for FRED settings. Requires `FRED_API_KEY` (free API key available at https://fred.stlouisfed.org/docs/api/api_key.html).
+
+**Documentation**: See [FRED API Integration Documentation](docs/integrations/fred_integration.md) for detailed usage and API reference.
 
 #### Financial News Aggregation (TASK-034)
 
