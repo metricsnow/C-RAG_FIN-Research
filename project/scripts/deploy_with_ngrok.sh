@@ -114,7 +114,7 @@ if [ -n "$NGROK_URL" ]; then
     echo "Press Ctrl+C to stop both Streamlit and ngrok"
     echo ""
     echo -e "${YELLOW}Note:${NC} The ngrok URL will change each time you restart ngrok (free tier)."
-    echo "For a permanent URL, consider VPS deployment (see docs/deployment.md)"
+    echo "For a permanent URL, consider VPS deployment (see docs/reference/deployment.md)"
 else
     echo -e "${YELLOW}Warning: Could not retrieve ngrok URL.${NC}"
     echo "Check ngrok dashboard: http://localhost:4040"

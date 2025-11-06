@@ -346,6 +346,23 @@ class Config(BaseSettings):
         ),
     )
 
+    # Enhanced EDGAR Integration Configuration (TASK-032)
+    edgar_enhanced_parsing: bool = Field(
+        default=True,
+        alias="EDGAR_ENHANCED_PARSING",
+        description="Enable enhanced parsing for Form 4, S-1, DEF 14A, and XBRL",
+    )
+    edgar_form_types: str = Field(
+        default="10-K,10-Q,8-K,4,S-1,DEF 14A",
+        alias="EDGAR_FORM_TYPES",
+        description="Comma-separated list of form types to fetch",
+    )
+    edgar_xbrl_enabled: bool = Field(
+        default=True,
+        alias="EDGAR_XBRL_ENABLED",
+        description="Enable XBRL financial statement extraction",
+    )
+
     # Project paths (computed fields)
     _project_root: Optional[Path] = None
     _data_dir: Optional[Path] = None

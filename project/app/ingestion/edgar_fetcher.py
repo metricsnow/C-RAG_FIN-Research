@@ -10,7 +10,6 @@ import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-from urllib.parse import urljoin
 
 import requests
 from langchain_core.documents import Document
@@ -18,6 +17,18 @@ from langchain_core.documents import Document
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+# Import enhanced parsers (optional - graceful degradation if not available)
+try:
+    from app.ingestion.def14a_parser import Def14AParser
+    from app.ingestion.form4_parser import Form4Parser
+    from app.ingestion.forms1_parser import FormS1Parser
+    from app.ingestion.xbrl_parser import XBRLParser
+
+    ENHANCED_PARSERS_AVAILABLE = True
+except ImportError:
+    ENHANCED_PARSERS_AVAILABLE = False
+    logger.warning("Enhanced EDGAR parsers not available. Basic parsing will be used.")
 
 
 class EdgarFetcherError(Exception):
@@ -39,14 +50,20 @@ class EdgarFetcher:
         "Financial Research Assistant (contact@example.com)"  # SEC requires user agent
     )
 
-    def __init__(self, rate_limit_delay: float = 0.1):
+    def __init__(
+        self, rate_limit_delay: float = 0.1, use_enhanced_parsing: bool = True
+    ):
         """
         Initialize EDGAR fetcher.
 
         Args:
-            rate_limit_delay: Delay between requests in seconds (default: 0.1 for 10 req/sec)
+            rate_limit_delay: Delay between requests in seconds
+                (default: 0.1 for 10 req/sec)
+            use_enhanced_parsing: Whether to use enhanced parsers
+                for Form 4, S-1, DEF 14A, XBRL
         """
         self.rate_limit_delay = rate_limit_delay
+        self.use_enhanced_parsing = use_enhanced_parsing and ENHANCED_PARSERS_AVAILABLE
         self.session = requests.Session()
         self.session.headers.update(
             {
@@ -54,6 +71,18 @@ class EdgarFetcher:
                 "Accept": "application/json",
             }
         )
+
+        # Initialize enhanced parsers if available
+        if self.use_enhanced_parsing:
+            self.form4_parser = Form4Parser()
+            self.forms1_parser = FormS1Parser()
+            self.def14a_parser = Def14AParser()
+            self.xbrl_parser = XBRLParser()
+        else:
+            self.form4_parser = None
+            self.forms1_parser = None
+            self.def14a_parser = None
+            self.xbrl_parser = None
 
     def _make_request(self, url: str) -> Dict[str, Any]:
         """
@@ -200,7 +229,8 @@ class EdgarFetcher:
             EdgarFetcherError: If fetch fails
         """
         logger.info(
-            f"Getting recent filings for CIK {cik}, form_types={form_types}, max_filings={max_filings}"
+            f"Getting recent filings for CIK {cik}, "
+            f"form_types={form_types}, max_filings={max_filings}"
         )
         try:
             history = self.get_filing_history(cik)
@@ -262,12 +292,15 @@ class EdgarFetcher:
             EdgarFetcherError: If download fails
         """
         logger.info(
-            f"Downloading filing: CIK={cik}, accession={accession_number}, form={form_type}"
+            f"Downloading filing: CIK={cik}, "
+            f"accession={accession_number}, form={form_type}"
         )
         try:
             # SEC EDGAR archive structure (per official documentation)
-            # Format: https://www.sec.gov/Archives/edgar/data/CIK/ACC-NUM-WITHOUT-DASHES/primary-document
-            # Note: Accession number in URL path has dashes REMOVED, but CIK keeps leading zeros
+            # Format: https://www.sec.gov/Archives/edgar/data/
+            #   CIK/ACC-NUM-WITHOUT-DASHES/primary-document
+            # Note: Accession number in URL path has dashes REMOVED,
+            #   but CIK keeps leading zeros
             base_url = "https://www.sec.gov/Archives/edgar/data"
 
             # Remove dashes from accession number for URL path
@@ -301,10 +334,12 @@ class EdgarFetcher:
                                 if not isinstance(items, list):
                                     items = [items] if items else []
 
-                                # Find primary document (usually the main filing document)
+                                # Find primary document
+                                # (usually the main filing document)
                                 for item in items:
                                     if isinstance(item, dict):
-                                        # Primary documents are usually named like "10k.htm" or "10-k.htm"
+                                        # Primary documents usually named
+                                        # like "10k.htm" or "10-k.htm"
                                         doc_name = item.get("name", "")
                                         doc_type = item.get("type", "")
 
@@ -387,7 +422,8 @@ class EdgarFetcher:
                         # Validate content length
                         if text and len(text.strip()) > 100:
                             logger.info(
-                                f"Successfully downloaded filing {accession_number} ({len(text)} chars)"
+                                f"Successfully downloaded filing "
+                                f"{accession_number} ({len(text)} chars)"
                             )
                             return text
                 except requests.exceptions.RequestException:
@@ -397,10 +433,12 @@ class EdgarFetcher:
 
             # If all attempts failed, raise error
             logger.error(
-                f"Could not download filing {accession_number} - tried multiple document formats"
+                f"Could not download filing {accession_number} - "
+                "tried multiple document formats"
             )
             raise EdgarFetcherError(
-                f"Could not download filing {accession_number} - tried multiple document formats. "
+                f"Could not download filing {accession_number} - "
+                "tried multiple document formats. "
                 f"Tried URLs: {base_url}/{cik}/{acc_path_no_dashes}/[filename]"
             )
 
@@ -433,7 +471,7 @@ class EdgarFetcher:
             EdgarFetcherError: If fetch fails
         """
         if form_types is None:
-            form_types = ["10-K", "10-Q", "8-K"]
+            form_types = ["10-K", "10-Q", "8-K", "4", "S-1", "DEF 14A"]
 
         logger.info(f"Fetching filings for {len(tickers)} tickers: {tickers}")
         documents = []
@@ -464,7 +502,8 @@ class EdgarFetcher:
                 for filing_idx, filing in enumerate(filings, 1):
                     try:
                         logger.debug(
-                            f"[{filing_idx}/{len(filings)}] Downloading {filing['form']} "
+                            f"[{filing_idx}/{len(filings)}] "
+                            f"Downloading {filing['form']} "
                             f"({filing['date']}) for {ticker}"
                         )
 
@@ -480,20 +519,43 @@ class EdgarFetcher:
                             )
                             continue
 
+                        # Enhanced parsing for specific form types
+                        enhanced_metadata = {
+                            "source": f"SEC EDGAR - {ticker}",
+                            "filename": (
+                                f"{ticker}_{filing['form']}_{filing['date']}.txt"
+                            ),
+                            "type": "edgar_filing",
+                            "ticker": ticker,
+                            "cik": cik,
+                            "form_type": filing["form"],
+                            "filing_date": filing["date"],
+                            "accession_number": filing["accession_number"],
+                            "date": datetime.now().isoformat(),
+                        }
+
+                        # Apply enhanced parsing if available
+                        if self.use_enhanced_parsing:
+                            try:
+                                parsed_data = self._parse_enhanced_form(
+                                    filing["form"], content, enhanced_metadata
+                                )
+                                if parsed_data:
+                                    content = parsed_data.get("text_content", content)
+                                    enhanced_metadata.update(
+                                        parsed_data.get("metadata", {})
+                                    )
+                            except Exception as e:
+                                logger.warning(
+                                    f"Enhanced parsing failed for "
+                                    f"{filing['form']}: {str(e)}. "
+                                    "Using basic content."
+                                )
+
                         # Create Document object
                         doc = Document(
                             page_content=content,
-                            metadata={
-                                "source": f"SEC EDGAR - {ticker}",
-                                "filename": f"{ticker}_{filing['form']}_{filing['date']}.txt",
-                                "type": "edgar_filing",
-                                "ticker": ticker,
-                                "cik": cik,
-                                "form_type": filing["form"],
-                                "filing_date": filing["date"],
-                                "accession_number": filing["accession_number"],
-                                "date": datetime.now().isoformat(),
-                            },
+                            metadata=enhanced_metadata,
                         )
                         documents.append(doc)
                         content_size = len(content) // 1024  # Size in KB
@@ -504,7 +566,8 @@ class EdgarFetcher:
 
                     except Exception as e:
                         logger.error(
-                            f"Error downloading {ticker} {filing['form']} ({filing['date']}): "
+                            f"Error downloading {ticker} "
+                            f"{filing['form']} ({filing['date']}): "
                             f"{str(e)}",
                             exc_info=True,
                         )
@@ -553,6 +616,119 @@ class EdgarFetcher:
 
         logger.info(f"Successfully saved {len(saved_paths)} documents to {output_dir}")
         return saved_paths
+
+    def _parse_enhanced_form(
+        self, form_type: str, content: str, metadata: Dict[str, Any]
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Parse enhanced form types using specialized parsers.
+
+        Args:
+            form_type: Form type (e.g., "4", "S-1", "DEF 14A")
+            content: Filing content (HTML/text)
+            metadata: Base metadata dictionary
+
+        Returns:
+            Dictionary with parsed data or None if parsing not applicable
+        """
+        if not self.use_enhanced_parsing:
+            return None
+
+        try:
+            form_type_upper = form_type.upper()
+
+            # Form 4 (Insider Trading)
+            if form_type_upper == "4" and self.form4_parser:
+                parsed = self.form4_parser.parse(content, metadata)
+                return {
+                    "text_content": parsed.get("text_content", content),
+                    "metadata": parsed.get("metadata", {}),
+                }
+
+            # Form S-1 (IPO)
+            if form_type_upper in ("S-1", "S1") and self.forms1_parser:
+                parsed = self.forms1_parser.parse(content, metadata)
+                return {
+                    "text_content": parsed.get("text_content", content),
+                    "metadata": parsed.get("metadata", {}),
+                }
+
+            # DEF 14A (Proxy Statement)
+            if form_type_upper in ("DEF 14A", "DEF14A", "14A") and self.def14a_parser:
+                parsed = self.def14a_parser.parse(content, metadata)
+                return {
+                    "text_content": parsed.get("text_content", content),
+                    "metadata": parsed.get("metadata", {}),
+                }
+
+            # XBRL parsing (for 10-K, 10-Q with XBRL attachments)
+            if form_type_upper in ("10-K", "10-Q") and self.xbrl_parser:
+                # Try to download XBRL file
+                try:
+                    xbrl_content = self._download_xbrl_file(
+                        metadata.get("cik", ""),
+                        metadata.get("accession_number", ""),
+                    )
+                    if xbrl_content:
+                        parsed = self.xbrl_parser.parse(xbrl_content, metadata)
+                        # Merge XBRL text with HTML content
+                        combined_content = (
+                            f"{content}\n\n--- XBRL FINANCIAL DATA ---\n"
+                            f"{parsed.get('text_content', '')}"
+                        )
+                        return {
+                            "text_content": combined_content,
+                            "metadata": parsed.get("metadata", {}),
+                        }
+                except Exception as e:
+                    logger.debug(f"XBRL download/parsing failed: {str(e)}")
+                    # Continue with HTML content only
+
+        except Exception as e:
+            logger.warning(f"Enhanced parsing error for {form_type}: {str(e)}")
+            return None
+
+        return None
+
+    def _download_xbrl_file(self, cik: str, accession_number: str) -> Optional[bytes]:
+        """
+        Download XBRL file for a filing (if available).
+
+        Args:
+            cik: Company CIK
+            accession_number: Filing accession number
+
+        Returns:
+            XBRL file content as bytes, or None if not available
+        """
+        try:
+            base_url = "https://www.sec.gov/Archives/edgar/data"
+            acc_path_no_dashes = accession_number.replace("-", "")
+
+            # Try to find XBRL file in the filing directory
+            # Common XBRL file names
+            xbrl_names = [
+                f"{acc_path_no_dashes}-xbrl.zip",
+                "xbrl.zip",
+                f"{acc_path_no_dashes}.xbrl",
+            ]
+
+            for xbrl_name in xbrl_names:
+                url = f"{base_url}/{cik}/{acc_path_no_dashes}/{xbrl_name}"
+                try:
+                    time.sleep(self.rate_limit_delay)
+                    response = self.session.get(url, timeout=30)
+                    if response.status_code == 200:
+                        logger.debug(f"Downloaded XBRL file: {xbrl_name}")
+                        return response.content
+                except Exception:
+                    continue
+
+            return None
+
+        except Exception as e:
+            logger.debug(f"Failed to download XBRL file: {str(e)}")
+            return None
 
 
 def create_edgar_fetcher(rate_limit_delay: float = 0.1) -> EdgarFetcher:

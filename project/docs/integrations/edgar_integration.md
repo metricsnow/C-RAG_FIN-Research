@@ -14,9 +14,23 @@ The Financial Research Assistant includes automated integration with the SEC EDG
 
 ## Supported Form Types
 
+### Basic Form Types
 - **10-K**: Annual reports (comprehensive financial statements)
 - **10-Q**: Quarterly reports (quarterly financial statements)
 - **8-K**: Current events (significant corporate events)
+
+### Enhanced Form Types (TASK-032)
+- **Form 4**: Statement of Changes in Beneficial Ownership (insider trading)
+- **Form S-1**: Registration Statement (IPOs and secondary offerings)
+- **DEF 14A**: Proxy Statement (voting items, executive compensation, board members)
+
+### Enhanced Features
+- **XBRL Financial Statements**: Structured financial data extraction from XBRL files
+  - Balance sheet data
+  - Income statement data
+  - Cash flow statement data
+- **Enhanced Metadata**: Structured metadata extraction for all form types
+- **Intelligent Parsing**: Automatic form type detection and specialized parsing
 
 ## Usage
 
@@ -80,6 +94,8 @@ This will:
 
 ### Programmatic Usage
 
+#### Basic Usage
+
 ```python
 from app.ingestion import create_edgar_fetcher, create_pipeline
 
@@ -101,6 +117,110 @@ pipeline = create_pipeline(collection_name="documents")
 chunk_ids = pipeline.process_document_objects(documents)
 
 print(f"Ingested {len(chunk_ids)} chunks from {len(documents)} filings")
+```
+
+#### Enhanced Parsing Usage
+
+```python
+from app.ingestion import create_edgar_fetcher, create_pipeline
+
+# Create EDGAR fetcher with enhanced parsing enabled (default)
+edgar_fetcher = create_edgar_fetcher(
+    rate_limit_delay=0.1,
+    use_enhanced_parsing=True  # Enable Form 4, S-1, DEF 14A, XBRL parsing
+)
+
+# Fetch filings including enhanced form types
+tickers = ["AAPL", "MSFT"]
+form_types = ["10-K", "10-Q", "8-K", "4", "S-1", "DEF 14A"]
+
+documents = edgar_fetcher.fetch_filings_to_documents(
+    tickers=tickers,
+    form_types=form_types,
+    max_filings_per_company=3
+)
+
+# Enhanced metadata is automatically included
+for doc in documents:
+    if doc.metadata.get("enhanced"):
+        print(f"Enhanced form: {doc.metadata['form_type']}")
+        # Form 4: Check for insider_name, transaction_count
+        # Form S-1: Check for offering_type, risk_factor_count
+        # DEF 14A: Check for voting_items, board_member_count
+        # XBRL: Check for xbrl_parsed flag
+```
+
+#### Form 4 (Insider Trading) Example
+
+```python
+from app.ingestion import create_edgar_fetcher
+
+edgar_fetcher = create_edgar_fetcher(use_enhanced_parsing=True)
+
+# Fetch Form 4 filings (insider trading)
+documents = edgar_fetcher.fetch_filings_to_documents(
+    tickers=["AAPL"],
+    form_types=["4"],
+    max_filings_per_company=5
+)
+
+for doc in documents:
+    if doc.metadata.get("form_type") == "4":
+        print(f"Insider: {doc.metadata.get('insider_name', 'N/A')}")
+        print(f"Position: {doc.metadata.get('insider_position', 'N/A')}")
+        print(f"Transactions: {doc.metadata.get('transaction_count', 0)}")
+        # Text content includes structured transaction data
+```
+
+#### Form S-1 (IPO) Example
+
+```python
+# Fetch Form S-1 filings (IPOs)
+documents = edgar_fetcher.fetch_filings_to_documents(
+    tickers=["NEWCO"],  # New company going public
+    form_types=["S-1"],
+    max_filings_per_company=1
+)
+
+for doc in documents:
+    if doc.metadata.get("form_type") == "S-1":
+        print(f"Offering Type: {doc.metadata.get('offering_type', 'N/A')}")
+        print(f"Offering Amount: {doc.metadata.get('offering_amount', 'N/A')}")
+        print(f"Risk Factors: {doc.metadata.get('risk_factor_count', 0)}")
+```
+
+#### DEF 14A (Proxy Statement) Example
+
+```python
+# Fetch DEF 14A filings (proxy statements)
+documents = edgar_fetcher.fetch_filings_to_documents(
+    tickers=["AAPL"],
+    form_types=["DEF 14A"],
+    max_filings_per_company=1
+)
+
+for doc in documents:
+    if doc.metadata.get("form_type") == "DEF 14A":
+        voting_items = doc.metadata.get("voting_items", [])
+        print(f"Voting Items: {len(voting_items)}")
+        print(f"Board Members: {doc.metadata.get('board_member_count', 0)}")
+```
+
+#### XBRL Financial Data Example
+
+```python
+# Fetch 10-K/10-Q with XBRL financial statements
+documents = edgar_fetcher.fetch_filings_to_documents(
+    tickers=["AAPL"],
+    form_types=["10-K"],
+    max_filings_per_company=1
+)
+
+for doc in documents:
+    if doc.metadata.get("xbrl_parsed"):
+        print("XBRL financial data included")
+        # Text content includes structured financial statements
+        # Balance sheet, income statement, cash flow data
 ```
 
 ### Customizing Fetch Parameters
@@ -152,7 +272,9 @@ edgar_fetcher.save_filings_to_files(
 
 ## Metadata Structure
 
-Each EDGAR filing document includes the following metadata:
+### Basic Metadata
+
+Each EDGAR filing document includes the following base metadata:
 
 ```python
 {
@@ -165,6 +287,59 @@ Each EDGAR filing document includes the following metadata:
     "filing_date": "2024-01-01",
     "accession_number": "0000950170-24-001234",
     "date": "2025-01-27T10:30:00"  # Ingestion timestamp
+}
+```
+
+### Enhanced Metadata (TASK-032)
+
+When enhanced parsing is enabled, additional metadata is extracted based on form type:
+
+#### Form 4 (Insider Trading) Metadata
+
+```python
+{
+    # ... basic metadata ...
+    "enhanced": True,
+    "insider_name": "John Doe",
+    "insider_position": "Chief Executive Officer",
+    "transaction_count": 3,
+    "issuer_name": "Apple Inc.",
+    "issuer_ticker": "AAPL"
+}
+```
+
+#### Form S-1 (IPO) Metadata
+
+```python
+{
+    # ... basic metadata ...
+    "enhanced": True,
+    "offering_type": "IPO",
+    "offering_amount": "1000000000",
+    "risk_factor_count": 25
+}
+```
+
+#### DEF 14A (Proxy Statement) Metadata
+
+```python
+{
+    # ... basic metadata ...
+    "enhanced": True,
+    "voting_items": ["Election of Directors", "Ratification of Auditors"],
+    "board_member_count": 8,
+    "shareholder_proposal_count": 2
+}
+```
+
+#### XBRL Metadata
+
+```python
+{
+    # ... basic metadata ...
+    "enhanced": True,
+    "xbrl_parsed": True,  # or False if fallback mode
+    # XBRL financial data is included in text_content
 }
 ```
 
@@ -246,16 +421,69 @@ The fetch script provides detailed progress information:
 
 All output is unbuffered (`python -u`) to ensure real-time status updates.
 
+## Enhanced Features (TASK-032)
+
+### XBRL Financial Statement Extraction
+
+The enhanced EDGAR integration includes XBRL parsing capabilities:
+
+- **Automatic XBRL Detection**: Automatically downloads and parses XBRL files for 10-K and 10-Q filings
+- **Financial Statement Extraction**: Extracts balance sheet, income statement, and cash flow data
+- **Structured Data**: Converts XBRL facts to readable text format for RAG ingestion
+- **Fallback Mode**: Uses basic XML parsing if Arelle library is unavailable
+
+**XBRL Data Included:**
+- Balance Sheet: Assets, Liabilities, Equity
+- Income Statement: Revenue, Expenses, Net Income
+- Cash Flow: Operating, Investing, Financing Activities
+
+### Enhanced Form Parsers
+
+**Form 4 Parser:**
+- Extracts insider trading transactions
+- Transaction dates, types, shares, prices
+- Insider names and positions
+- Shares owned after transactions
+
+**Form S-1 Parser:**
+- Extracts IPO offering details
+- Company information and risk factors
+- Use of proceeds information
+- Offering amount and price range
+
+**DEF 14A Parser:**
+- Extracts voting items and proposals
+- Executive compensation data
+- Board member information
+- Shareholder proposals
+
+### Configuration
+
+Enhanced parsing can be configured via environment variables:
+
+```bash
+# Enable/disable enhanced parsing (default: true)
+EDGAR_ENHANCED_PARSING=true
+
+# Configure form types to fetch (comma-separated)
+EDGAR_FORM_TYPES=10-K,10-Q,8-K,4,S-1,DEF 14A
+
+# Enable/disable XBRL extraction (default: true)
+EDGAR_XBRL_ENABLED=true
+```
+
+See [Configuration Documentation](../reference/configuration.md#enhanced-edgar-integration-configuration-task-032) for details.
+
 ## Future Enhancements
 
-Potential improvements for Phase 2:
+Potential improvements for future phases:
 - Scheduled automatic updates (daily/weekly)
 - Support for additional form types (13F, 13D, etc.)
-- Insider trading data extraction (Forms 3, 4, 5)
-- XBRL data parsing for structured financial data
+- Forms 3 and 5 insider trading data extraction
 - Historical data fetching with date ranges
 - Research papers from arXiv/SSRN integration
 - Market reports from public sources
+- Financial data validation and quality checks
 
 ## References
 

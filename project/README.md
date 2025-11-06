@@ -556,7 +556,7 @@ curl http://localhost:8000/metrics
 - Monitor key metrics: query duration, error rates, system uptime
 - Set up alerting based on health check status
 
-For more details, see the [Configuration Documentation](docs/configuration.md#monitoring-and-observability-configuration).
+For more details, see the [Configuration Documentation](docs/reference/configuration.md#monitoring-and-observability-configuration).
 
 ### Streamlit Configuration
 
@@ -698,7 +698,7 @@ chunk_ids = pipeline.process_stock_tickers(tickers, include_history=True)
 - **Earnings**: Quarterly and annual earnings data
 - **Analyst Recommendations**: Recent analyst ratings and price targets
 
-**Configuration**: See [Configuration Documentation](docs/configuration.md#yfinance-configuration-task-030) for yfinance settings.
+**Configuration**: See [Configuration Documentation](docs/reference/configuration.md#yfinance-configuration-task-030) for yfinance settings.
 
 #### Manual Document Ingestion
 
@@ -844,7 +844,7 @@ curl -X POST "http://localhost:8000/api/v1/query" \
   -d '{"question": "What is revenue?"}'
 ```
 
-For complete API documentation, see [API Documentation](docs/api.md).
+For complete API documentation, see [API Documentation](docs/reference/api.md).
 
 ### Running Tests
 
@@ -876,7 +876,7 @@ pytest -m ollama
 **Test Organization**:
 - All tests are in `tests/` directory
 - Tests use pytest framework with fixtures and markers
-- See `docs/testing.md` for detailed test documentation
+- See `docs/reference/testing.md` for detailed test documentation
 
 ### Development Workflow
 
@@ -1107,7 +1107,7 @@ bash scripts/deploy_with_ngrok.sh
 
 **Use Case**: Production deployment, public access
 
-See comprehensive guide: [`docs/deployment.md`](docs/deployment.md)
+See comprehensive guide: [`docs/reference/deployment.md`](docs/reference/deployment.md)
 
 **Includes**:
 - VPS setup instructions
@@ -1189,7 +1189,7 @@ For complete API documentation including:
 - Code examples in Python, JavaScript, and cURL
 - Error handling and troubleshooting
 
-See: **[Complete API Documentation](docs/api.md)**
+See: **[Complete API Documentation](docs/reference/api.md)**
 
 ## Troubleshooting
 
@@ -1379,7 +1379,7 @@ See: **[Complete API Documentation](docs/api.md)**
 
 ## Testing
 
-This project uses **pytest** for standardized testing with comprehensive coverage reporting. For detailed testing documentation, see [docs/testing.md](docs/testing.md).
+This project uses **pytest** for standardized testing with comprehensive coverage reporting. For detailed testing documentation, see [docs/reference/testing.md](docs/reference/testing.md).
 
 ### Running Tests
 
