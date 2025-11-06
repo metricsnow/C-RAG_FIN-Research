@@ -91,6 +91,7 @@ A production-ready RAG (Retrieval-Augmented Generation) system for semantic sear
 - **Economic Calendar Integration**: Macroeconomic indicators and events via Trading Economics API (TASK-035)
 - **FRED API Integration**: 840,000+ economic time series including interest rates, exchange rates, inflation, employment, GDP (TASK-036)
 - **IMF and World Bank Data Integration**: Global economic data from IMF Data Portal and World Bank Open Data APIs including GDP, inflation, unemployment, trade balance for 188+ countries (TASK-037)
+- **Central Bank Data Integration**: FOMC statements, meeting minutes, press conference transcripts, and forward guidance extraction for monetary policy analysis (TASK-038)
 - **Manual Document Ingestion**: Support for text and Markdown files
 - **Chunking Strategy**: Intelligent text splitting with configurable chunk size and overlap
 - **Indexing Verification**: Tools to verify document indexing and searchability
@@ -276,6 +277,11 @@ WORLD_BANK_RATE_LIMIT_SECONDS=1.0                     # Rate limit between World
 # IMF Data Portal API Configuration (TASK-037)
 IMF_ENABLED=true                                      # Enable IMF Data Portal API integration
 IMF_RATE_LIMIT_SECONDS=1.0                            # Rate limit between IMF API requests in seconds
+
+# Central Bank Data Configuration (TASK-038)
+CENTRAL_BANK_ENABLED=true                             # Enable central bank data integration (FOMC statements, minutes, press conferences)
+CENTRAL_BANK_RATE_LIMIT_SECONDS=2.0                   # Rate limit between central bank web scraping requests in seconds
+CENTRAL_BANK_USE_WEB_SCRAPING=true                    # Enable web scraping for central bank data (FOMC website)
 ```
 
 **Note**: The system will work with default values if `.env` is not created, but OpenAI embeddings require an API key. Invalid configuration values will be caught at startup with clear error messages thanks to Pydantic validation.
@@ -952,6 +958,59 @@ chunk_ids = pipeline.process_imf_indicators(
 **Configuration**: See [Configuration Documentation](docs/reference/configuration.md#world-bank-api-configuration-task-037) and [IMF API Configuration](docs/reference/configuration.md#imf-data-portal-api-configuration-task-037) for settings. No API keys required.
 
 **Documentation**: See [IMF and World Bank Integration Documentation](docs/integrations/imf_world_bank_integration.md) for detailed usage and API reference.
+
+#### Central Bank Data Integration (TASK-038)
+
+Fetch and index central bank communications including FOMC statements, meeting minutes, and press conference transcripts:
+
+```bash
+# Fetch all communication types
+python scripts/fetch_central_bank_data.py --types all
+
+# Fetch specific types
+python scripts/fetch_central_bank_data.py --types fomc_statement fomc_minutes
+
+# Fetch with date range
+python scripts/fetch_central_bank_data.py --types fomc_statement --start-date 2025-01-01 --end-date 2025-01-31
+
+# Fetch and store in ChromaDB
+python scripts/fetch_central_bank_data.py --types all --store
+```
+
+**Programmatic Usage**:
+```python
+from app.ingestion.pipeline import create_pipeline
+
+# Create pipeline
+pipeline = create_pipeline()
+
+# Process all central bank communications
+chunk_ids = pipeline.process_central_bank(
+    comm_types=["fomc_statement", "fomc_minutes", "fomc_press_conference"],
+    start_date="2025-01-01",
+    end_date="2025-01-31",
+    limit=10,
+    store_embeddings=True
+)
+
+# Process only statements
+chunk_ids = pipeline.process_central_bank(
+    comm_types=["fomc_statement"],
+    limit=5
+)
+```
+
+**Features**:
+- **FOMC Statements**: Federal Reserve monetary policy statements after FOMC meetings
+- **Meeting Minutes**: Detailed minutes from FOMC meetings (released 3 weeks after meetings)
+- **Press Conference Transcripts**: Transcripts from FOMC press conferences with the Chair
+- **Forward Guidance Extraction**: Automatic extraction of forward guidance statements
+- **Metadata Tagging**: Bank, date, type, URL, title, and forward guidance count
+- **Web Scraping**: Automated scraping of Federal Reserve website with rate limiting
+
+**Configuration**: See [Configuration Documentation](docs/reference/configuration.md#central-bank-data-configuration-task-038) for settings. No API keys required, but rate limiting is important.
+
+**Documentation**: See [Central Bank Integration Documentation](docs/integrations/central_bank_integration.md) for detailed usage and API reference.
 
 #### Financial News Aggregation (TASK-034)
 

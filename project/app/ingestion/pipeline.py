@@ -9,6 +9,10 @@ from typing import List, Optional
 
 from langchain_core.documents import Document
 
+from app.ingestion.central_bank_fetcher import (
+    CentralBankFetcher,
+    CentralBankFetcherError,
+)
 from app.ingestion.document_loader import DocumentIngestionError, DocumentLoader
 from app.ingestion.economic_calendar_fetcher import (
     EconomicCalendarFetcher,
@@ -129,6 +133,14 @@ class IngestionPipeline:
                 rate_limit_delay=config.imf_rate_limit_seconds,
             )
             if config.imf_enabled
+            else None
+        )
+        self.central_bank_fetcher = (
+            CentralBankFetcher(
+                rate_limit_delay=config.central_bank_rate_limit_seconds,
+                use_web_scraping=config.central_bank_use_web_scraping,
+            )
+            if config.central_bank_enabled
             else None
         )
 
@@ -1403,6 +1415,179 @@ class IngestionPipeline:
             track_error(document_ingestion_total)
             raise IngestionPipelineError(
                 f"Unexpected error processing IMF indicators: {str(e)}"
+            ) from e
+
+    def process_central_bank(
+        self,
+        comm_types: Optional[List[str]] = None,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        limit: Optional[int] = None,
+        store_embeddings: bool = True,
+    ) -> List[str]:
+        """
+        Process central bank communications through the ingestion pipeline.
+
+        Args:
+            comm_types: List of communication types to fetch
+                ('fomc_statement', 'fomc_minutes', 'fomc_press_conference',
+                or None for all)
+            start_date: Start date (YYYY-MM-DD format, optional)
+            end_date: End date (YYYY-MM-DD format, optional)
+            limit: Maximum number of communications per type (optional)
+            store_embeddings: Whether to store embeddings in ChromaDB (default: True)
+
+        Returns:
+            List of document chunk IDs stored in ChromaDB
+
+        Raises:
+            IngestionPipelineError: If processing fails
+        """
+        if not config.central_bank_enabled:
+            raise IngestionPipelineError(
+                "Central bank integration is disabled. "
+                "Set CENTRAL_BANK_ENABLED=true in .env file."
+            )
+
+        if self.central_bank_fetcher is None:
+            raise IngestionPipelineError("Central bank fetcher is not initialized")
+
+        # Default to all communication types if not specified
+        if comm_types is None:
+            comm_types = ["fomc_statement", "fomc_minutes", "fomc_press_conference"]
+
+        logger.info(f"Processing central bank communications: {comm_types}")
+        try:
+            # Step 1: Fetch central bank communications
+            all_communications = []
+            for comm_type in comm_types:
+                logger.debug(f"Fetching {comm_type}")
+                try:
+                    if comm_type == "fomc_statement":
+                        communications = (
+                            self.central_bank_fetcher.fetch_fomc_statements(
+                                start_date=start_date,
+                                end_date=end_date,
+                                limit=limit,
+                            )
+                        )
+                    elif comm_type == "fomc_minutes":
+                        communications = self.central_bank_fetcher.fetch_fomc_minutes(
+                            start_date=start_date,
+                            end_date=end_date,
+                            limit=limit,
+                        )
+                    elif comm_type == "fomc_press_conference":
+                        communications = (
+                            self.central_bank_fetcher.fetch_fomc_press_conferences(
+                                start_date=start_date,
+                                end_date=end_date,
+                                limit=limit,
+                            )
+                        )
+                    else:
+                        logger.warning(f"Unknown communication type: {comm_type}")
+                        continue
+
+                    all_communications.extend(communications)
+                except CentralBankFetcherError as e:
+                    logger.warning(f"Failed to fetch {comm_type}: {str(e)}")
+                    continue
+
+            if not all_communications:
+                logger.warning("No central bank communications fetched")
+                return []
+
+            logger.info(
+                f"Fetched {len(all_communications)} central bank communications"
+            )
+
+            # Step 2: Convert to Document objects
+            logger.debug(
+                f"Converting {len(all_communications)} communications "
+                f"to Document objects"
+            )
+            documents = self.central_bank_fetcher.to_documents(all_communications)
+
+            if not documents:
+                logger.warning(
+                    "No documents generated from central bank communications"
+                )
+                return []
+
+            # Step 3: Chunk documents
+            all_chunks = []
+            for doc in documents:
+                chunks = self.document_loader.chunk_document(doc)
+                all_chunks.extend(chunks)
+
+            if not all_chunks:
+                logger.warning("No chunks generated from central bank communications")
+                return []
+
+            logger.info(
+                f"Generated {len(all_chunks)} chunks from central bank communications"
+            )
+
+            # Step 4: Generate embeddings
+            logger.debug(f"Generating embeddings for {len(all_chunks)} chunks")
+            texts = [chunk.page_content for chunk in all_chunks]
+            embeddings = self.embedding_generator.embed_documents(texts)
+
+            if len(embeddings) != len(all_chunks):
+                logger.error(
+                    f"Embedding count ({len(embeddings)}) does not match "
+                    f"chunk count ({len(all_chunks)})"
+                )
+                raise IngestionPipelineError(
+                    f"Embedding count ({len(embeddings)}) does not match "
+                    f"chunk count ({len(all_chunks)})"
+                )
+
+            logger.debug(f"Generated {len(embeddings)} embeddings")
+
+            # Track chunks created
+            document_chunks_created.observe(len(all_chunks))
+
+            # Step 5: Store in ChromaDB (if requested)
+            if store_embeddings:
+                logger.debug(f"Storing {len(all_chunks)} chunks in ChromaDB")
+                ids = self.chroma_store.add_documents(all_chunks, embeddings)
+                logger.info(
+                    f"Successfully stored {len(ids)} chunks "
+                    f"from central bank communications"
+                )
+                track_success(document_ingestion_total)
+                return ids
+            else:
+                logger.debug("Skipping ChromaDB storage (store_embeddings=False)")
+                track_success(document_ingestion_total)
+                return [f"chunk_{i}" for i in range(len(all_chunks))]
+
+        except CentralBankFetcherError as e:
+            logger.error(f"Central bank fetching failed: {str(e)}", exc_info=True)
+            track_error(document_ingestion_total)
+            raise IngestionPipelineError(
+                f"Central bank fetching failed: {str(e)}"
+            ) from e
+        except EmbeddingError as e:
+            logger.error(f"Embedding generation failed: {str(e)}", exc_info=True)
+            track_error(document_ingestion_total)
+            raise IngestionPipelineError(
+                f"Embedding generation failed: {str(e)}"
+            ) from e
+        except ChromaStoreError as e:
+            logger.error(f"ChromaDB storage failed: {str(e)}", exc_info=True)
+            track_error(document_ingestion_total)
+            raise IngestionPipelineError(f"ChromaDB storage failed: {str(e)}") from e
+        except Exception as e:
+            logger.error(
+                f"Unexpected error processing central bank communications: {str(e)}",
+                exc_info=True,
+            )
+            track_error(document_ingestion_total)
+            raise IngestionPipelineError(
+                f"Unexpected error processing central bank communications: {str(e)}"
             ) from e
 
 

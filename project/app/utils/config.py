@@ -516,6 +516,28 @@ class Config(BaseSettings):
         description="Rate limit between IMF API requests in seconds",
     )
 
+    # Central Bank Data Configuration (TASK-038)
+    central_bank_enabled: bool = Field(
+        default=True,
+        alias="CENTRAL_BANK_ENABLED",
+        description=(
+            "Enable central bank data integration "
+            "(FOMC statements, minutes, press conferences)"
+        ),
+    )
+    central_bank_rate_limit_seconds: float = Field(
+        default=2.0,
+        ge=0.1,
+        le=60.0,
+        alias="CENTRAL_BANK_RATE_LIMIT_SECONDS",
+        description="Rate limit between central bank web scraping requests in seconds",
+    )
+    central_bank_use_web_scraping: bool = Field(
+        default=True,
+        alias="CENTRAL_BANK_USE_WEB_SCRAPING",
+        description="Enable web scraping for central bank data (FOMC website)",
+    )
+
     # Project paths (computed fields)
     _project_root: Optional[Path] = None
     _data_dir: Optional[Path] = None

@@ -1012,6 +1012,109 @@ chunk_ids = pipeline.process_imf_indicators(
 
 For complete IMF integration documentation, see: **[IMF and World Bank Integration Guide](../integrations/imf_world_bank_integration.md)**.
 
+### Central Bank Data Configuration (TASK-038)
+
+The system includes central bank data integration for fetching and indexing FOMC (Federal Reserve) communications including statements, meeting minutes, and press conference transcripts. All central bank settings are configurable via environment variables.
+
+| Variable | Type | Default | Constraints | Description |
+|----------|------|---------|------------|-------------|
+| `CENTRAL_BANK_ENABLED` | boolean | `true` | `true`/`false`, `1`/`0`, `yes`/`no` | Enable central bank data integration (FOMC statements, minutes, press conferences) |
+| `CENTRAL_BANK_RATE_LIMIT_SECONDS` | float | `2.0` | Range: 0.1 - 60.0 | Rate limit between central bank web scraping requests in seconds |
+| `CENTRAL_BANK_USE_WEB_SCRAPING` | boolean | `true` | `true`/`false`, `1`/`0`, `yes`/`no` | Enable web scraping for central bank data (FOMC website) |
+
+**Central Bank Data Features**:
+
+1. **FOMC Communications**: Access to Federal Reserve monetary policy communications
+   - FOMC statements after meetings
+   - Meeting minutes (released 3 weeks after meetings)
+   - Press conference transcripts with the Chair
+
+2. **Forward Guidance Extraction**: Automatic extraction of forward guidance statements
+   - Keyword-based detection
+   - Automatic counting and metadata tagging
+   - Included in RAG-formatted text
+
+3. **Metadata Tagging**: Rich metadata for all communications
+   - Bank name (Federal Reserve)
+   - Communication type (statement, minutes, press conference)
+   - Date, URL, title
+   - Forward guidance indicators
+
+4. **Rate Limiting**: Configurable rate limiting for web scraping
+   - Default: 2.0 seconds between requests
+   - Prevents overloading Federal Reserve website
+   - Configurable via `CENTRAL_BANK_RATE_LIMIT_SECONDS`
+
+5. **Data Formatting**: Automatic conversion to text format
+   - All communications formatted for RAG ingestion
+   - Forward guidance statements highlighted
+   - Rich metadata tagging
+   - Optimized for RAG queries and vector search
+
+6. **Error Handling**: Robust error handling for web scraping failures
+   - Graceful handling of network errors
+   - Continues processing other communications if one fails
+   - Comprehensive logging for debugging
+
+**Example Configuration**:
+```bash
+# Enable central bank integration (default)
+CENTRAL_BANK_ENABLED=true
+
+# Adjust rate limiting (default: 2.0 seconds)
+CENTRAL_BANK_RATE_LIMIT_SECONDS=2.0
+
+# For more conservative rate limiting
+CENTRAL_BANK_RATE_LIMIT_SECONDS=3.0  # Slower but more respectful
+
+# Enable web scraping (default: true)
+CENTRAL_BANK_USE_WEB_SCRAPING=true
+```
+
+**Usage**:
+```bash
+# Fetch all communication types via script
+python scripts/fetch_central_bank_data.py --types all
+
+# Fetch specific types
+python scripts/fetch_central_bank_data.py --types fomc_statement fomc_minutes
+
+# Fetch with date range
+python scripts/fetch_central_bank_data.py --types fomc_statement \
+    --start-date 2025-01-01 --end-date 2025-01-31
+
+# Fetch with limit
+python scripts/fetch_central_bank_data.py --types fomc_statement --limit 5
+
+# Fetch and store in ChromaDB
+python scripts/fetch_central_bank_data.py --types all --store
+
+# Programmatic usage
+from app.ingestion.pipeline import IngestionPipeline
+
+pipeline = IngestionPipeline()
+chunk_ids = pipeline.process_central_bank(
+    comm_types=["fomc_statement", "fomc_minutes", "fomc_press_conference"],
+    start_date="2025-01-01",
+    end_date="2025-01-31",
+    limit=10,
+    store_embeddings=True
+)
+```
+
+**Communication Types**:
+- `fomc_statement`: FOMC monetary policy statements after meetings
+- `fomc_minutes`: Detailed minutes from FOMC meetings (released 3 weeks after meetings)
+- `fomc_press_conference`: Transcripts from FOMC press conferences with the Chair
+
+**Backward Compatibility**: Central bank integration is optional and can be disabled by setting `CENTRAL_BANK_ENABLED=false`. The system continues to work normally without central bank integration.
+
+**API Key**: No API key required. Data is fetched via web scraping from the Federal Reserve website. Rate limiting is important to respect website resources.
+
+**Note**: The Federal Reserve website structure may change over time. If web scraping fails, check the website structure and update the fetcher code if necessary.
+
+For complete central bank integration documentation, see: **[Central Bank Integration Guide](../integrations/central_bank_integration.md)**.
+
 ### Conversation History Management (TASK-025)
 
 The system includes conversation history management features that allow users to clear and export their conversation history.

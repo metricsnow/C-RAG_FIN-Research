@@ -5,6 +5,7 @@ Unit tests for IMF fetcher module.
 from unittest.mock import Mock, patch
 
 import pandas as pd
+import pytest
 import requests
 
 from app.ingestion.imf_fetcher import IMFFetcher, IMFFetcherError
