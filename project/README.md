@@ -27,6 +27,8 @@ A production-ready RAG (Retrieval-Augmented Generation) system for semantic sear
 - **Financial Domain Specialization**: Optimized for financial terminology and research queries
 - **Vector Database**: Persistent ChromaDB storage for efficient similarity search
 - **Streamlit UI**: Modern, interactive chat interface with model selection toggle for querying documents
+- **Conversation Memory**: Multi-turn conversations with context preservation across queries (TASK-024)
+- **Conversation Management**: Clear and export conversation history in multiple formats (TASK-025)
 
 ### Technical Features
 
@@ -39,6 +41,16 @@ A production-ready RAG (Retrieval-Augmented Generation) system for semantic sear
 - **Performance Optimized**: Average query response time <5 seconds
 - **Production Ready**: Multiple deployment options (local, ngrok, VPS)
 - **Interactive Model Selection**: UI toggle to switch between local Ollama and OpenAI LLMs
+
+### Conversation Memory Features (TASK-024, TASK-025)
+
+- **Context Preservation**: Maintains conversation history across multiple queries in the same session
+- **Follow-up Questions**: Ask follow-up questions that reference previous conversation context
+- **Token Management**: Intelligent token counting prevents context window overflow
+- **Clear Conversation**: Clear conversation history with confirmation dialog to prevent accidental loss
+- **Export Conversations**: Export conversation history in JSON, Markdown, or TXT formats
+- **Export Metadata**: Export files include complete metadata (model, timestamps, sources, conversation ID)
+- **Configurable Limits**: Adjustable conversation context window size and message history limits
 
 ### RAG Optimization Features (TASK-028)
 

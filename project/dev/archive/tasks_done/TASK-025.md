@@ -7,7 +7,7 @@
 | **Task ID** | TASK-025 |
 | **Task Name** | Conversation History Management UI |
 | **Priority** | Low |
-| **Status** | Waiting |
+| **Status** | Done |
 | **Impact** | Low |
 | **Created** | 2025-01-27 |
 | **Related PRD** | Phase 1 - F8: Conversation Memory |
@@ -88,21 +88,21 @@ Add user interface features for managing conversation history in the Streamlit U
 
 ### Must Have
 
-- [ ] Clear conversation button in UI
-- [ ] Clear button resets conversation history
-- [ ] Export conversation to JSON format
-- [ ] Export conversation to Markdown format
-- [ ] Export conversation to TXT format
-- [ ] Export includes message content and sources
-- [ ] Export includes metadata (timestamps, model)
-- [ ] Download functionality via Streamlit
-- [ ] Existing functionality unaffected
+- [x] Clear conversation button in UI
+- [x] Clear button resets conversation history
+- [x] Export conversation to JSON format
+- [x] Export conversation to Markdown format
+- [x] Export conversation to TXT format
+- [x] Export includes message content and sources
+- [x] Export includes metadata (timestamps, model)
+- [x] Download functionality via Streamlit
+- [x] Existing functionality unaffected
 
 ### Should Have
 
-- [ ] Confirmation dialog before clearing
-- [ ] Export includes full conversation context
-- [ ] Export file naming includes date/time
+- [x] Confirmation dialog before clearing
+- [x] Export includes full conversation context
+- [x] Export file naming includes date/time
 
 ### Nice to Have
 

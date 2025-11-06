@@ -49,6 +49,7 @@ if not _app_init.exists():
 import streamlit as st  # noqa: E402
 
 from app.rag import RAGQueryError, RAGQuerySystem, create_rag_system  # noqa: E402
+from app.utils.conversation_export import export_conversation  # noqa: E402
 from app.utils.health import start_health_check_server  # noqa: E402
 from app.utils.logger import get_logger  # noqa: E402
 from app.utils.metrics import initialize_metrics  # noqa: E402
@@ -265,6 +266,85 @@ def main():
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
+    # Conversation management buttons
+    col1, col2, col3 = st.columns([1, 1, 2])
+    with col1:
+        # Clear conversation button with confirmation
+        if "show_clear_confirm" not in st.session_state:
+            st.session_state.show_clear_confirm = False
+
+        if st.session_state.show_clear_confirm:
+            if st.button("✅ Confirm Clear", type="primary", key="confirm_clear"):
+                st.session_state.messages = []
+                st.session_state.show_clear_confirm = False
+                st.rerun()
+            if st.button("❌ Cancel", key="cancel_clear"):
+                st.session_state.show_clear_confirm = False
+                st.rerun()
+        else:
+            if st.button("🗑️ Clear Conversation", key="clear_conversation"):
+                if len(st.session_state.messages) > 0:
+                    st.session_state.show_clear_confirm = True
+                    st.rerun()
+
+    with col2:
+        # Export conversation button
+        if len(st.session_state.messages) > 0:
+            export_format = st.selectbox(
+                "Export Format",
+                ["JSON", "Markdown", "TXT"],
+                key="export_format",
+                label_visibility="collapsed",
+            )
+
+            # Initialize export data in session state
+            if "export_data" not in st.session_state:
+                st.session_state.export_data = None
+            if "export_filename" not in st.session_state:
+                st.session_state.export_filename = None
+
+            # Export button
+            if st.button("💾 Export", key="export_button"):
+                try:
+                    # Get current model info
+                    current_model = f"{model_provider}/{model_name}"
+                    # Export conversation
+                    content, filename = export_conversation(
+                        messages=st.session_state.messages,
+                        format_type=export_format.lower(),
+                        model=current_model,
+                    )
+                    # Store in session state for download button
+                    st.session_state.export_data = content
+                    st.session_state.export_filename = filename
+                    st.rerun()
+                except Exception as e:
+                    logger.error(f"Export failed: {str(e)}", exc_info=True)
+                    st.error(f"Failed to export conversation: {str(e)}")
+
+            # Show download button if export data is available
+            if st.session_state.export_data and st.session_state.export_filename:
+                st.download_button(
+                    label="📥 Download Export",
+                    data=st.session_state.export_data,
+                    file_name=st.session_state.export_filename,
+                    mime=(
+                        "application/json"
+                        if export_format.lower() == "json"
+                        else "text/plain"
+                    ),
+                    key="download_export",
+                )
+        else:
+            st.caption("No conversation to export")
+            # Clear export data if no messages
+            if "export_data" in st.session_state:
+                st.session_state.export_data = None
+            if "export_filename" in st.session_state:
+                st.session_state.export_filename = None
+
+    st.divider()
+
     # Display chat history
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
@@ -291,8 +371,21 @@ def main():
             with st.spinner("Searching documents and generating answer..."):
                 try:
                     logger.info(f"Processing user query: '{prompt[:50]}...'")
-                    # Query RAG system
-                    result = rag_system.query(prompt)
+                    # Get conversation history (all messages except current)
+                    # Current message was just added, so use all previous messages
+                    conversation_history = (
+                        st.session_state.messages[:-1]
+                        if len(st.session_state.messages) > 1
+                        else []
+                    )
+
+                    # Query RAG system with conversation history
+                    result = rag_system.query(
+                        prompt,
+                        conversation_history=(
+                            conversation_history if conversation_history else None
+                        ),
+                    )
 
                     answer = result.get(
                         "answer", "I'm sorry, I couldn't generate an answer."

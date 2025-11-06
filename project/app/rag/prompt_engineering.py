@@ -102,6 +102,7 @@ class PromptEngineer:
             )
 
         prompt += (
+            "\n\n{conversation_history}"
             "\n\nContext:\n{context}\n\n"
             "Question: {question}\n\n"
             "Provide a clear, accurate answer based on the context. When "

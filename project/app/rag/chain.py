@@ -19,6 +19,7 @@ from app.rag.prompt_engineering import PromptEngineer
 from app.rag.query_refinement import QueryRefiner
 from app.rag.retrieval_optimizer import RetrievalOptimizer, RetrievalOptimizerError
 from app.utils.config import config
+from app.utils.conversation_memory import get_conversation_context
 from app.utils.logger import get_logger
 from app.utils.metrics import (
     rag_context_chunks_retrieved,
@@ -146,6 +147,8 @@ IMPORTANT: When answering questions about which companies have specific document
 
 If the context doesn't contain enough information to answer the question,
 clearly state that you don't have sufficient information in the provided context.
+
+{conversation_history}
 
 Context:
 {context}
@@ -405,6 +408,7 @@ Answer:"""
         question: str,
         top_k: Optional[int] = None,
         timeout: Optional[int] = None,
+        conversation_history: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, Any]:
         """
         Process a natural language query and generate an answer.
@@ -413,6 +417,8 @@ Answer:"""
             question: User's natural language question
             top_k: Override default top_k for this query (optional)
             timeout: Query timeout in seconds (optional)
+            conversation_history: List of previous conversation messages (optional).
+                Each message should be a dict with 'role' and 'content' keys.
 
         Returns:
             Dictionary with keys:
@@ -471,10 +477,37 @@ Answer:"""
             logger.debug("Formatting context documents")
             context = self._format_docs(retrieved_docs)
 
+            # Get conversation context if enabled and history provided
+            conversation_context = None
+            if conversation_history:
+                conversation_context = get_conversation_context(
+                    messages=conversation_history,
+                    current_question=question,
+                    enabled=config.conversation_enabled,
+                )
+                if conversation_context:
+                    logger.debug(
+                        f"Including conversation context "
+                        f"({len(conversation_context)} chars)"
+                    )
+                else:
+                    logger.debug("No conversation context to include")
+
+            # Format conversation history for prompt (empty string if None)
+            conversation_history_str = (
+                conversation_context + "\n\n" if conversation_context else ""
+            )
+
             # Generate answer using LLM
             logger.debug("Generating answer using LLM")
             try:
-                response = self.chain.invoke({"question": question, "context": context})
+                response = self.chain.invoke(
+                    {
+                        "question": question,
+                        "context": context,
+                        "conversation_history": conversation_history_str,
+                    }
+                )
                 answer = response if isinstance(response, str) else str(response)
                 logger.info(f"Successfully generated answer ({len(answer)} chars)")
             except Exception as e:

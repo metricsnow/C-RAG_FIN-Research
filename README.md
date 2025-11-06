@@ -10,46 +10,62 @@ A production-ready RAG (Retrieval-Augmented Generation) system for semantic sear
 
 ## Project Overview
 
-This is a **public showcase project** demonstrating a production-ready RAG (Retrieval-Augmented Generation) system specifically designed for financial research. The system enables semantic search across financial documents including SEC filings, research papers, market reports, and news articles.
+This project demonstrates a production-ready RAG (Retrieval-Augmented Generation) system for financial research, implementing state-of-the-art techniques for semantic search across financial documents including SEC filings, research papers, market reports, and news articles.
 
-The project showcases modern AI integration patterns, production-grade architecture, and best practices for building RAG applications. It serves as a reference implementation for:
+The system serves as a hands-on demonstration of modern RAG architecture, exploring practical implementations of advanced techniques including hybrid search, query refinement, and multi-provider LLM integration. It provides a working example of how these components integrate in a production environment.
 
-- **Quantitative Developers**: Seeking AI-enhanced research tools and semantic search capabilities
-- **Data Engineers**: Requiring scalable document processing and vector database integration examples
-- **LLM Integration Engineers**: Needing production-ready RAG implementation patterns
-- **AI Strategy Consultants**: Demonstrating strategic AI implementation with measurable outcomes
+### System Components
 
-**Key Value Propositions**:
-- **Privacy-First Architecture**: Local LLM deployment (Ollama) ensures sensitive financial data never leaves your infrastructure
-- **Production-Ready**: Comprehensive testing (82.75% coverage), monitoring (Prometheus metrics), and error handling
-- **Financial Domain Specialization**: Optimized for financial terminology with custom embeddings and domain-specific prompts
-- **Flexible Deployment**: Multiple deployment options from local development to production VPS
-- **Modern Tech Stack**: Built with LangChain 1.0+, ChromaDB, and contemporary Python practices
+The project is organized into several key modules, each implementing specific state-of-the-art techniques:
+
+- **Document Ingestion Pipeline**: Implements intelligent chunking strategies, batch embedding generation, and metadata extraction for financial documents
+- **RAG Chain**: Advanced retrieval with hybrid search (semantic + BM25), query expansion, reranking capabilities, and citation tracking
+- **Vector Database Integration**: ChromaDB implementation with persistent storage, similarity search optimization, and metadata filtering
+- **LLM Factory Pattern**: Dual-provider support (Ollama/OpenAI) with seamless switching, demonstrating provider abstraction patterns
+- **Query Processing**: Query refinement, prompt engineering for financial domain, and context-aware retrieval optimization
+- **Monitoring & Observability**: Prometheus metrics integration, health check endpoints, and comprehensive logging infrastructure
+
+### State-of-the-Art Techniques Implemented
+
+- **Hybrid Search**: Combines semantic similarity search with BM25 keyword matching for improved retrieval accuracy
+- **Query Expansion**: Automatic query refinement and expansion to improve retrieval relevance
+- **Reranking**: Cross-encoder reranking for optimal document ordering
+- **Dual-Provider Architecture**: Flexible LLM and embedding provider switching without code changes
+- **Financial Domain Optimization**: Custom prompt engineering and domain-specific embeddings for financial terminology
+- **Production-Grade Architecture**: Type-safe configuration (Pydantic), comprehensive testing (82.75% coverage), and monitoring integration
 
 ## Technology Stack
 
 ### Core Technologies
-- **Python 3.11+**: Core language with type hints and modern features
-- **LangChain 1.0+**: RAG framework and chain orchestration using Expression Language (LCEL)
-- **ChromaDB**: Vector database for persistent embedding storage
-- **Streamlit**: Interactive web frontend for query interface
+- **Python 3.11+**: Modern Python with type hints, pattern matching, and performance optimizations
+- **LangChain 1.0+**: RAG framework using Expression Language (LCEL) for declarative chain composition and streaming support
+- **ChromaDB**: Vector database with persistent storage, metadata filtering, and optimized similarity search
+- **Streamlit**: Interactive web frontend with real-time streaming and state management
 
-### LLM & Embeddings
-- **Ollama**: Local LLM deployment (Llama 3.2) for privacy-first inference
-- **OpenAI API**: Optional embeddings (text-embedding-3-small) and LLM (gpt-4o-mini) support
-- **Dual Provider Support**: Switchable LLM providers via UI toggle
+### LLM & Embeddings Architecture
+- **Ollama**: Local LLM deployment (Llama 3.2) enabling privacy-preserving inference
+- **OpenAI API**: Cloud-based embeddings (text-embedding-3-small) and LLM (gpt-4o-mini) support
+- **Factory Pattern**: Provider abstraction layer enabling seamless switching between LLM and embedding providers
+- **Multi-Provider Support**: Unified interface supporting multiple providers with runtime switching
+
+### Advanced RAG Components
+- **Hybrid Search**: Semantic vector search combined with BM25 keyword matching
+- **Query Refinement**: Automatic query expansion and refinement techniques
+- **Reranking**: Cross-encoder reranking for optimal document ordering
+- **Intelligent Chunking**: Recursive character text splitting with overlap strategies and metadata preservation
 
 ### Data Sources & Integration
-- **SEC EDGAR API**: Automated fetching and indexing of SEC filings (10-K, 10-Q, 8-K)
-- **Document Processing**: Support for text and Markdown files with intelligent chunking
+- **SEC EDGAR API**: Automated document fetching pipeline for SEC filings (10-K, 10-Q, 8-K)
+- **Document Processing**: Multi-format support (text, Markdown) with intelligent chunking and metadata extraction
+- **Batch Processing**: Optimized batch embedding generation for efficient document indexing
 
-### Development & Quality
-- **Pydantic**: Type-safe configuration management with validation
-- **pytest**: Comprehensive test suite with 174 tests (82.75% coverage)
-- **mypy**: Static type checking for code quality
-- **Pre-commit Hooks**: Automated code formatting (black, isort, flake8)
-- **Prometheus**: Metrics collection and monitoring
-- **Sphinx**: API documentation generation
+### Development & Quality Infrastructure
+- **Pydantic**: Type-safe configuration management with runtime validation
+- **pytest**: Comprehensive test suite with 174 tests achieving 82.75% coverage
+- **mypy**: Static type checking for enhanced code quality and maintainability
+- **Pre-commit Hooks**: Automated code formatting (black, isort) and linting (flake8)
+- **Prometheus**: Metrics collection and monitoring for observability
+- **Sphinx**: API documentation generation with automated docstring processing
 
 ## System Process Flow
 
@@ -133,58 +149,25 @@ The project showcases modern AI integration patterns, production-grade architect
 ## Key Features
 
 ### Core Capabilities
-- **Semantic Document Search**: Natural language queries across financial documents with intelligent retrieval
-- **Flexible LLM Deployment**: Choose between local Ollama (privacy-first) or OpenAI (cloud) for inference
-- **Citation Tracking**: Automatic source attribution with document references for every answer
-- **SEC EDGAR Integration**: Automated fetching and indexing of SEC filings (10-K, 10-Q, 8-K forms)
-- **Financial Domain Specialization**: Optimized for financial terminology and research queries
+- **Semantic Document Search**: Natural language queries across financial documents using vector similarity search
+- **Multi-Provider LLM Architecture**: Factory pattern implementation supporting Ollama (local) and OpenAI (cloud) providers
+- **Citation Tracking**: Automatic source attribution with document references and metadata for traceability
+- **SEC EDGAR Integration**: Automated document fetching and indexing pipeline for SEC filings (10-K, 10-Q, 8-K forms)
+- **Financial Domain Optimization**: Domain-specific prompt engineering and embedding strategies for financial terminology
 
-### Technical Features
-- **Dual LLM Support**: OpenAI (gpt-4o-mini) or Ollama (llama3.2) - switchable via UI toggle
-- **Dual Embedding Support**: OpenAI (text-embedding-3-small) or Ollama embeddings
-- **Advanced RAG Optimizations**: Hybrid search (semantic + BM25), reranking, query expansion
-- **Vector Database**: Persistent ChromaDB storage for efficient similarity search
-- **Streamlit UI**: Modern, interactive chat interface with model selection toggle
-- **Performance Optimized**: Average query response time <5 seconds (achieved: 3.46s)
-- **Monitoring & Observability**: Prometheus metrics and health check endpoints
-- **Code Quality**: Pre-commit hooks, static type checking (mypy), comprehensive logging
+### Advanced RAG Techniques
+- **Hybrid Search**: Combines semantic vector search with BM25 keyword matching for improved retrieval precision
+- **Query Refinement**: Automatic query expansion and refinement to enhance retrieval relevance
+- **Reranking**: Cross-encoder reranking implementation for optimal document ordering
+- **Dual Embedding Support**: OpenAI (text-embedding-3-small) or Ollama embeddings with provider abstraction
+- **Intelligent Chunking**: Recursive character text splitting with overlap strategies for optimal context preservation
 
-## Project Status
-
-### Phase 1 (MVP) - ✅ Complete
-
-**All 13 MVP Tasks Completed**:
-- ✅ **Foundation Setup**: Environment, Ollama, LangChain integration
-- ✅ **Core Integration**: Document ingestion, ChromaDB, embeddings
-- ✅ **Query Interface**: RAG system, Streamlit UI, citation tracking
-- ✅ **Document Collection**: 50+ documents indexed, 511 chunks
-- ✅ **System Testing**: Comprehensive test suite with 174 tests
-- ✅ **Deployment**: Local, ngrok, and VPS deployment options
-- ✅ **Documentation**: Comprehensive README and deployment guides
-
-**Performance**: Average query response time **3.46 seconds** (target: <5s) ✅
-
-### Post-MVP Enhancements - ✅ Complete
-
-**All 10 Post-MVP Enhancement Tasks Completed**:
-- ✅ **Code Quality**: Pre-commit hooks (black, flake8, isort), static type checking (mypy)
-- ✅ **Test Coverage**: Enhanced to **82.75%** (exceeded 80% target) with 174 comprehensive tests
-- ✅ **Monitoring**: Prometheus metrics and health check endpoints
-- ✅ **Logging**: Comprehensive logging infrastructure across all modules
-- ✅ **Configuration**: Pydantic-based type-safe configuration with validation
-- ✅ **Dependencies**: Modern dependency management with `pyproject.toml` (PEP 621)
-- ✅ **Documentation**: API documentation generation with Sphinx
-
-**Test Coverage**: **82.75%** (174 tests) ✅ - All core modules above 80% coverage
-
-### Phase 2 - 📋 Planning
-
-See [`project/docs/prd-phase2.md`](project/docs/prd-phase2.md) for Phase 2 enhancements:
-- FastAPI backend implementation
-- Enhanced data integration (yfinance, FRED, IMF, World Bank)
-- Advanced analytics (FinBERT sentiment analysis)
-- Full conversation memory
-- Additional performance optimizations
+### Infrastructure & Architecture
+- **Vector Database**: ChromaDB with persistent storage, metadata filtering, and similarity search optimization
+- **Streamlit UI**: Interactive chat interface with real-time model switching and query processing
+- **Performance Metrics**: Average query response time 3.46s with comprehensive performance monitoring
+- **Observability**: Prometheus metrics integration, health check endpoints, and structured logging
+- **Code Quality**: Pre-commit hooks (black, isort, flake8), static type checking (mypy), and comprehensive test coverage
 
 ## Performance Metrics
 
@@ -202,10 +185,25 @@ See [`project/docs/prd-phase2.md`](project/docs/prd-phase2.md) for Phase 2 enhan
 ├── project/                    # Main application code
 │   ├── app/                    # Application source code
 │   │   ├── ingestion/          # Document ingestion pipeline
+│   │   │   ├── document_loader.py    # Multi-format document loading
+│   │   │   ├── edgar_fetcher.py      # SEC EDGAR API integration
+│   │   │   └── pipeline.py           # End-to-end ingestion orchestration
 │   │   ├── rag/                # RAG chain implementation
+│   │   │   ├── chain.py              # LCEL-based RAG chain with streaming
+│   │   │   ├── llm_factory.py        # Multi-provider LLM abstraction
+│   │   │   ├── embedding_factory.py  # Multi-provider embedding abstraction
+│   │   │   ├── prompt_engineering.py # Financial domain prompts
+│   │   │   ├── query_refinement.py   # Query expansion and refinement
+│   │   │   └── retrieval_optimizer.py # Hybrid search and reranking
 │   │   ├── ui/                 # Streamlit frontend
-│   │   ├── utils/              # Configuration management
+│   │   │   └── app.py                # Interactive chat interface
+│   │   ├── utils/              # Configuration and utilities
+│   │   │   ├── config.py            # Pydantic-based configuration
+│   │   │   ├── logger.py            # Structured logging
+│   │   │   ├── metrics.py           # Prometheus metrics
+│   │   │   └── conversation_memory.py # Conversation state management
 │   │   └── vector_db/          # ChromaDB integration
+│   │       └── chroma_store.py      # Vector store operations
 │   ├── docs/                   # Documentation
 │   │   ├── prd-phase1.md       # Phase 1 Product Requirements
 │   │   ├── prd-phase2.md       # Phase 2 Planning Document
@@ -215,10 +213,17 @@ See [`project/docs/prd-phase2.md`](project/docs/prd-phase2.md) for Phase 2 enhan
 │   │   ├── tasks/              # Active tasks
 │   │   └── archive/            # Completed tasks
 │   ├── scripts/                # Utility scripts
-│   ├── tests/                  # Test files
+│   │   ├── fetch_edgar_data.py      # SEC data fetching utilities
+│   │   ├── validate_chromadb.py     # Database validation
+│   │   └── run_streamlit.py         # Application launcher
+│   ├── tests/                  # Comprehensive test suite
+│   │   ├── test_rag_chain_comprehensive.py  # RAG chain tests
+│   │   ├── test_chromadb_comprehensive.py   # Vector DB tests
+│   │   ├── test_pipeline_comprehensive.py   # Ingestion tests
+│   │   └── test_end_to_end.py               # Integration tests
 │   └── README.md               # Detailed project README
 │
-└── development_framework_v2/  # Development framework (internal)
+└── development_framework_v2a/  # Development framework (internal)
     └── framework/              # Framework components
         ├── agents/             # AI agent definitions
         ├── commands/           # Command definitions
@@ -258,12 +263,13 @@ See [`project/docs/prd-phase2.md`](project/docs/prd-phase2.md) for Phase 2 enhan
 - ✅ Pydantic-based configuration management
 - ✅ Modern dependency management (pyproject.toml)
 - ✅ API documentation generation (Sphinx)
+- ✅ Conversation memory context usage (TASK-024)
 
 ### Planned (Phase 2)
 - 📋 FastAPI backend
 - 📋 Enhanced data sources (yfinance, FRED, IMF, World Bank)
 - 📋 Advanced analytics (sentiment analysis, forward guidance extraction)
-- 📋 Full conversation memory
+- 📋 Conversation history management UI (clear/export features)
 - 📋 Additional performance optimizations
 
 See [Phase 2 PRD](project/docs/prd-phase2.md) for detailed planning.
@@ -276,8 +282,6 @@ See [Phase 2 PRD](project/docs/prd-phase2.md) for detailed planning.
 - **Streamlit**: Web frontend framework
 - **SEC EDGAR**: Financial document data source
 
----
+## Technical Development
 
-**Status**: 🟢 MVP + Post-MVP Enhancements Complete | **Version**: 1.0.0 | **Last Updated**: 2025-01-27
-
-**Total Tasks Completed**: 23 (13 MVP + 10 Post-MVP Enhancements)
+This project utilizes a self-developed Cursor AI framework to optimize coding speed and maintainability. The framework provides specialized AI personas (Mission Analyst, Mission Planner, Mission Executor, Mission-QA, Mission Challenger, etc.) through slash commands, enabling sequential persona switching and orchestrated multi-agent workflows for complex technical tasks. The framework uses BPMN workflows, quality gates, and state persistence to ensure consistent code quality, comprehensive testing, and efficient project progress while maintaining complete autonomy from the project codebase.

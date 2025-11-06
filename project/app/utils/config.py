@@ -240,6 +240,27 @@ class Config(BaseSettings):
         description="Include few-shot examples in prompts",
     )
 
+    # Conversation Memory Configuration
+    conversation_enabled: bool = Field(
+        default=True,
+        alias="CONVERSATION_ENABLED",
+        description="Enable conversation memory for context in queries",
+    )
+    conversation_max_tokens: int = Field(
+        default=2000,
+        ge=100,
+        le=10000,
+        alias="CONVERSATION_MAX_TOKENS",
+        description="Maximum tokens for conversation context",
+    )
+    conversation_max_history: int = Field(
+        default=10,
+        ge=1,
+        le=50,
+        alias="CONVERSATION_MAX_HISTORY",
+        description="Maximum number of previous messages to include",
+    )
+
     # Project paths (computed fields)
     _project_root: Optional[Path] = None
     _data_dir: Optional[Path] = None
@@ -403,6 +424,21 @@ class Config(BaseSettings):
     def RAG_TOP_K_FINAL(self) -> int:
         """RAG final top K (backward compatibility)."""
         return self.rag_top_k_final
+
+    @property
+    def CONVERSATION_ENABLED(self) -> bool:
+        """Conversation memory enabled (backward compatibility)."""
+        return self.conversation_enabled
+
+    @property
+    def CONVERSATION_MAX_TOKENS(self) -> int:
+        """Conversation max tokens (backward compatibility)."""
+        return self.conversation_max_tokens
+
+    @property
+    def CONVERSATION_MAX_HISTORY(self) -> int:
+        """Conversation max history (backward compatibility)."""
+        return self.conversation_max_history
 
     @property
     def PROJECT_ROOT(self) -> Path:

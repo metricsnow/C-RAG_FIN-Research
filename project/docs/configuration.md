@@ -230,6 +230,153 @@ RAG_CHUNK_OVERLAP=200  # More overlap for better context
 
 **Backward Compatibility**: All optimizations are backward compatible. If optimization components fail to load, the system gracefully falls back to basic retrieval.
 
+### Conversation Memory Configuration (TASK-024)
+
+The system includes conversation memory functionality that maintains context across multiple queries in the same session. This enables follow-up questions and multi-turn conversations.
+
+| Variable | Type | Default | Constraints | Description |
+|----------|------|---------|------------|-------------|
+| `CONVERSATION_ENABLED` | boolean | `true` | `true`/`false`, `1`/`0`, `yes`/`no` | Enable conversation memory for context in queries |
+| `CONVERSATION_MAX_TOKENS` | integer | `2000` | Range: 100 - 10000 | Maximum tokens for conversation context |
+| `CONVERSATION_MAX_HISTORY` | integer | `10` | Range: 1 - 50 | Maximum number of previous messages to include |
+
+**Conversation Memory Features**:
+
+1. **Context Preservation**: Maintains conversation history across multiple queries in the same session.
+   - Follow-up questions can reference previous messages
+   - Context automatically included in RAG queries
+   - Recent messages prioritized over older ones
+
+2. **Token Management**: Prevents context window overflow with intelligent token counting.
+   - Uses `tiktoken` for accurate token counting
+   - Automatically trims conversation history to fit within limits
+   - Prioritizes recent messages when trimming
+
+3. **Configurable Limits**: Adjustable limits for conversation context.
+   - `CONVERSATION_MAX_TOKENS`: Maximum tokens for conversation context (default: 2000)
+   - `CONVERSATION_MAX_HISTORY`: Maximum number of messages to include (default: 10)
+
+**Example Configuration**:
+```bash
+# Enable conversation memory (recommended)
+CONVERSATION_ENABLED=true
+CONVERSATION_MAX_TOKENS=2000
+CONVERSATION_MAX_HISTORY=10
+
+# Disable conversation memory (single-turn queries only)
+CONVERSATION_ENABLED=false
+
+# Increase context window for longer conversations
+CONVERSATION_MAX_TOKENS=4000
+CONVERSATION_MAX_HISTORY=20
+
+# Reduce context for faster queries
+CONVERSATION_MAX_TOKENS=1000
+CONVERSATION_MAX_HISTORY=5
+```
+
+**How It Works**:
+- Conversation history is stored in Streamlit session state (`st.session_state.messages`)
+- When a query is made, previous messages are automatically included as context
+- Token counting ensures conversation context doesn't exceed LLM context window
+- Recent messages are prioritized when trimming conversation history
+- Backward compatible: works with or without conversation history
+
+**Performance Considerations**:
+- Conversation memory adds minimal overhead (< 10% performance impact)
+- Token counting is efficient and cached
+- Context formatting is optimized for prompt inclusion
+
+**Backward Compatibility**: Conversation memory is fully backward compatible. If `conversation_history` is not provided, queries work exactly as before (single-turn mode).
+
+### Conversation History Management (TASK-025)
+
+The system includes conversation history management features that allow users to clear and export their conversation history.
+
+**Features:**
+
+1. **Clear Conversation**: Users can clear their conversation history with a confirmation dialog to prevent accidental loss.
+   - Button located in the main UI
+   - Confirmation dialog prevents accidental clearing
+   - Only clears conversation messages, preserves other session state (RAG system, tickers, etc.)
+
+2. **Export Conversation**: Users can export their conversation history in multiple formats.
+   - **JSON Format**: Structured data with complete metadata, sources, and conversation information
+   - **Markdown Format**: Readable format with proper formatting and citations
+   - **TXT Format**: Plain text format for easy reading
+   - Export includes message content, sources, metadata (model, timestamps, conversation ID)
+   - Filenames include timestamp and conversation ID for easy organization
+   - Download via Streamlit download button
+
+**Usage:**
+- Clear conversation: Click "Clear Conversation" button, confirm in dialog
+- Export conversation: Select format (JSON/Markdown/TXT), click "Export", then "Download Export"
+- Export files are automatically named with timestamp and conversation ID
+
+**Export File Formats:**
+
+**JSON Format:**
+```json
+{
+  "conversation_id": "uuid",
+  "created_at": "2025-01-27T12:00:00",
+  "messages": [
+    {
+      "role": "user",
+      "content": "What is revenue?",
+      "timestamp": "..."
+    },
+    {
+      "role": "assistant",
+      "content": "Revenue is...",
+      "sources": [...]
+    }
+  ],
+  "metadata": {
+    "model": "ollama/llama3.2",
+    "total_messages": 2,
+    "user_messages": 1,
+    "assistant_messages": 1
+  }
+}
+```
+
+**Markdown Format:**
+```markdown
+# Conversation Export
+**Date:** 2025-01-27 12:00:00
+**Model:** ollama/llama3.2
+
+## Messages
+
+### User
+What is revenue?
+
+### Assistant
+Revenue is...
+
+**Sources:** document1.pdf, document2.txt
+```
+
+**TXT Format:**
+```
+Conversation Export
+==================================================
+Date: 2025-01-27 12:00:00
+Model: ollama/llama3.2
+==================================================
+
+[1] USER
+--------------------------------------------------
+What is revenue?
+
+[2] ASSISTANT
+--------------------------------------------------
+Revenue is...
+
+Source: document1.pdf
+```
+
 ## Validation
 
 ### Type Validation
@@ -255,7 +402,7 @@ Numeric constraints are enforced:
 - `RAG_CHUNK_OVERLAP` must be between 0 and 500
 - `RAG_TOP_K_INITIAL` must be between 5 and 100
 - `RAG_TOP_K_FINAL` must be between 1 and 20
-- `CONVERSATION_MAX_TOKENS` must be between 500 and 8000
+- `CONVERSATION_MAX_TOKENS` must be between 100 and 10000
 - `CONVERSATION_MAX_HISTORY` must be between 1 and 50
 
 ### Custom Validation
@@ -357,6 +504,16 @@ DEFAULT_TOP_K=5
 CONVERSATION_ENABLED=true
 CONVERSATION_MAX_TOKENS=2000
 CONVERSATION_MAX_HISTORY=10
+
+# RAG Optimization Configuration (TASK-028)
+RAG_USE_HYBRID_SEARCH=true
+RAG_USE_RERANKING=true
+RAG_CHUNK_SIZE=800
+RAG_CHUNK_OVERLAP=150
+RAG_TOP_K_INITIAL=20
+RAG_TOP_K_FINAL=5
+RAG_QUERY_EXPANSION=true
+RAG_FEW_SHOT_EXAMPLES=true
 ```
 
 ### Path Properties

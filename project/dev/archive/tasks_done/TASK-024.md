@@ -7,7 +7,7 @@
 | **Task ID** | TASK-024 |
 | **Task Name** | Conversation Memory - Context Usage in Queries |
 | **Priority** | Medium |
-| **Status** | Waiting |
+| **Status** | Done |
 | **Impact** | Medium |
 | **Created** | 2025-01-27 |
 | **Related PRD** | Phase 1 - F8: Conversation Memory (Partial) |

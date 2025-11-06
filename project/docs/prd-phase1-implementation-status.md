@@ -209,16 +209,16 @@ This **exceeds** PRD requirements which specified "Ollama only" for MVP.
 
 ## Should Have (P1) Features - Implementation Status
 
-### ✅ F8: Conversation Memory - **CONTEXT USAGE COMPLETE**
+### ✅ F8: Conversation Memory - **COMPLETE**
 
 **PRD Requirements:**
-- [x] Store conversation history in session
+- [x] Store conversation history in session ✅ **COMPLETE**
 - [x] Include conversation context in subsequent queries ✅ **COMPLETE (TASK-024)**
-- [ ] Support clearing conversation history (TASK-025)
-- [ ] Export conversation history (TASK-025)
+- [x] Support clearing conversation history ✅ **COMPLETE (TASK-025)**
+- [x] Export conversation history ✅ **COMPLETE (TASK-025)**
 - [x] Handle conversation context window limits ✅ **COMPLETE (TASK-024)**
 
-**Implementation Status:** ✅ **CONTEXT USAGE COMPLETE** (TASK-024)
+**Implementation Status:** ✅ **FULLY IMPLEMENTED**
 
 **What's Implemented:**
 - ✅ Chat history stored in `st.session_state.messages`
@@ -228,10 +228,9 @@ This **exceeds** PRD requirements which specified "Ollama only" for MVP.
 - ✅ **Token counting and context window management** (TASK-024)
 - ✅ **Recent messages prioritized over older ones** (TASK-024)
 - ✅ **Configurable context window size** (TASK-024)
-
-**What's Remaining (TASK-025):**
-- ⏳ Clear conversation history button (UI enhancement)
-- ⏳ Export conversation history functionality (UI enhancement)
+- ✅ **Clear conversation button with confirmation dialog** (TASK-025)
+- ✅ **Export conversation to JSON, Markdown, and TXT formats** (TASK-025)
+- ✅ **Download functionality via Streamlit** (TASK-025)
 
 **Implementation Details (TASK-024):**
 - `RAGQuerySystem.query()` now accepts optional `conversation_history` parameter
@@ -241,7 +240,16 @@ This **exceeds** PRD requirements which specified "Ollama only" for MVP.
 - Backward compatible: works with or without conversation history
 - Comprehensive test suite (20 tests, all passing)
 
-**Completion:** ~80% (Context usage complete, UI management features pending)
+**Implementation Details (TASK-025):**
+- Clear conversation button with confirmation dialog in Streamlit UI
+- Export utility module (`app/utils/conversation_export.py`) with JSON, Markdown, and TXT formats
+- Export includes message content, sources, metadata (model, timestamps, conversation ID)
+- Filenames include timestamp and conversation ID for easy organization
+- Download functionality via Streamlit download button
+- Comprehensive test suite (18 tests, all passing)
+- All features backward compatible with existing functionality
+
+**Completion:** ✅ **100% COMPLETE**
 
 ---
 
@@ -560,7 +568,7 @@ The implementation has successfully completed:
 - Follow-up questions now maintain context from previous messages
 - Improved user experience with multi-turn conversations
 - Context window management prevents token overflow
-- F8 feature now 80% complete (context usage done, UI management pending in TASK-025)
+- F8 feature now 100% complete (context usage and UI management both complete)
 
 ### ✅ TASK-028: RAG System Optimization - COMPLETE
 
@@ -604,3 +612,38 @@ The implementation has successfully completed:
 - `RAG_TOP_K_FINAL` (default: 5)
 - `RAG_QUERY_EXPANSION` (default: true)
 - `RAG_FEW_SHOT_EXAMPLES` (default: true)
+
+### ✅ TASK-025: Conversation History Management UI - COMPLETE
+
+**Status:** ✅ **COMPLETE**
+
+**Implementation Summary:**
+- Clear conversation button with confirmation dialog implemented
+- Export functionality with format selector (JSON, Markdown, TXT)
+- Export utility module created (`app/utils/conversation_export.py`)
+- Export includes message content, sources, and metadata (model, timestamps, conversation ID)
+- Download functionality via Streamlit download button
+- Filenames include timestamp and conversation ID
+- Comprehensive test suite created (18 tests, all passing)
+- All features backward compatible with existing functionality
+
+**Impact:**
+- Users can now clear conversation history with confirmation to prevent accidental loss
+- Users can export conversations in multiple formats for record-keeping
+- Export files include complete conversation context with sources and metadata
+- Improved user experience with conversation management capabilities
+- F8 feature now 100% complete (all conversation memory features implemented)
+
+**Files Created/Modified:**
+- `app/utils/conversation_export.py` - Export utility module (NEW)
+- `app/ui/app.py` - Added clear and export UI components
+- `tests/test_conversation_export.py` - Comprehensive test suite (NEW)
+
+**Features:**
+- Clear conversation button with confirmation dialog
+- Export to JSON format (structured data with metadata)
+- Export to Markdown format (readable format with formatting)
+- Export to TXT format (plain text format)
+- Export includes sources and citations
+- Export includes metadata (model, timestamps, conversation ID)
+- Download functionality via Streamlit download button
