@@ -271,8 +271,9 @@ class TestEmbeddingFactoryErrorHandling:
         """Test Ollama embeddings creation with connection error."""
         mock_config.OLLAMA_BASE_URL = "http://localhost:11434"
 
+        # Patch the import inside the method
         with patch(
-            "app.rag.embedding_factory.OllamaEmbeddings",
+            "langchain_community.embeddings.OllamaEmbeddings",
             side_effect=Exception("Connection failed"),
         ):
             with pytest.raises(EmbeddingError) as exc_info:

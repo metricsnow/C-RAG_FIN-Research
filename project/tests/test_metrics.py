@@ -28,10 +28,13 @@ class TestMetricsInitialization:
         """Test metrics initialization."""
         # Should not raise
         initialize_metrics()
-        # Verify metrics are registered
-        assert rag_queries_total._name in [
-            desc.name for desc in REGISTRY._names_to_collectors.values()
+        # Verify metrics are registered by checking if metric name exists in registry
+        metric_names = [
+            collector._name
+            for collector in REGISTRY._names_to_collectors.values()
+            if hasattr(collector, "_name")
         ]
+        assert rag_queries_total._name in metric_names
 
 
 class TestMetricsCollection:
@@ -53,8 +56,10 @@ class TestMetricsCollection:
         """Test tracking operation duration."""
         with track_duration(rag_query_duration_seconds, {"provider": "test"}):
             time.sleep(0.1)
-        # Verify histogram has observations
-        assert rag_query_duration_seconds.labels(provider="test")._sum._value.get() > 0
+        # Verify histogram has observations by checking the sum
+        labeled_histogram = rag_query_duration_seconds.labels(provider="test")
+        # Access the sum value (it's a MutexValue, need to get the value)
+        assert labeled_histogram._sum._value.get() > 0
 
     def test_update_uptime(self):
         """Test updating system uptime."""

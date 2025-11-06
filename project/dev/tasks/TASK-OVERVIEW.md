@@ -3,8 +3,8 @@
 ## Project: Contextual RAG-Powered Financial Research Assistant
 
 **Created**: 2025-01-27
-**Total Tasks**: 45 (13 MVP + 10 Post-MVP Enhancements + 4 Phase 1 Missing Features + 1 RAG Optimization + 17 Phase 2 Features)
-**Status**: 30 tasks completed, 15 tasks waiting
+**Total Tasks**: 52 (13 MVP + 10 Post-MVP Enhancements + 4 Phase 1 Missing Features + 1 RAG Optimization + 21 Phase 2 Features + 2 Maintenance + 1 Validation)
+**Status**: 31 tasks completed, 21 tasks waiting
 
 ---
 
@@ -181,13 +181,59 @@ Before starting Milestone 1, ensure:
 | TASK-042 | Advanced Query Features | Low | TASK-007 ✅ | Waiting |
 | TASK-043 | Export and Sharing Functionality | Low | TASK-008 ✅, TASK-031 (Optional) | Waiting |
 | TASK-044 | Alternative Data Sources Integration | Low | TASK-004 ✅ | Waiting |
+| TASK-046 | News Article Summarization | Low | TASK-034 ✅ | Waiting |
+| TASK-047 | News Trend Analysis | Low | TASK-034 ✅ | Waiting |
+| TASK-048 | Automated News Monitoring | Low | TASK-034 ✅ | Waiting |
+| TASK-049 | News Alert System | Low | TASK-034 ✅, TASK-048 (Optional) | Waiting |
+
+### Maintenance Tasks
+
+**Pattern**: Maintenance tasks are created every 10 tasks to review and optimize codebase structure, file organization, code length, and utility creation. Maintenance tasks use the naming pattern `TASK-XXX_maintanance.md` to distinguish them from feature tasks.
+
+| Task ID | Task Name | Priority | Dependencies | Status |
+|---------|-----------|----------|---------------|--------|
+| TASK-010_maintanance | Codebase Maintenance and Structure Optimization | Medium | None | Waiting (Future) |
+| TASK-020_maintanance | Codebase Maintenance and Structure Optimization | Medium | None | Waiting (Future) |
+| TASK-030_maintanance | Codebase Maintenance and Structure Optimization | Medium | None | Waiting (Future) |
+| TASK-040_maintanance | Codebase Maintenance and Structure Optimization | Medium | None | Waiting |
+| TASK-050 | Codebase Maintenance and Structure Optimization | Medium | None | Waiting |
+| TASK-060 | Codebase Maintenance and Structure Optimization | Medium | None | Waiting (Future) |
+| TASK-070 | Codebase Maintenance and Structure Optimization | Medium | None | Waiting (Future) |
+
+**Maintenance Task Schedule**:
+- TASK-010_maintanance: After 10 tasks (retroactive)
+- TASK-020_maintanance: After 20 tasks (retroactive)
+- TASK-030_maintanance: After 30 tasks (retroactive)
+- TASK-040_maintanance: After 40 tasks (current)
+- TASK-050: After 50 tasks
+- TASK-060: After 60 tasks
+- TASK-070: After 70 tasks
+- Pattern continues every 10 tasks
+
+**Note**: Maintenance tasks at 010, 020, 030 are retroactive (can be created when needed). TASK-040_maintanance and TASK-050 are current maintenance tasks.
+
+### Validation Tasks
+
+**Pattern**: Validation tasks can be run independently to ensure codebase health. Recommended before/after maintenance tasks. Validation tasks use the naming pattern `TASK-XXX_maintanance.md` to distinguish them from feature tasks.
+
+| Task ID | Task Name | Priority | Dependencies | Status |
+|---------|-----------|----------|---------------|--------|
+| TASK-033_maintanance | Maintenance Test Run - Comprehensive Codebase Validation | Medium | None | Waiting |
+
+**Validation Task Usage**:
+- Before maintenance tasks: Establish baseline functionality
+- After maintenance tasks: Validate refactoring didn't break anything
+- Periodically: Ensure codebase health
+- Before releases: Final validation checkpoint
+
+**Note**: TASK-033_maintanance is a validation task (not to be confused with TASK-033: Earnings Call Transcripts Integration).
 
 **Phase 2 Task Summary:**
-- **Total Phase 2 Tasks**: 17
+- **Total Phase 2 Tasks**: 21
 - **P0 (Must Have)**: 3 tasks
 - **P1 (Should Have)**: 11 tasks
-- **P2 (Could Have)**: 3 tasks
-- **Estimated Total Effort**: 156-208 hours
+- **P2 (Could Have)**: 7 tasks
+- **Estimated Total Effort**: 184-244 hours
 
 **Phase 2 Task Dependencies:**
 - TASK-029, TASK-030, TASK-031 can start independently (different features)
@@ -196,6 +242,8 @@ Before starting Milestone 1, ensure:
 - TASK-040 builds upon TASK-027 (document management)
 - TASK-042, TASK-043, TASK-044 can run independently (enhancement features)
 - TASK-045 builds upon TASK-029 (FastAPI Backend) and TASK-008 (Streamlit UI)
+- TASK-046, TASK-047, TASK-048, TASK-049 build upon TASK-034 (News Aggregation)
+- TASK-049 can optionally integrate with TASK-048 (Automated News Monitoring)
 
 ---
 

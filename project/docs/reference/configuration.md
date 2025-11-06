@@ -576,6 +576,127 @@ EDGAR_FORM_TYPES=4  # Only Form 4 filings
 
 For complete EDGAR integration documentation, see: **[EDGAR Integration Guide](../integrations/edgar_integration.md)**
 
+### Earnings Call Transcripts Configuration (TASK-033)
+
+The system includes earnings call transcript integration for fetching and indexing earnings call transcripts. All transcript settings are configurable via environment variables.
+
+| Variable | Type | Default | Constraints | Description |
+|----------|------|---------|------------|-------------|
+| `TRANSCRIPT_ENABLED` | boolean | `true` | `true`/`false`, `1`/`0`, `yes`/`no` | Enable earnings call transcript integration |
+| `TRANSCRIPT_RATE_LIMIT_SECONDS` | float | `1.0` | Range: 0.1 - 60.0 | Rate limit between transcript requests in seconds |
+| `TRANSCRIPT_USE_WEB_SCRAPING` | boolean | `true` | `true`/`false`, `1`/`0`, `yes`/`no` | Enable web scraping for transcripts (required) |
+
+**⚠️ IMPORTANT**: Current implementation uses web scraping (temporary). **URGENT**: Replace with API Ninjas API integration. See TASK-033 for details.
+
+**Example Configuration**:
+```bash
+# Enable transcript integration
+TRANSCRIPT_ENABLED=true
+
+# Rate limiting for transcript requests
+TRANSCRIPT_RATE_LIMIT_SECONDS=1.0
+
+# Enable web scraping (required, but should be replaced with API)
+TRANSCRIPT_USE_WEB_SCRAPING=true
+```
+
+**Backward Compatibility**: Transcript integration is optional and can be disabled by setting `TRANSCRIPT_ENABLED=false`. The system continues to work normally without transcript integration.
+
+For complete transcript integration documentation, see: **[Transcript Integration Guide](../integrations/transcript_integration.md)** (if available).
+
+### Financial News Aggregation Configuration (TASK-034)
+
+The system includes financial news aggregation for fetching and indexing news articles from RSS feeds and web scraping. All news settings are configurable via environment variables.
+
+| Variable | Type | Default | Constraints | Description |
+|----------|------|---------|------------|-------------|
+| `NEWS_ENABLED` | boolean | `true` | `true`/`false`, `1`/`0`, `yes`/`no` | Enable financial news aggregation |
+| `NEWS_USE_RSS` | boolean | `true` | `true`/`false`, `1`/`0`, `yes`/`no` | Enable RSS feed parsing for news |
+| `NEWS_USE_SCRAPING` | boolean | `true` | `true`/`false`, `1`/`0`, `yes`/`no` | Enable web scraping for news articles |
+| `NEWS_RSS_RATE_LIMIT_SECONDS` | float | `1.0` | Range: 0.1 - 60.0 | Rate limit between RSS feed requests in seconds |
+| `NEWS_SCRAPING_RATE_LIMIT_SECONDS` | float | `2.0` | Range: 0.1 - 60.0 | Rate limit between web scraping requests in seconds |
+| `NEWS_SCRAPE_FULL_CONTENT` | boolean | `true` | `true`/`false`, `1`/`0`, `yes`/`no` | Scrape full article content (not just RSS summaries) |
+
+**News Aggregation Features**:
+
+1. **RSS Feed Parsing**: Parse RSS feeds from major financial news sources
+   - Reuters Finance, CNBC, MarketWatch, Financial Times
+   - Automatic source detection from feed URL
+   - Extracts title, content, date, author, source metadata
+
+2. **Web Scraping**: Scrape full article content with respectful rate limiting
+   - Support for Reuters, Bloomberg, CNBC, Financial Times
+   - Source-specific content selectors
+   - Proper user agents and rate limiting
+
+3. **Ticker Detection**: Automatic extraction of ticker symbols
+   - Regex pattern matching (1-5 uppercase letters)
+   - Filters out common words
+   - Stored as comma-separated list in metadata
+
+4. **Article Categorization**: Automatic categorization based on content
+   - Categories: earnings, markets, analysis, m&a, ipo, general
+   - Keyword-based detection
+   - Stored in article metadata
+
+5. **Deduplication**: URL-based deduplication to avoid duplicate articles
+
+**Example Configuration**:
+```bash
+# Enable news aggregation (default)
+NEWS_ENABLED=true
+
+# Enable RSS feed parsing
+NEWS_USE_RSS=true
+
+# Enable web scraping
+NEWS_USE_SCRAPING=true
+
+# Rate limiting for RSS feeds (conservative to respect servers)
+NEWS_RSS_RATE_LIMIT_SECONDS=1.0
+
+# Rate limiting for web scraping (more conservative)
+NEWS_SCRAPING_RATE_LIMIT_SECONDS=2.0
+
+# Scrape full content for RSS articles (recommended)
+NEWS_SCRAPE_FULL_CONTENT=true
+
+# RSS-only mode (no scraping)
+NEWS_USE_SCRAPING=false
+NEWS_SCRAPE_FULL_CONTENT=false
+
+# Scraping-only mode (no RSS)
+NEWS_USE_RSS=false
+```
+
+**Usage**:
+```bash
+# Fetch news from RSS feeds
+python scripts/fetch_news.py --feeds https://www.reuters.com/finance/rss
+
+# Scrape specific articles
+python scripts/fetch_news.py --urls https://www.reuters.com/article/example
+
+# Programmatic usage
+from app.ingestion.pipeline import IngestionPipeline
+
+pipeline = IngestionPipeline()
+chunk_ids = pipeline.process_news(
+    feed_urls=["https://www.reuters.com/finance/rss"],
+    enhance_with_scraping=True
+)
+```
+
+**Performance Considerations**:
+- Rate limiting: Conservative defaults prevent being blocked but slow batch processing
+- RSS feeds: Faster than scraping, but may have limited content
+- Web scraping: Slower but provides full article content
+- Deduplication: Prevents duplicate articles but adds processing overhead
+
+**Backward Compatibility**: News aggregation is optional and can be disabled by setting `NEWS_ENABLED=false`. The system continues to work normally without news integration.
+
+For complete news aggregation documentation, see: **[News Aggregation Integration Guide](../integrations/news_aggregation.md)**
+
 For complete API documentation, see [API Documentation](api.md).
 
 ### Conversation History Management (TASK-025)
@@ -693,6 +814,10 @@ Numeric constraints are enforced:
 - `RAG_TOP_K_FINAL` must be between 1 and 20
 - `CONVERSATION_MAX_TOKENS` must be between 100 and 10000
 - `CONVERSATION_MAX_HISTORY` must be between 1 and 50
+- `YFINANCE_RATE_LIMIT_SECONDS` must be between 0.1 and 60.0
+- `TRANSCRIPT_RATE_LIMIT_SECONDS` must be between 0.1 and 60.0
+- `NEWS_RSS_RATE_LIMIT_SECONDS` must be between 0.1 and 60.0
+- `NEWS_SCRAPING_RATE_LIMIT_SECONDS` must be between 0.1 and 60.0
 
 ### Custom Validation
 

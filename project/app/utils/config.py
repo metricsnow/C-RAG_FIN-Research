@@ -383,6 +383,42 @@ class Config(BaseSettings):
         description="Enable web scraping for transcripts (required)",
     )
 
+    # Financial News Aggregation Configuration (TASK-034)
+    news_enabled: bool = Field(
+        default=True,
+        alias="NEWS_ENABLED",
+        description="Enable financial news aggregation",
+    )
+    news_use_rss: bool = Field(
+        default=True,
+        alias="NEWS_USE_RSS",
+        description="Enable RSS feed parsing for news",
+    )
+    news_use_scraping: bool = Field(
+        default=True,
+        alias="NEWS_USE_SCRAPING",
+        description="Enable web scraping for news articles",
+    )
+    news_rss_rate_limit_seconds: float = Field(
+        default=1.0,
+        ge=0.1,
+        le=60.0,
+        alias="NEWS_RSS_RATE_LIMIT_SECONDS",
+        description="Rate limit between RSS feed requests in seconds",
+    )
+    news_scraping_rate_limit_seconds: float = Field(
+        default=2.0,
+        ge=0.1,
+        le=60.0,
+        alias="NEWS_SCRAPING_RATE_LIMIT_SECONDS",
+        description="Rate limit between web scraping requests in seconds",
+    )
+    news_scrape_full_content: bool = Field(
+        default=True,
+        alias="NEWS_SCRAPE_FULL_CONTENT",
+        description="Scrape full article content (not just RSS summaries)",
+    )
+
     # Project paths (computed fields)
     _project_root: Optional[Path] = None
     _data_dir: Optional[Path] = None

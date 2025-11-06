@@ -13,11 +13,14 @@ from app.ingestion.edgar_fetcher import (
     EdgarFetcherError,
     create_edgar_fetcher,
 )
+from app.ingestion.news_fetcher import NewsFetcher, NewsFetcherError
+from app.ingestion.news_scraper import NewsScraper, NewsScraperError
 from app.ingestion.pipeline import (
     IngestionPipeline,
     IngestionPipelineError,
     create_pipeline,
 )
+from app.ingestion.rss_parser import RSSParser, RSSParserError
 from app.ingestion.stock_data_normalizer import StockDataNormalizer
 from app.ingestion.transcript_fetcher import (
     TranscriptFetcher,
@@ -68,6 +71,12 @@ __all__ = [
     "TranscriptFetcherError",
     "TranscriptParser",
     "TranscriptParserError",
+    "NewsFetcher",
+    "NewsFetcherError",
+    "NewsScraper",
+    "NewsScraperError",
+    "RSSParser",
+    "RSSParserError",
     "ENHANCED_PARSERS_AVAILABLE",
 ]
 

@@ -47,6 +47,9 @@ arelle>=2.0.0
 beautifulsoup4>=4.12.0
 lxml>=5.0.0
 
+# Financial News Aggregation (TASK-034)
+feedparser>=6.0.10
+
 # Documentation
 sphinx>=8.2.0
 sphinx-rtd-theme>=3.0.0

@@ -25,6 +25,7 @@ A production-ready RAG (Retrieval-Augmented Generation) system for semantic sear
 - **Flexible LLM Deployment**: Choose between local Ollama (privacy-first) or OpenAI (gpt-4o-mini) for inference
 - **Citation Tracking**: Automatic source attribution with document references for every answer
 - **SEC EDGAR Integration**: Automated fetching and indexing of SEC filings (10-K, 10-Q, 8-K forms)
+- **Financial News Aggregation**: RSS feed parsing and web scraping for financial news (Reuters, CNBC, Bloomberg, etc.) (TASK-034)
 - **Financial Domain Specialization**: Optimized for financial terminology and research queries
 - **Vector Database**: Persistent ChromaDB storage for efficient similarity search
 - **Streamlit UI**: Modern, interactive chat interface with model selection toggle for querying documents
@@ -84,6 +85,9 @@ A production-ready RAG (Retrieval-Augmented Generation) system for semantic sear
 ### Data Collection
 
 - **Automated EDGAR Fetching**: Fetch SEC filings from 10+ major companies automatically
+- **Stock Data Integration**: Comprehensive stock market data via yfinance (TASK-030)
+- **Earnings Call Transcripts**: Fetch and index earnings call transcripts (TASK-033)
+- **Financial News Aggregation**: RSS feeds and web scraping for financial news (TASK-034)
 - **Manual Document Ingestion**: Support for text and Markdown files
 - **Chunking Strategy**: Intelligent text splitting with configurable chunk size and overlap
 - **Indexing Verification**: Tools to verify document indexing and searchability
@@ -344,6 +348,12 @@ The system uses environment variables loaded from `.env` file (automatically han
 | `RAG_RERANK_MODEL` | string | Reranking model name | `cross-encoder/ms-marco-MiniLM-L-6-v2` | - |
 | `RAG_QUERY_EXPANSION` | boolean | Enable financial domain query expansion | `true` | true/false |
 | `RAG_FEW_SHOT_EXAMPLES` | boolean | Include few-shot examples in prompts | `true` | true/false |
+| `NEWS_ENABLED` | boolean | Enable financial news aggregation | `true` | true/false |
+| `NEWS_USE_RSS` | boolean | Enable RSS feed parsing for news | `true` | true/false |
+| `NEWS_USE_SCRAPING` | boolean | Enable web scraping for news articles | `true` | true/false |
+| `NEWS_RSS_RATE_LIMIT_SECONDS` | float | Rate limit between RSS feed requests | `1.0` | 0.1-60.0 |
+| `NEWS_SCRAPING_RATE_LIMIT_SECONDS` | float | Rate limit between scraping requests | `2.0` | 0.1-60.0 |
+| `NEWS_SCRAPE_FULL_CONTENT` | boolean | Scrape full article content (not just RSS summaries) | `true` | true/false |
 
 ### RAG Optimization Configuration
 
@@ -748,6 +758,67 @@ chunk_ids = pipeline.process_transcripts(tickers, date="2025-01-15")
 **⚠️ Current Status**: Uses web scraping (risky - may violate ToS). API Ninjas integration pending.
 
 **Configuration**: See [Configuration Documentation](docs/reference/configuration.md#transcript-configuration-task-033) for transcript settings.
+
+#### Financial News Aggregation (TASK-034)
+
+Fetch and index financial news articles from RSS feeds and web scraping:
+
+```bash
+# Fetch from RSS feeds
+python scripts/fetch_news.py --feeds https://www.reuters.com/finance/rss
+
+# Scrape specific articles
+python scripts/fetch_news.py --urls https://www.reuters.com/article/example
+
+# Combine RSS and scraping
+python scripts/fetch_news.py --feeds https://www.cnbc.com/rss --urls https://www.bloomberg.com/article
+
+# Disable full content scraping (RSS summaries only)
+python scripts/fetch_news.py --feeds https://www.reuters.com/finance/rss --no-scraping
+
+# Dry run (don't store in ChromaDB)
+python scripts/fetch_news.py --feeds https://www.reuters.com/finance/rss --no-store
+```
+
+**Programmatic Usage**:
+```python
+from app.ingestion.pipeline import IngestionPipeline
+
+# Create pipeline
+pipeline = IngestionPipeline()
+
+# Process news from RSS feeds
+chunk_ids = pipeline.process_news(
+    feed_urls=["https://www.reuters.com/finance/rss"],
+    enhance_with_scraping=True,
+    store_embeddings=True
+)
+
+# Process news from direct URLs
+chunk_ids = pipeline.process_news(
+    article_urls=["https://www.reuters.com/article/example"],
+    store_embeddings=True
+)
+```
+
+**Features**:
+- **RSS Feed Parsing**: Parse RSS feeds from major financial news sources
+- **Web Scraping**: Scrape full article content with respectful rate limiting
+- **Ticker Detection**: Automatic extraction of ticker symbols mentioned in articles
+- **Article Categorization**: Automatic categorization (earnings, markets, analysis, m&a, ipo)
+- **Metadata Tagging**: Source, date, author, tickers, category stored as metadata
+- **Deduplication**: URL-based deduplication to avoid duplicate articles
+
+**Supported Sources**:
+- Reuters Finance
+- CNBC
+- Bloomberg
+- Financial Times
+- MarketWatch
+
+**Configuration**: See [Configuration Documentation](docs/reference/configuration.md#news-aggregation-configuration-task-034) for news settings.
+
+For detailed documentation, see [News Aggregation Integration](docs/integrations/news_aggregation.md).
 
 #### Manual Document Ingestion
 
@@ -1779,6 +1850,43 @@ When reporting issues, please include:
 - Steps to reproduce
 - Expected vs. actual behavior
 
+### Maintenance and Validation Tasks
+
+The project includes systematic maintenance and validation tasks to ensure codebase health and quality:
+
+**Maintenance Tasks** (Every 10 tasks):
+- **TASK-040_maintanance**: Codebase maintenance and structure optimization
+- **TASK-050**: Codebase maintenance and structure optimization
+- Pattern: Maintenance tasks are created every 10 tasks to review folder structure, optimize file organization, evaluate code length, and create utilities
+
+**Validation Tasks**:
+- **TASK-033_maintanance**: Maintenance test run - comprehensive codebase validation
+  - Run complete test suite (100% pass rate required)
+  - Validate all production functionality
+  - Check test code health
+  - Generate code coverage and quality reports
+  - Recommended before/after maintenance tasks
+
+**Task Management**:
+- All tasks are documented in `dev/tasks/` directory
+- See `dev/tasks/TASK-OVERVIEW.md` for complete task list and milestone mapping
+- Tasks follow naming convention: `TASK-XXX.md` for features, `TASK-XXX_maintanance.md` for maintenance/validation
+
+**Running Validation**:
+```bash
+# Run complete test suite
+pytest --cov=app --cov-report=term-missing --cov-report=html
+
+# Run type checking
+mypy app
+
+# Run linting
+flake8 app
+
+# Run formatting check
+black --check app
+```
+
 ## Project Structure
 
 ```
@@ -1787,6 +1895,12 @@ project/
 │   ├── ingestion/          # Document ingestion pipeline
 │   │   ├── document_loader.py    # Document loading and chunking
 │   │   ├── edgar_fetcher.py      # SEC EDGAR API integration
+│   │   ├── news_fetcher.py       # Financial news aggregation (TASK-034)
+│   │   ├── news_scraper.py       # Web scraping for news articles
+│   │   ├── rss_parser.py         # RSS feed parsing
+│   │   ├── transcript_fetcher.py # Earnings call transcript fetching
+│   │   ├── transcript_parser.py  # Transcript parsing
+│   │   ├── yfinance_fetcher.py  # Stock data fetching (TASK-030)
 │   │   └── pipeline.py           # End-to-end ingestion pipeline
 │   ├── rag/                # RAG chain implementation
 │   │   ├── chain.py              # RAG query system
@@ -1814,11 +1928,18 @@ project/
 │       └── README.md      # Sphinx setup and usage guide
 ├── dev/                    # Development tasks and bugs
 │   ├── tasks/              # Task definitions
+│   │   ├── TASK-OVERVIEW.md # Complete task overview and milestone mapping
+│   │   ├── TASK-033_maintanance.md # Maintenance test run (validation)
+│   │   ├── TASK-040_maintanance.md # Codebase maintenance (structure optimization)
+│   │   └── TASK-050.md     # Codebase maintenance (structure optimization)
 │   └── bugs/               # Bug reports
 ├── scripts/                # Utility scripts
 │   ├── deploy_local.sh     # Local deployment script
 │   ├── deploy_with_ngrok.sh # ngrok deployment script
 │   ├── fetch_edgar_data.py # EDGAR data fetching
+│   ├── fetch_news.py       # News aggregation script (TASK-034)
+│   ├── fetch_stock_data.py  # Stock data fetching (TASK-030)
+│   ├── fetch_transcripts.py # Transcript fetching (TASK-033)
 │   ├── run_streamlit.py    # Streamlit runner
 │   ├── test_*.py           # Various test scripts
 │   └── validate_setup.py  # Setup validation
@@ -1843,6 +1964,14 @@ project/
 
 ---
 
-**Last Updated**: 2025-01-27 (Coverage improved to 82.75%)
+**Last Updated**: 2025-01-27
 **Version**: 1.0.0
 **Status**: Production Ready
+
+**Recent Updates**:
+- TASK-034: Financial News Aggregation - Complete (RSS feeds, web scraping, ticker detection, categorization)
+- TASK-046-049: News enhancement tasks created (Summarization, Trend Analysis, Monitoring, Alerts)
+- TASK-033_maintanance: Maintenance Test Run task created (comprehensive codebase validation)
+- TASK-040_maintanance: Codebase Maintenance task created (structure optimization, utility creation)
+- TASK-050: Codebase Maintenance task created (structure optimization, utility creation)
+- Documentation updated with news aggregation integration guide

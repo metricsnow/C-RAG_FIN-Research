@@ -199,9 +199,16 @@ def initialize_metrics() -> None:
     _startup_time = time.time()
 
     # Register all metrics with default registry as well for compatibility
+    # Only register if not already registered to avoid duplicates
     for metric in metrics_registry._collector_to_names.keys():
         if hasattr(metric, "_name"):
-            REGISTRY.register(metric)
+            # Check if metric is already registered
+            if metric._name not in REGISTRY._names_to_collectors:
+                try:
+                    REGISTRY.register(metric)
+                except ValueError:
+                    # Metric already registered, skip
+                    pass
 
     # Start metrics HTTP server if enabled
     if config.metrics_enabled:

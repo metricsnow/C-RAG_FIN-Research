@@ -10,6 +10,7 @@ from typing import List, Optional
 from langchain_core.documents import Document
 
 from app.ingestion.document_loader import DocumentIngestionError, DocumentLoader
+from app.ingestion.news_fetcher import NewsFetcher, NewsFetcherError
 from app.ingestion.stock_data_normalizer import StockDataNormalizer
 from app.ingestion.transcript_fetcher import TranscriptFetcher, TranscriptFetcherError
 from app.ingestion.transcript_parser import TranscriptParser, TranscriptParserError
@@ -80,6 +81,17 @@ class IngestionPipeline:
         )
         self.transcript_parser = (
             TranscriptParser() if config.transcript_enabled else None
+        )
+        self.news_fetcher = (
+            NewsFetcher(
+                use_rss=config.news_use_rss,
+                use_scraping=config.news_use_scraping,
+                rss_rate_limit=config.news_rss_rate_limit_seconds,
+                scraping_rate_limit=config.news_scraping_rate_limit_seconds,
+                scrape_full_content=config.news_scrape_full_content,
+            )
+            if config.news_enabled
+            else None
         )
 
     def process_document(
@@ -713,6 +725,120 @@ class IngestionPipeline:
             f"stored {len(all_ids)} chunks"
         )
         return all_ids
+
+    def process_news(
+        self,
+        feed_urls: Optional[List[str]] = None,
+        article_urls: Optional[List[str]] = None,
+        enhance_with_scraping: bool = True,
+        store_embeddings: bool = True,
+    ) -> List[str]:
+        """
+        Process financial news articles: fetch, parse, and store.
+
+        Args:
+            feed_urls: List of RSS feed URLs (optional)
+            article_urls: List of article URLs to scrape (optional)
+            enhance_with_scraping: Whether to scrape full content for RSS articles
+            store_embeddings: Whether to store embeddings in ChromaDB (default: True)
+
+        Returns:
+            List of document chunk IDs stored in ChromaDB
+
+        Raises:
+            IngestionPipelineError: If processing fails
+        """
+        if not config.news_enabled:
+            raise IngestionPipelineError(
+                "News integration is disabled in configuration"
+            )
+
+        if self.news_fetcher is None:
+            raise IngestionPipelineError("News fetcher is not initialized")
+
+        logger.info("Processing financial news articles")
+        try:
+            # Step 1: Fetch news articles
+            logger.debug("Fetching news articles")
+            articles = self.news_fetcher.fetch_news(
+                feed_urls=feed_urls,
+                article_urls=article_urls,
+                enhance_with_scraping=enhance_with_scraping,
+            )
+
+            if not articles:
+                logger.warning("No news articles fetched")
+                return []
+
+            # Step 2: Convert to Document objects
+            logger.debug(f"Converting {len(articles)} articles to Document objects")
+            documents = self.news_fetcher.to_documents(articles)
+
+            if not documents:
+                logger.warning("No documents generated from news articles")
+                return []
+
+            # Step 3: Chunk documents
+            all_chunks = []
+            for doc in documents:
+                chunks = self.document_loader.chunk_document(doc)
+                all_chunks.extend(chunks)
+
+            if not all_chunks:
+                logger.warning("No chunks generated from news articles")
+                return []
+
+            logger.info(f"Generated {len(all_chunks)} chunks from news articles")
+
+            # Step 4: Generate embeddings
+            logger.debug(f"Generating embeddings for {len(all_chunks)} chunks")
+            texts = [chunk.page_content for chunk in all_chunks]
+            embeddings = self.embedding_generator.embed_documents(texts)
+
+            if len(embeddings) != len(all_chunks):
+                logger.error(
+                    f"Embedding count ({len(embeddings)}) does not match "
+                    f"chunk count ({len(all_chunks)})"
+                )
+                raise IngestionPipelineError(
+                    f"Embedding count ({len(embeddings)}) does not match "
+                    f"chunk count ({len(all_chunks)})"
+                )
+
+            # Step 5: Store in ChromaDB (if requested)
+            if store_embeddings:
+                logger.debug(f"Storing {len(all_chunks)} chunks in ChromaDB")
+                ids = self.chroma_store.add_documents(all_chunks, embeddings)
+                logger.info(
+                    f"Successfully stored {len(ids)} news article chunks in ChromaDB"
+                )
+                track_success(document_ingestion_total)
+                return ids
+            else:
+                logger.debug("Skipping ChromaDB storage (store_embeddings=False)")
+                track_success(document_ingestion_total)
+                return [f"chunk_{i}" for i in range(len(all_chunks))]
+
+        except NewsFetcherError as e:
+            logger.error(f"News fetching failed: {str(e)}", exc_info=True)
+            track_error(document_ingestion_total)
+            raise IngestionPipelineError(f"News fetching failed: {str(e)}") from e
+        except EmbeddingError as e:
+            logger.error(f"Embedding generation failed: {str(e)}", exc_info=True)
+            track_error(document_ingestion_total)
+            raise IngestionPipelineError(
+                f"Embedding generation failed: {str(e)}"
+            ) from e
+        except ChromaStoreError as e:
+            logger.error(f"ChromaDB storage failed: {str(e)}", exc_info=True)
+            track_error(document_ingestion_total)
+            raise IngestionPipelineError(f"ChromaDB storage failed: {str(e)}") from e
+        except Exception as e:
+            logger.error(f"Unexpected error processing news: {str(e)}", exc_info=True)
+            track_error(document_ingestion_total)
+            raise IngestionPipelineError(
+                f"Unexpected error processing news: {str(e)}"
+            ) from e
 
 
 def create_pipeline(
