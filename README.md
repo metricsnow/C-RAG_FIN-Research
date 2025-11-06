@@ -222,13 +222,6 @@ The project is organized into several key modules, each implementing specific st
 │   │   ├── test_pipeline_comprehensive.py   # Ingestion tests
 │   │   └── test_end_to_end.py               # Integration tests
 │   └── README.md               # Detailed project README
-│
-└── development_framework_v2a/  # Development framework (internal)
-    └── framework/              # Framework components
-        ├── agents/             # AI agent definitions
-        ├── commands/           # Command definitions
-        ├── docs/               # Framework documentation
-        └── workflows/          # Workflow definitions
 ```
 
 ## Documentation
