@@ -10,6 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.api.main import app
+from app.api.routes.documents import get_document_manager
 from app.utils.config import config
 
 
@@ -371,10 +372,10 @@ class TestDocumentsEndpoints:
 
     def test_delete_document_not_found(self, api_client, api_headers):
         """Test delete document with non-existent ID."""
-        with patch("app.api.routes.documents.DocumentManager") as mock_doc_mgr:
-            mock_manager = mock_doc_mgr.return_value
-            mock_manager.delete_documents.return_value = 0  # No documents deleted
-
+        # Patch delete_documents on the actual DocumentManager instance
+        with patch.object(
+            get_document_manager(), "delete_documents", return_value=0
+        ) as mock_delete:
             response = api_client.delete(
                 "/api/v1/documents/nonexistent",
                 headers=api_headers,
@@ -384,6 +385,7 @@ class TestDocumentsEndpoints:
                 pytest.skip("API key authentication required but not configured")
 
             assert response.status_code == 404
+            mock_delete.assert_called_once_with(["nonexistent"])
 
 
 class TestAuthentication:
@@ -502,10 +504,11 @@ class TestErrorHandling:
 
     def test_500_internal_error_handling(self, api_client, api_headers):
         """Test that internal errors are handled gracefully."""
-        # Patch get_rag_system to raise an exception
-        with patch("app.api.routes.query.get_rag_system") as mock_get_rag:
-            mock_get_rag.side_effect = Exception("Internal error")
+        # Patch the RAG system's query method to raise an exception
+        from app.api.routes.query import get_rag_system
 
+        rag_system = get_rag_system()
+        with patch.object(rag_system, "query", side_effect=Exception("Internal error")):
             response = api_client.post(
                 "/api/v1/query",
                 json={"question": "Test"},

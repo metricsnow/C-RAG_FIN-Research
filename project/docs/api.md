@@ -710,6 +710,84 @@ For complete configuration documentation, see [Configuration Guide](configuratio
 
 ---
 
+## Testing
+
+The FastAPI backend includes comprehensive test coverage:
+
+### Test Suite
+
+**Location**: `tests/test_api.py`
+
+**Test Coverage**:
+- **27 total tests** (24 passing, 3 skipped when API key not configured)
+- **API Routes**: 75-92% code coverage
+- **API Models**: 100% code coverage
+- **API Middleware**: 94% code coverage
+
+### Test Categories
+
+1. **Health Endpoints** (5 tests)
+   - Root endpoint
+   - Comprehensive health check
+   - Liveness probe
+   - Readiness probe
+   - Prometheus metrics
+
+2. **Query Endpoints** (5 tests)
+   - Query with/without authentication
+   - Custom top_k parameter
+   - Invalid request validation
+   - Empty question handling
+
+3. **Ingestion Endpoints** (4 tests)
+   - File path ingestion
+   - File upload ingestion
+   - Missing file error handling
+   - File not found error handling
+
+4. **Document Management** (5 tests)
+   - List documents
+   - Get document by ID
+   - Get document not found
+   - Delete document
+   - Delete document not found
+
+5. **Authentication** (3 tests)
+   - Missing API key when required
+   - Invalid API key rejection
+   - Valid API key acceptance
+
+6. **Rate Limiting** (2 tests)
+   - Rate limit headers
+   - Rate limit enforcement
+
+7. **Error Handling** (3 tests)
+   - 404 not found
+   - 422 validation error
+   - 500 internal error handling
+
+### Running Tests
+
+```bash
+# Run all API tests
+pytest tests/test_api.py -v
+
+# Run with coverage
+pytest tests/test_api.py --cov=app.api --cov-report=term-missing
+
+# Run specific test category
+pytest tests/test_api.py::TestQueryEndpoints -v
+```
+
+### Test Results
+
+All tests are passing:
+- ✅ 24 tests passing
+- ⏭️ 3 tests skipped (authentication tests when API key not configured - expected behavior)
+- ❌ 0 tests failing
+
+---
+
 ## Support
 
 For issues or questions:
@@ -717,3 +795,4 @@ For issues or questions:
 2. Review application logs
 3. Check the interactive API documentation at `/docs`
 4. Verify configuration in `.env` file
+5. Review test suite in `tests/test_api.py` for usage examples

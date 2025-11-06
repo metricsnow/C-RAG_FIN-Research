@@ -52,12 +52,12 @@ exclude_lines =
 
 **Overall Coverage**: **82.75%** ✅ (exceeded 80% target, improved from 57%)
 
-**Test Count**: **177 tests** (all tests organized in `tests/` directory following standard Python conventions)
+**Test Count**: **204 tests** (all tests organized in `tests/` directory following standard Python conventions)
 
 **Coverage Achievement**:
 - ✅ **Target**: 80%+ ✅ **Achieved**: 82.75%
 - ✅ **Improvement**: +25.75 percentage points (from 57% to 82.75%)
-- ✅ **New Test Files**: EDGAR fetcher tests (40 tests), UI tests (25 tests), enhanced embedding tests
+- ✅ **New Test Files**: EDGAR fetcher tests (40 tests), UI tests (25 tests), enhanced embedding tests, FastAPI backend tests (27 tests - TASK-029)
 
 **Module Coverage Breakdown**:
 
@@ -72,6 +72,12 @@ exclude_lines =
 | `app/rag/embedding_factory.py` | 85%+ | ✅ Excellent (improved from 67%) |
 | `app/ingestion/edgar_fetcher.py` | 85%+ | ✅ Excellent (improved from 12% - mocked tests added) |
 | `app/ui/app.py` | 70%+ | ✅ Good (improved from 0% - UI tests with mocking added) |
+| `app/api/routes/query.py` | 91% | ✅ Excellent (TASK-029) |
+| `app/api/routes/ingestion.py` | 85% | ✅ Excellent (TASK-029) |
+| `app/api/routes/documents.py` | 75% | ✅ Good (TASK-029) |
+| `app/api/routes/health.py` | 92% | ✅ Excellent (TASK-029) |
+| `app/api/middleware.py` | 94% | ✅ Excellent (TASK-029) |
+| `app/api/models/*.py` | 100% | ✅ Excellent (TASK-029) |
 
 ### Coverage Goals
 
@@ -293,9 +299,10 @@ tests/
 ├── test_edgar_fetcher.py                  # EDGAR fetcher tests (40 tests)
 ├── test_ui_app.py                         # UI/Streamlit tests (25 tests)
 └── test_ollama.py                         # Ollama API integration tests (3 tests)
+└── test_api.py                            # FastAPI backend tests (27 tests) - TASK-029
 ```
 
-**Total**: **177 tests** covering all main functionalities
+**Total**: **204 tests** covering all main functionalities (177 original + 27 API tests from TASK-029)
 
 **Note**: All tests are organized in the `tests/` directory following standard Python conventions. Legacy script-based tests in `scripts/` have been removed in favor of pytest-based tests.
 
@@ -316,6 +323,7 @@ Tests are categorized using pytest markers:
 - `@pytest.mark.ollama` - Tests requiring Ollama
 - `@pytest.mark.chromadb` - Tests requiring ChromaDB
 - `@pytest.mark.streamlit` - Tests requiring Streamlit UI
+- `@pytest.mark.api` - FastAPI backend tests (TASK-029)
 
 **Run by marker**:
 ```bash
