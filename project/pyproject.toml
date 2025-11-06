@@ -51,6 +51,9 @@ dependencies = [
     "prometheus-client>=0.20.0",
     "rank-bm25>=0.2.2",
     "sentence-transformers>=2.2.0",
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "python-multipart>=0.0.9",
 ]
 
 # Optional dependencies grouped by purpose

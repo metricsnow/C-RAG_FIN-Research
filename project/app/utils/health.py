@@ -247,5 +247,108 @@ def get_health_status() -> Dict:
     Returns:
         Dictionary with health status
     """
-    handler = HealthCheckHandler(None, None, None)
+
+    # Create a mock handler instance for health checking
+    # We can't use the real handler constructor, so we create a minimal instance
+    class MockHandler:
+        """Mock handler for health status checking."""
+
+        def _check_health(self) -> Dict:
+            """Perform comprehensive health check."""
+            health_status = {
+                "status": "healthy",
+                "timestamp": time.time(),
+                "components": {},
+            }
+
+            # Check ChromaDB
+            chromadb_status = self._check_chromadb()
+            health_status["components"]["chromadb"] = chromadb_status
+            if chromadb_status["status"] != "healthy":
+                health_status["status"] = "unhealthy"
+
+            # Check Ollama
+            ollama_status = self._check_ollama()
+            health_status["components"]["ollama"] = ollama_status
+            if ollama_status["status"] != "healthy" and config.llm_provider == "ollama":
+                health_status["status"] = "unhealthy"
+
+            # Check OpenAI (if configured)
+            if config.embedding_provider == "openai":
+                openai_status = self._check_openai()
+                health_status["components"]["openai"] = openai_status
+                if openai_status["status"] != "healthy":
+                    health_status["status"] = "unhealthy"
+
+            # Update metrics
+            system_health_status.set(1 if health_status["status"] == "healthy" else 0)
+            update_uptime()
+
+            return health_status
+
+        def _check_chromadb(self) -> Dict:
+            """Check ChromaDB connectivity and status."""
+            try:
+                from app.vector_db import ChromaStore
+
+                store = ChromaStore()
+                count = store.count()
+                return {
+                    "status": "healthy",
+                    "document_count": count,
+                    "collection": store.collection_name,
+                }
+            except Exception as e:
+                logger.debug(f"ChromaDB health check failed: {e}")
+                return {"status": "unhealthy", "error": str(e)}
+
+        def _check_ollama(self) -> Dict:
+            """Check Ollama service availability."""
+            try:
+                import requests
+
+                response = requests.get(
+                    f"{config.ollama_base_url}/api/tags",
+                    timeout=2,
+                )
+                if response.status_code == 200:
+                    models = response.json().get("models", [])
+                    return {
+                        "status": "healthy",
+                        "base_url": config.ollama_base_url,
+                        "models_available": len(models),
+                    }
+                else:
+                    return {
+                        "status": "unhealthy",
+                        "error": f"Ollama returned status {response.status_code}",
+                    }
+            except Exception as e:
+                logger.debug(f"Ollama health check failed: {e}")
+                return {"status": "unhealthy", "error": str(e)}
+
+        def _check_openai(self) -> Dict:
+            """Check OpenAI API connectivity."""
+            try:
+                import requests  # noqa: F401
+
+                if not config.openai_api_key:
+                    return {
+                        "status": "unhealthy",
+                        "error": "OpenAI API key not configured",
+                    }
+
+                # Simple API check - verify API key is valid format
+                if not config.openai_api_key.startswith("sk-"):
+                    return {
+                        "status": "unhealthy",
+                        "error": "OpenAI API key format invalid",
+                    }
+
+                return {"status": "healthy", "api_key_configured": True}
+            except Exception as e:
+                logger.debug(f"OpenAI health check failed: {e}")
+                return {"status": "unhealthy", "error": str(e)}
+
+    handler = MockHandler()
     return handler._check_health()

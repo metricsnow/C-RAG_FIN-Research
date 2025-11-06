@@ -266,6 +266,51 @@ class Config(BaseSettings):
         description="Maximum number of previous messages to include",
     )
 
+    # API Configuration (TASK-029)
+    api_host: str = Field(
+        default="0.0.0.0",
+        alias="API_HOST",
+        description="API server host address",
+    )
+    api_port: int = Field(
+        default=8000,
+        ge=1024,
+        le=65535,
+        alias="API_PORT",
+        description="API server port",
+    )
+    api_title: str = Field(
+        default="Financial Research Assistant API",
+        alias="API_TITLE",
+        description="API title for OpenAPI documentation",
+    )
+    api_version: str = Field(
+        default="1.0.0",
+        alias="API_VERSION",
+        description="API version",
+    )
+    api_enabled: bool = Field(
+        default=True,
+        alias="API_ENABLED",
+        description="Enable API server",
+    )
+    api_key: str = Field(
+        default="",
+        alias="API_KEY",
+        description="API key for authentication (empty = disabled)",
+    )
+    api_rate_limit_per_minute: int = Field(
+        default=60,
+        ge=1,
+        alias="API_RATE_LIMIT_PER_MINUTE",
+        description="API rate limit per minute per API key/IP",
+    )
+    api_cors_origins: str = Field(
+        default="*",
+        alias="API_CORS_ORIGINS",
+        description="CORS allowed origins (comma-separated, * for all)",
+    )
+
     # Project paths (computed fields)
     _project_root: Optional[Path] = None
     _data_dir: Optional[Path] = None

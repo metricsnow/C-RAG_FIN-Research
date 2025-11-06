@@ -333,6 +333,85 @@ CONVERSATION_MAX_HISTORY=5
 
 **Backward Compatibility**: Conversation memory is fully backward compatible. If `conversation_history` is not provided, queries work exactly as before (single-turn mode).
 
+### API Configuration (TASK-029)
+
+The system includes a FastAPI backend for RESTful API access. All API configuration is managed via environment variables.
+
+| Variable | Type | Default | Constraints | Description |
+|----------|------|---------|------------|-------------|
+| `API_HOST` | string | `0.0.0.0` | - | API server host address |
+| `API_PORT` | integer | `8000` | Range: 1024 - 65535 | API server port |
+| `API_TITLE` | string | `Financial Research Assistant API` | - | API title for OpenAPI documentation |
+| `API_VERSION` | string | `1.0.0` | - | API version |
+| `API_ENABLED` | boolean | `true` | `true`/`false`, `1`/`0`, `yes`/`no` | Enable API server |
+| `API_KEY` | string | `""` | - | API key for authentication (empty = disabled) |
+| `API_RATE_LIMIT_PER_MINUTE` | integer | `60` | Must be >= 1 | Rate limit per minute per API key/IP |
+| `API_CORS_ORIGINS` | string | `*` | - | CORS allowed origins (comma-separated, * for all) |
+
+**API Features**:
+
+1. **RESTful Endpoints**: All core functionality available via REST API
+   - Query endpoint: `POST /api/v1/query`
+   - Ingestion endpoint: `POST /api/v1/ingest`
+   - Document management: `GET /api/v1/documents`, `GET /api/v1/documents/{id}`, `DELETE /api/v1/documents/{id}`
+   - Health checks: `GET /api/v1/health`, `GET /api/v1/health/live`, `GET /api/v1/health/ready`
+   - Metrics: `GET /api/v1/health/metrics`
+
+2. **Authentication**: Optional API key authentication
+   - Set `API_KEY` to enable authentication
+   - API key provided via `X-API-Key` header
+   - If `API_KEY` is empty, authentication is disabled
+
+3. **Rate Limiting**: Per-API-key/IP rate limiting
+   - Default: 60 requests per minute
+   - Configurable via `API_RATE_LIMIT_PER_MINUTE`
+   - Rate limit headers in responses: `X-RateLimit-Limit`, `X-RateLimit-Remaining`
+
+4. **CORS Support**: Cross-origin resource sharing
+   - Default: Allows all origins (`*`)
+   - Configurable via `API_CORS_ORIGINS` (comma-separated list)
+   - Example: `API_CORS_ORIGINS=http://localhost:3000,https://example.com`
+
+5. **OpenAPI Documentation**: Auto-generated API documentation
+   - Swagger UI: `http://localhost:8000/docs`
+   - ReDoc: `http://localhost:8000/redoc`
+   - OpenAPI JSON: `http://localhost:8000/openapi.json`
+
+**Example Configuration**:
+```bash
+# Enable API server
+API_ENABLED=true
+API_HOST=0.0.0.0
+API_PORT=8000
+
+# Enable authentication (optional)
+API_KEY=your-secret-api-key-here
+
+# Configure rate limiting
+API_RATE_LIMIT_PER_MINUTE=60
+
+# Configure CORS (production: restrict to known domains)
+API_CORS_ORIGINS=*
+```
+
+**Starting the API Server**:
+```bash
+# Using startup script
+python scripts/start_api.py
+
+# Or using uvicorn directly
+uvicorn app.api.main:app --host 0.0.0.0 --port 8000
+```
+
+**Security Recommendations**:
+- Use strong, randomly generated API keys in production
+- Restrict CORS origins to known domains in production
+- Use HTTPS in production (configure reverse proxy with SSL/TLS)
+- Monitor rate limits and adjust as needed
+- Rotate API keys regularly
+
+For complete API documentation, see [API Documentation](api.md).
+
 ### Conversation History Management (TASK-025)
 
 The system includes conversation history management features that allow users to clear and export their conversation history.

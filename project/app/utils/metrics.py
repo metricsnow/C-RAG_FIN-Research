@@ -21,6 +21,7 @@ from prometheus_client import (
     Counter,
     Gauge,
     Histogram,
+    generate_latest,
     start_http_server,
 )
 
@@ -276,3 +277,13 @@ def track_success(counter: Counter, labels: Optional[dict] = None) -> None:
         labels = {}
     labels.setdefault("status", "success")
     counter.labels(**labels).inc()
+
+
+def get_metrics() -> bytes:
+    """
+    Get Prometheus metrics in text format.
+
+    Returns:
+        Metrics in Prometheus text format as bytes
+    """
+    return generate_latest(metrics_registry)

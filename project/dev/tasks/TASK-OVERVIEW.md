@@ -4,7 +4,7 @@
 
 **Created**: 2025-01-27
 **Total Tasks**: 44 (13 MVP + 10 Post-MVP Enhancements + 4 Phase 1 Missing Features + 1 RAG Optimization + 16 Phase 2 Features)
-**Status**: 26 tasks completed, 18 tasks waiting
+**Status**: 28 tasks completed, 16 tasks waiting
 
 ---
 
@@ -133,8 +133,8 @@ Before starting Milestone 1, ensure:
 | Task ID | Task Name | Priority | Dependencies | Status |
 |---------|-----------|----------|---------------|--------|
 | TASK-024 | Conversation Memory - Context Usage in Queries | Medium | TASK-007, TASK-008 | ✅ Done |
-| TASK-025 | Conversation History Management UI | Low | TASK-024 | Waiting |
-| TASK-026 | Financial Domain Custom Embeddings | Medium | TASK-006, TASK-005 | Waiting |
+| TASK-025 | Conversation History Management UI | Low | TASK-024 | ✅ Done |
+| TASK-026 | Financial Domain Custom Embeddings | Medium | TASK-006, TASK-005 | ✅ Done |
 | TASK-027 | Document Source Management UI | Medium | TASK-005, TASK-008 | ✅ Done |
 | TASK-028 | RAG System Optimization for Improved Answer Quality | High | TASK-007, TASK-004, TASK-005 | ✅ Done |
 
@@ -201,14 +201,14 @@ Before starting Milestone 1, ensure:
 
 | Status | Count |
 |--------|-------|
-| Waiting | 18 |
+| Waiting | 16 |
 | In Progress | 0 |
-| Completed | 26 |
+| Completed | 28 |
 | Total | 44 |
 
 **MVP Tasks**: 13/13 ✅ Complete
 **Post-MVP Enhancements**: 10/10 ✅ Complete
-**Phase 1 Missing Features**: 2/4 ✅ (TASK-024, TASK-027 Complete, 2 remaining)
+**Phase 1 Missing Features**: 4/4 ✅ Complete (TASK-024, TASK-025, TASK-026, TASK-027, TASK-028)
 **RAG Optimization**: 1/1 ✅ Complete (TASK-028)
 **Phase 2 Features**: 0/16 ⏳ (16 tasks created, all waiting)
 

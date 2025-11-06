@@ -12,6 +12,7 @@ A production-ready RAG (Retrieval-Augmented Generation) system for semantic sear
 - [Usage Guide](#usage-guide)
 - [Architecture](#architecture)
 - [Deployment](#deployment)
+- [API Documentation](#api-documentation)
 - [Troubleshooting](#troubleshooting)
 - [Contributing](#contributing)
 - [Project Structure](#project-structure)
@@ -27,6 +28,7 @@ A production-ready RAG (Retrieval-Augmented Generation) system for semantic sear
 - **Financial Domain Specialization**: Optimized for financial terminology and research queries
 - **Vector Database**: Persistent ChromaDB storage for efficient similarity search
 - **Streamlit UI**: Modern, interactive chat interface with model selection toggle for querying documents
+- **FastAPI Backend**: Production-ready RESTful API for programmatic access and integration (TASK-029)
 - **Document Management**: Comprehensive UI for managing indexed documents with search, filtering, and deletion (TASK-027)
 - **Conversation Memory**: Multi-turn conversations with context preservation across queries (TASK-024)
 - **Conversation Management**: Clear and export conversation history in multiple formats (TASK-025)
@@ -42,6 +44,7 @@ A production-ready RAG (Retrieval-Augmented Generation) system for semantic sear
 - **Performance Optimized**: Average query response time <5 seconds
 - **Production Ready**: Multiple deployment options (local, ngrok, VPS)
 - **Interactive Model Selection**: UI toggle to switch between local Ollama and OpenAI LLMs
+- **RESTful API**: FastAPI backend with OpenAPI documentation, authentication, and rate limiting (TASK-029)
 
 ### Conversation Memory Features (TASK-024, TASK-025)
 
@@ -632,6 +635,133 @@ python -u scripts/verify_document_indexing.py
    chunk_ids = pipeline.process_document_objects(documents)
    ```
 
+### Using the FastAPI Backend (TASK-029)
+
+The application includes a production-ready RESTful API for programmatic access and integration.
+
+#### Starting the API Server
+
+```bash
+# Activate virtual environment
+source venv/bin/activate
+
+# Start API server
+python scripts/start_api.py
+
+# Or using uvicorn directly
+uvicorn app.api.main:app --host 0.0.0.0 --port 8000
+```
+
+The API will be available at `http://localhost:8000` (or configured host/port).
+
+#### API Endpoints
+
+**Query Endpoint**:
+```bash
+POST /api/v1/query
+Content-Type: application/json
+X-API-Key: your-api-key (if configured)
+
+{
+  "question": "What was Apple's revenue in 2023?",
+  "top_k": 5,
+  "conversation_history": []  # Optional
+}
+```
+
+**Document Ingestion**:
+```bash
+POST /api/v1/ingest
+Content-Type: multipart/form-data
+X-API-Key: your-api-key (if configured)
+
+# Option 1: File upload
+file: <file content>
+
+# Option 2: File path
+{
+  "file_path": "data/documents/document.txt",
+  "store_embeddings": true
+}
+```
+
+**Document Management**:
+```bash
+# List all documents
+GET /api/v1/documents
+X-API-Key: your-api-key (if configured)
+
+# Get document by ID
+GET /api/v1/documents/{doc_id}
+X-API-Key: your-api-key (if configured)
+
+# Delete document
+DELETE /api/v1/documents/{doc_id}
+X-API-Key: your-api-key (if configured)
+```
+
+**Health Check**:
+```bash
+# Comprehensive health check
+GET /api/v1/health
+
+# Liveness probe
+GET /api/v1/health/live
+
+# Readiness probe
+GET /api/v1/health/ready
+
+# Prometheus metrics
+GET /api/v1/health/metrics
+```
+
+#### Interactive API Documentation
+
+FastAPI automatically generates interactive API documentation:
+- **Swagger UI**: `http://localhost:8000/docs`
+- **ReDoc**: `http://localhost:8000/redoc`
+- **OpenAPI JSON**: `http://localhost:8000/openapi.json`
+
+#### Authentication
+
+API key authentication is optional and configurable:
+- If `API_KEY` is set in `.env`, authentication is required
+- If `API_KEY` is empty, authentication is disabled
+- API key is provided via `X-API-Key` header
+
+#### Rate Limiting
+
+The API includes rate limiting middleware:
+- Default: 60 requests per minute per API key/IP
+- Configurable via `API_RATE_LIMIT_PER_MINUTE` environment variable
+- Rate limit headers included in responses: `X-RateLimit-Limit`, `X-RateLimit-Remaining`
+
+#### Example Usage
+
+**Python Client**:
+```python
+import requests
+
+# Query endpoint
+response = requests.post(
+    "http://localhost:8000/api/v1/query",
+    json={"question": "What is revenue?"},
+    headers={"X-API-Key": "your-api-key"}  # If configured
+)
+data = response.json()
+print(data["answer"])
+```
+
+**cURL**:
+```bash
+curl -X POST "http://localhost:8000/api/v1/query" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your-api-key" \
+  -d '{"question": "What is revenue?"}'
+```
+
+For complete API documentation, see [API Documentation](docs/api.md).
+
 ### Running Tests
 
 The project uses pytest for comprehensive test execution. All tests are organized in the `tests/` directory following standard Python conventions.
@@ -776,7 +906,34 @@ pytest -m ollama
   - Ollama embeddings (fallback)
   - Batch embedding generation
 
-#### 4. Frontend Layer
+#### 4. API Layer (TASK-029)
+
+- **FastAPI Application** (`app/api/main.py`):
+  - RESTful API endpoints for all core operations
+  - OpenAPI/Swagger documentation auto-generation
+  - Authentication and rate limiting middleware
+  - CORS configuration for cross-origin requests
+  - Error handling with proper HTTP status codes
+
+- **API Routes** (`app/api/routes/`):
+  - Query endpoints (`query.py`)
+  - Ingestion endpoints (`ingestion.py`)
+  - Document management endpoints (`documents.py`)
+  - Health check endpoints (`health.py`)
+
+- **API Models** (`app/api/models/`):
+  - Pydantic models for request/response validation
+  - Query, ingestion, and document schemas
+
+- **API Middleware** (`app/api/middleware.py`):
+  - Rate limiting per API key/IP
+  - Request logging with process time headers
+
+- **API Authentication** (`app/api/auth.py`):
+  - API key authentication (optional, configurable)
+  - Header-based authentication (`X-API-Key`)
+
+#### 5. Frontend Layer
 
 - **Streamlit App** (`app/ui/app.py`):
   - Chat interface using Streamlit components
@@ -785,7 +942,7 @@ pytest -m ollama
   - Citation display
   - Error handling with user-friendly messages
 
-#### 5. Configuration Layer
+#### 6. Configuration Layer
 
 - **Config Module** (`app/utils/config.py`):
   - Environment variable loading
@@ -805,6 +962,12 @@ pytest -m ollama
    Prompt Construction → LLM Generation → Answer + Citations
    ```
 
+3. **API Request Flow** (TASK-029):
+   ```
+   API Request → Authentication → Rate Limiting → Route Handler →
+   RAG System / Ingestion Pipeline / Document Manager → Response
+   ```
+
 ### Technology Stack
 
 - **Python 3.11+**: Core language
@@ -812,6 +975,7 @@ pytest -m ollama
 - **Ollama**: Local LLM deployment
 - **ChromaDB**: Vector database for embeddings
 - **Streamlit**: Web frontend
+- **FastAPI**: RESTful API backend (TASK-029)
 - **OpenAI API**: Embedding generation (optional)
 - **SEC EDGAR API**: Financial document fetching
 
@@ -874,6 +1038,70 @@ See comprehensive guide: [`docs/deployment.md`](docs/deployment.md)
 - Minimum 8GB RAM (16GB recommended)
 - Root or sudo access
 - Domain name (for SSL)
+
+## API Documentation
+
+The application includes a production-ready FastAPI backend (TASK-029) that provides RESTful API access to all core functionality.
+
+### Quick Start
+
+**Start the API server**:
+```bash
+source venv/bin/activate
+python scripts/start_api.py
+```
+
+The API will be available at `http://localhost:8000` with interactive documentation at `http://localhost:8000/docs`.
+
+### Key Features
+
+- **RESTful Endpoints**: Query, ingestion, document management, and health checks
+- **OpenAPI Documentation**: Auto-generated Swagger UI and ReDoc
+- **Authentication**: Optional API key authentication (configurable)
+- **Rate Limiting**: Per-API-key/IP rate limiting (60 requests/minute default)
+- **CORS Support**: Configurable cross-origin resource sharing
+- **Error Handling**: Comprehensive error handling with proper HTTP status codes
+- **Async Support**: Async endpoints for I/O-bound operations
+
+### Available Endpoints
+
+- `POST /api/v1/query` - RAG query endpoint
+- `POST /api/v1/ingest` - Document ingestion endpoint
+- `GET /api/v1/documents` - List all documents
+- `GET /api/v1/documents/{doc_id}` - Get document by ID
+- `DELETE /api/v1/documents/{doc_id}` - Delete document
+- `GET /api/v1/health` - Comprehensive health check
+- `GET /api/v1/health/live` - Liveness probe
+- `GET /api/v1/health/ready` - Readiness probe
+- `GET /api/v1/health/metrics` - Prometheus metrics
+
+### Interactive Documentation
+
+- **Swagger UI**: `http://localhost:8000/docs` - Interactive API explorer
+- **ReDoc**: `http://localhost:8000/redoc` - Clean, readable documentation
+- **OpenAPI JSON**: `http://localhost:8000/openapi.json` - Machine-readable specification
+
+### Configuration
+
+API configuration is managed via environment variables in `.env`:
+
+```bash
+API_ENABLED=true
+API_HOST=0.0.0.0
+API_PORT=8000
+API_KEY=your-api-key-here  # Optional: empty = disabled
+API_RATE_LIMIT_PER_MINUTE=60
+API_CORS_ORIGINS=*
+```
+
+For complete API documentation including:
+- Detailed endpoint reference with request/response schemas
+- Authentication and security guide
+- Rate limiting configuration
+- Code examples in Python, JavaScript, and cURL
+- Error handling and troubleshooting
+
+See: **[Complete API Documentation](docs/api.md)**
 
 ## Troubleshooting
 

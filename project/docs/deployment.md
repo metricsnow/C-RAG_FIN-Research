@@ -6,10 +6,13 @@ This document provides comprehensive instructions for deploying the Financial Re
 
 The application consists of:
 - **Streamlit Frontend**: Web interface (port 8501)
+- **FastAPI Backend**: RESTful API server (port 8000) - Optional (TASK-029)
 - **Ollama LLM Service**: Local LLM server (port 11434)
 - **ChromaDB**: Vector database (persistent storage in `data/chroma_db/`)
 
 **Important**: Ollama requires self-hosting, so Streamlit Cloud is not an option. You must deploy to a VPS or use local deployment with ngrok tunneling.
+
+**Note**: The FastAPI backend is optional and can run independently of the Streamlit frontend. Both can run simultaneously on different ports.
 
 ## Deployment Options
 
@@ -54,8 +57,16 @@ The application consists of:
    streamlit run app/ui/app.py
    ```
 
-5. **Access the application**:
-   - Open browser to: `http://localhost:8501`
+5. **Start API server** (optional):
+   ```bash
+   # In a separate terminal
+   python scripts/start_api.py
+   ```
+
+6. **Access the application**:
+   - Streamlit UI: `http://localhost:8501`
+   - FastAPI API: `http://localhost:8000`
+   - API Documentation: `http://localhost:8000/docs`
 
 ### Option 2: Local Deployment with ngrok (Demo/Testing)
 
@@ -172,9 +183,25 @@ The `.streamlit/config.toml` file is already configured for production with:
 - Security settings enabled
 - Performance optimizations
 
+#### 4a. Configure FastAPI for Production (Optional)
+
+The FastAPI backend can run alongside Streamlit or independently:
+
+```bash
+# Configure API in .env
+API_ENABLED=true
+API_HOST=0.0.0.0
+API_PORT=8000
+API_KEY=your-production-api-key-here  # Strong, random key
+API_RATE_LIMIT_PER_MINUTE=60
+API_CORS_ORIGINS=http://your-domain.com,https://your-domain.com  # Restrict in production
+```
+
 #### 5. Set Up Process Management (systemd)
 
-Create a systemd service for Streamlit:
+Create systemd services for Streamlit and FastAPI:
+
+**Streamlit Service**:
 
 ```bash
 sudo nano /etc/systemd/system/streamlit-app.service
@@ -200,13 +227,45 @@ RestartSec=10
 WantedBy=multi-user.target
 ```
 
-Enable and start the service:
+**FastAPI Service** (optional):
 
 ```bash
+sudo nano /etc/systemd/system/fastapi-app.service
+```
+
+Add the following content:
+
+```ini
+[Unit]
+Description=FastAPI Financial Research Assistant API
+After=network.target
+
+[Service]
+Type=simple
+User=your-username
+WorkingDirectory=/path/to/project
+Environment="PATH=/path/to/project/venv/bin"
+ExecStart=/path/to/project/venv/bin/python scripts/start_api.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable and start the services:
+
+```bash
+# Streamlit
 sudo systemctl daemon-reload
 sudo systemctl enable streamlit-app
 sudo systemctl start streamlit-app
 sudo systemctl status streamlit-app
+
+# FastAPI (if using)
+sudo systemctl enable fastapi-app
+sudo systemctl start fastapi-app
+sudo systemctl status fastapi-app
 ```
 
 #### 6. Configure Firewall
@@ -219,20 +278,23 @@ sudo ufw allow 443/tcp
 # Allow Streamlit port (if accessing directly)
 sudo ufw allow 8501/tcp
 
+# Allow FastAPI port (if accessing directly)
+sudo ufw allow 8000/tcp
+
 # Enable firewall
 sudo ufw enable
 ```
 
 #### 7. Set Up Reverse Proxy (Optional but Recommended)
 
-Using Nginx as reverse proxy:
+Using Nginx as reverse proxy for both Streamlit and FastAPI:
 
 ```bash
 # Install Nginx
 sudo apt install nginx -y
 
 # Create Nginx configuration
-sudo nano /etc/nginx/sites-available/streamlit-app
+sudo nano /etc/nginx/sites-available/financial-research-app
 ```
 
 Add configuration:
@@ -242,6 +304,7 @@ server {
     listen 80;
     server_name your-domain.com;
 
+    # Streamlit UI
     location / {
         proxy_pass http://localhost:8501;
         proxy_http_version 1.1;
@@ -253,13 +316,42 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_read_timeout 86400;
     }
+
+    # FastAPI Backend
+    location /api/ {
+        proxy_pass http://localhost:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # FastAPI Docs
+    location /docs {
+        proxy_pass http://localhost:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+    }
+
+    location /redoc {
+        proxy_pass http://localhost:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+    }
+
+    location /openapi.json {
+        proxy_pass http://localhost:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+    }
 }
 ```
 
 Enable and restart Nginx:
 
 ```bash
-sudo ln -s /etc/nginx/sites-available/streamlit-app /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/financial-research-app /etc/nginx/sites-enabled/
 sudo nginx -t
 sudo systemctl restart nginx
 ```
@@ -275,9 +367,15 @@ sudo certbot --nginx -d your-domain.com
 
 #### 9. Access Application
 
-- Direct: `http://your-vps-ip:8501`
-- With domain: `http://your-domain.com` (if configured)
-- With SSL: `https://your-domain.com` (if configured)
+- Streamlit UI:
+  - Direct: `http://your-vps-ip:8501`
+  - With domain: `http://your-domain.com` (if configured)
+  - With SSL: `https://your-domain.com` (if configured)
+- FastAPI Backend:
+  - Direct: `http://your-vps-ip:8000`
+  - With domain: `http://your-domain.com/api/v1/` (if reverse proxy configured)
+  - API Docs: `http://your-domain.com/docs` (if reverse proxy configured)
+  - With SSL: `https://your-domain.com/api/v1/` (if SSL configured)
 
 ## Environment Variables
 
@@ -317,6 +415,14 @@ LOG_FILE_BACKUP_COUNT=5                  # Must be >= 1
 # Application Configuration (optional)
 MAX_DOCUMENT_SIZE_MB=10                  # Must be >= 1
 DEFAULT_TOP_K=5                          # Must be >= 1
+
+# API Configuration (TASK-029)
+API_ENABLED=true                         # Enable/disable API server
+API_HOST=0.0.0.0                         # API server host
+API_PORT=8000                            # API server port (1024-65535)
+API_KEY=                                 # API key for authentication (empty = disabled)
+API_RATE_LIMIT_PER_MINUTE=60             # Rate limit per minute per API key/IP
+API_CORS_ORIGINS=*                       # CORS allowed origins (comma-separated, * for all)
 ```
 
 **Note**: All configuration values are automatically validated by Pydantic. Invalid values (e.g., `OLLAMA_TIMEOUT=0` or `LOG_LEVEL=INVALID`) will cause the application to fail at startup with clear error messages indicating what needs to be fixed.
@@ -328,6 +434,9 @@ DEFAULT_TOP_K=5                          # Must be >= 1
 ```bash
 # Streamlit (if using systemd)
 sudo systemctl status streamlit-app
+
+# FastAPI (if using systemd)
+sudo systemctl status fastapi-app
 
 # Ollama
 systemctl status ollama  # If installed as service
@@ -351,6 +460,9 @@ sudo journalctl -u streamlit-app -f
 # Streamlit
 sudo systemctl restart streamlit-app
 
+# FastAPI
+sudo systemctl restart fastapi-app
+
 # Ollama
 sudo systemctl restart ollama
 ```
@@ -361,6 +473,7 @@ sudo systemctl restart ollama
 
 The application provides health check endpoints for monitoring and orchestration:
 
+**Via Health Check Server** (port 8080):
 ```bash
 # Comprehensive health check
 curl http://localhost:8080/health
@@ -370,6 +483,21 @@ curl http://localhost:8080/health/live
 
 # Readiness probe (application ready to serve)
 curl http://localhost:8080/health/ready
+```
+
+**Via FastAPI Backend** (port 8000):
+```bash
+# Comprehensive health check
+curl http://localhost:8000/api/v1/health
+
+# Liveness probe
+curl http://localhost:8000/api/v1/health/live
+
+# Readiness probe
+curl http://localhost:8000/api/v1/health/ready
+
+# Prometheus metrics
+curl http://localhost:8000/api/v1/health/metrics
 ```
 
 **Health Check Response** (example):
@@ -396,9 +524,16 @@ curl http://localhost:8080/health/ready
 
 Metrics are exposed in Prometheus format for monitoring:
 
+**Via Metrics Server** (port 8000):
 ```bash
 # View metrics
 curl http://localhost:8000/metrics
+```
+
+**Via FastAPI Backend** (port 8000):
+```bash
+# View metrics
+curl http://localhost:8000/api/v1/health/metrics
 ```
 
 **Available Metrics**:
