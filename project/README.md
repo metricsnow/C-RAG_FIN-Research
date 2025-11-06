@@ -90,6 +90,7 @@ A production-ready RAG (Retrieval-Augmented Generation) system for semantic sear
 - **Financial News Aggregation**: RSS feeds and web scraping for financial news (TASK-034)
 - **Economic Calendar Integration**: Macroeconomic indicators and events via Trading Economics API (TASK-035)
 - **FRED API Integration**: 840,000+ economic time series including interest rates, exchange rates, inflation, employment, GDP (TASK-036)
+- **IMF and World Bank Data Integration**: Global economic data from IMF Data Portal and World Bank Open Data APIs including GDP, inflation, unemployment, trade balance for 188+ countries (TASK-037)
 - **Manual Document Ingestion**: Support for text and Markdown files
 - **Chunking Strategy**: Intelligent text splitting with configurable chunk size and overlap
 - **Indexing Verification**: Tools to verify document indexing and searchability
@@ -262,6 +263,19 @@ ECONOMIC_CALENDAR_ENABLED=true                        # Enable economic calendar
 ECONOMIC_CALENDAR_RATE_LIMIT_SECONDS=1.0              # Rate limit between economic calendar requests in seconds
 TRADING_ECONOMICS_API_KEY=                            # Trading Economics API key for economic calendar (free tier available at https://tradingeconomics.com/api)
 ECONOMIC_CALENDAR_USE_TRADING_ECONOMICS=true          # Use Trading Economics API for economic calendar (recommended, requires TRADING_ECONOMICS_API_KEY)
+
+# FRED API Configuration (TASK-036)
+FRED_ENABLED=true                                     # Enable FRED API integration
+FRED_API_KEY=                                         # FRED API key (free API key available at https://fred.stlouisfed.org/docs/api/api_key.html)
+FRED_RATE_LIMIT_SECONDS=0.2                           # Rate limit between FRED API requests in seconds
+
+# World Bank API Configuration (TASK-037)
+WORLD_BANK_ENABLED=true                               # Enable World Bank Open Data API integration
+WORLD_BANK_RATE_LIMIT_SECONDS=1.0                     # Rate limit between World Bank API requests in seconds
+
+# IMF Data Portal API Configuration (TASK-037)
+IMF_ENABLED=true                                      # Enable IMF Data Portal API integration
+IMF_RATE_LIMIT_SECONDS=1.0                            # Rate limit between IMF API requests in seconds
 ```
 
 **Note**: The system will work with default values if `.env` is not created, but OpenAI embeddings require an API key. Invalid configuration values will be caught at startup with clear error messages thanks to Pydantic validation.
@@ -876,6 +890,68 @@ chunk_ids = pipeline.process_fred_series(
 **Configuration**: See [Configuration Documentation](docs/reference/configuration.md#fred-api-configuration-task-036) for FRED settings. Requires `FRED_API_KEY` (free API key available at https://fred.stlouisfed.org/docs/api/api_key.html).
 
 **Documentation**: See [FRED API Integration Documentation](docs/integrations/fred_integration.md) for detailed usage and API reference.
+
+#### IMF and World Bank Data Integration (TASK-037)
+
+Fetch and index global economic data from IMF Data Portal and World Bank Open Data APIs:
+
+```bash
+# World Bank: Fetch GDP and Population indicators
+python scripts/fetch_world_bank_data.py --indicators NY.GDP.MKTP.CD SP.POP.TOTL
+
+# World Bank: Fetch with country and year filters
+python scripts/fetch_world_bank_data.py --indicators NY.GDP.MKTP.CD --countries USA CHN --start-year 2020
+
+# World Bank: Search for indicators
+python scripts/fetch_world_bank_data.py --search "gdp"
+
+# IMF: Fetch GDP growth and unemployment indicators
+python scripts/fetch_imf_data.py --indicators NGDP_RPCH LUR
+
+# IMF: Fetch with country and year filters
+python scripts/fetch_imf_data.py --indicators NGDP_RPCH --countries US CN --start-year 2020
+
+# IMF: List available indicators
+python scripts/fetch_imf_data.py --list-indicators
+```
+
+**Programmatic Usage**:
+```python
+from app.ingestion.pipeline import create_pipeline
+
+# Create pipeline
+pipeline = create_pipeline()
+
+# Process World Bank indicators
+chunk_ids = pipeline.process_world_bank_indicators(
+    indicator_codes=["NY.GDP.MKTP.CD", "SP.POP.TOTL"],
+    country_codes=["USA", "CHN"],
+    start_year=2020,
+    end_year=2023,
+    store_embeddings=True
+)
+
+# Process IMF indicators
+chunk_ids = pipeline.process_imf_indicators(
+    indicator_codes=["NGDP_RPCH", "LUR"],
+    country_codes=["US", "CN"],
+    start_year=2020,
+    end_year=2023,
+    store_embeddings=True
+)
+```
+
+**Features**:
+- **World Bank**: 188+ countries, thousands of indicators (GDP, inflation, unemployment, trade balance)
+- **IMF**: World Economic Outlook, International Financial Statistics, global economic data
+- **Country Filtering**: Filter data by country ISO codes
+- **Year Range Filtering**: Filter data by start and end year
+- **Indicator Search**: Search for indicators by keyword (World Bank)
+- **No API Keys Required**: Both APIs are free and open
+
+**Configuration**: See [Configuration Documentation](docs/reference/configuration.md#world-bank-api-configuration-task-037) and [IMF API Configuration](docs/reference/configuration.md#imf-data-portal-api-configuration-task-037) for settings. No API keys required.
+
+**Documentation**: See [IMF and World Bank Integration Documentation](docs/integrations/imf_world_bank_integration.md) for detailed usage and API reference.
 
 #### Financial News Aggregation (TASK-034)
 

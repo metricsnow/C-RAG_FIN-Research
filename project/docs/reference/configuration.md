@@ -816,6 +816,202 @@ chunk_ids = pipeline.process_fred_series(
 
 For complete FRED integration documentation, see: **[FRED API Integration Guide](../integrations/fred_integration.md)**.
 
+### World Bank API Configuration (TASK-037)
+
+The system includes World Bank Open Data API integration for fetching and indexing global economic data. All World Bank settings are configurable via environment variables.
+
+| Variable | Type | Default | Constraints | Description |
+|----------|------|---------|------------|-------------|
+| `WORLD_BANK_ENABLED` | boolean | `true` | `true`/`false`, `1`/`0`, `yes`/`no` | Enable World Bank Open Data API integration |
+| `WORLD_BANK_RATE_LIMIT_SECONDS` | float | `1.0` | Range: 0.1 - 60.0 | Rate limit between World Bank API requests in seconds |
+
+**World Bank API Features**:
+
+1. **Global Economic Data**: Access to economic indicators for 188+ countries
+   - GDP (current US$, per capita, growth)
+   - Population statistics
+   - Inflation indicators (consumer prices, annual %)
+   - Unemployment rate (% of total labor force)
+   - Trade balance (% of GDP)
+   - And thousands of other indicators
+
+2. **Indicator Search**: Text-based search for discovering indicators
+   - Search by keywords (e.g., "gdp", "inflation", "unemployment")
+   - Returns indicator code, name, source, topic
+   - Helps discover relevant indicators for your use case
+
+3. **Country and Year Filtering**: Flexible filtering support
+   - Filter by country ISO codes (e.g., "USA", "CHN")
+   - Filter by start and end year
+   - Supports historical data retrieval
+
+4. **Rate Limiting**: Built-in rate limiting to respect API limits
+   - Default: 1.0 seconds between API calls (60 requests per minute)
+   - Configurable via `WORLD_BANK_RATE_LIMIT_SECONDS`
+   - Prevents API rate limiting issues
+
+5. **Data Formatting**: Automatic conversion to text format
+   - All indicator data normalized to searchable text
+   - Rich metadata tagging (indicator_code, name, source, topic, unit, etc.)
+   - Summary statistics included (mean, min, max, latest values)
+   - Optimized for RAG queries and vector search
+
+6. **Error Handling**: Robust error handling for API failures
+   - Graceful handling of missing data
+   - Continues processing other indicators if one fails
+   - Comprehensive logging for debugging
+
+**Example Configuration**:
+```bash
+# Enable World Bank integration (default)
+WORLD_BANK_ENABLED=true
+
+# Adjust rate limiting (default: 1.0 seconds = 60 requests/min)
+WORLD_BANK_RATE_LIMIT_SECONDS=1.0
+
+# For more conservative rate limiting
+WORLD_BANK_RATE_LIMIT_SECONDS=2.0  # 30 requests per minute
+```
+
+**Usage**:
+```bash
+# Fetch specific indicators via script
+python scripts/fetch_world_bank_data.py --indicators NY.GDP.MKTP.CD SP.POP.TOTL
+
+# Fetch with country and year filters
+python scripts/fetch_world_bank_data.py --indicators NY.GDP.MKTP.CD --countries USA CHN --start-year 2020
+
+# Search for indicators
+python scripts/fetch_world_bank_data.py --search "gdp"
+
+# List available countries
+python scripts/fetch_world_bank_data.py --list-countries
+
+# Programmatic usage
+from app.ingestion.pipeline import IngestionPipeline
+
+pipeline = IngestionPipeline()
+chunk_ids = pipeline.process_world_bank_indicators(
+    indicator_codes=["NY.GDP.MKTP.CD", "SP.POP.TOTL"],
+    country_codes=["USA", "CHN"],
+    start_year=2020,
+    end_year=2023,
+    store_embeddings=True
+)
+```
+
+**Common Indicator Codes**:
+- `NY.GDP.MKTP.CD`: GDP (current US$)
+- `SP.POP.TOTL`: Population, total
+- `FP.CPI.TOTL.ZG`: Inflation, consumer prices (annual %)
+- `SL.UEM.TOTL.ZS`: Unemployment, total (% of total labor force)
+- `NE.TRD.GNFS.ZS`: Trade (% of GDP)
+- `NY.GDP.PCAP.CD`: GDP per capita (current US$)
+
+**Backward Compatibility**: World Bank integration is optional and can be disabled by setting `WORLD_BANK_ENABLED=false`. The system continues to work normally without World Bank integration.
+
+**API Key**: No API key required. World Bank Open Data API is free and open.
+
+For complete World Bank integration documentation, see: **[IMF and World Bank Integration Guide](../integrations/imf_world_bank_integration.md)**.
+
+### IMF Data Portal API Configuration (TASK-037)
+
+The system includes IMF Data Portal API integration for fetching and indexing global economic data from the International Monetary Fund. All IMF settings are configurable via environment variables.
+
+| Variable | Type | Default | Constraints | Description |
+|----------|------|---------|------------|-------------|
+| `IMF_ENABLED` | boolean | `true` | `true`/`false`, `1`/`0`, `yes`/`no` | Enable IMF Data Portal API integration |
+| `IMF_RATE_LIMIT_SECONDS` | float | `1.0` | Range: 0.1 - 60.0 | Rate limit between IMF API requests in seconds |
+
+**IMF API Features**:
+
+1. **Global Economic Data**: Access to IMF economic databases
+   - World Economic Outlook (WEO) database
+   - International Financial Statistics (IFS)
+   - GDP growth rates (annual %)
+   - Unemployment rates (%)
+   - Consumer price inflation (annual %)
+   - Current account balance (US$)
+   - And many more economic indicators
+
+2. **Indicator Discovery**: List available indicators
+   - Get all available indicators with codes and descriptions
+   - Helps discover relevant indicators for your use case
+   - Filter by country and year range
+
+3. **Country and Year Filtering**: Flexible filtering support
+   - Filter by country ISO codes (e.g., "US", "CN")
+   - Filter by start and end year
+   - Supports historical data retrieval
+
+4. **Rate Limiting**: Built-in rate limiting to respect API limits
+   - Default: 1.0 seconds between API calls (60 requests per minute)
+   - Configurable via `IMF_RATE_LIMIT_SECONDS`
+   - Prevents API rate limiting issues
+
+5. **Data Formatting**: Automatic conversion to text format
+   - All indicator data normalized to searchable text
+   - Rich metadata tagging (indicator_code, name, description, unit, etc.)
+   - Summary statistics included (mean, min, max, latest values)
+   - Optimized for RAG queries and vector search
+
+6. **Error Handling**: Robust error handling for API failures
+   - Graceful handling of missing data
+   - Continues processing other indicators if one fails
+   - Comprehensive logging for debugging
+
+**Example Configuration**:
+```bash
+# Enable IMF integration (default)
+IMF_ENABLED=true
+
+# Adjust rate limiting (default: 1.0 seconds = 60 requests/min)
+IMF_RATE_LIMIT_SECONDS=1.0
+
+# For more conservative rate limiting
+IMF_RATE_LIMIT_SECONDS=2.0  # 30 requests per minute
+```
+
+**Usage**:
+```bash
+# Fetch specific indicators via script
+python scripts/fetch_imf_data.py --indicators NGDP_RPCH LUR
+
+# Fetch with country and year filters
+python scripts/fetch_imf_data.py --indicators NGDP_RPCH --countries US CN --start-year 2020
+
+# List available indicators
+python scripts/fetch_imf_data.py --list-indicators
+
+# List available countries
+python scripts/fetch_imf_data.py --list-countries
+
+# Programmatic usage
+from app.ingestion.pipeline import IngestionPipeline
+
+pipeline = IngestionPipeline()
+chunk_ids = pipeline.process_imf_indicators(
+    indicator_codes=["NGDP_RPCH", "LUR"],
+    country_codes=["US", "CN"],
+    start_year=2020,
+    end_year=2023,
+    store_embeddings=True
+)
+```
+
+**Common Indicator Codes**:
+- `NGDP_RPCH`: GDP growth rate (annual %)
+- `LUR`: Unemployment rate (%)
+- `PCPI_PCH`: Consumer price inflation (annual %)
+- `NGDPD`: GDP (current prices, US$)
+- `BCA`: Current account balance (US$)
+
+**Backward Compatibility**: IMF integration is optional and can be disabled by setting `IMF_ENABLED=false`. The system continues to work normally without IMF integration.
+
+**API Key**: No API key required. IMF Data Portal API is free and open.
+
+For complete IMF integration documentation, see: **[IMF and World Bank Integration Guide](../integrations/imf_world_bank_integration.md)**.
+
 ### Conversation History Management (TASK-025)
 
 The system includes conversation history management features that allow users to clear and export their conversation history.

@@ -488,6 +488,34 @@ class Config(BaseSettings):
         description="Rate limit between FRED API requests in seconds",
     )
 
+    # World Bank API Configuration (TASK-037)
+    world_bank_enabled: bool = Field(
+        default=True,
+        alias="WORLD_BANK_ENABLED",
+        description="Enable World Bank Open Data API integration",
+    )
+    world_bank_rate_limit_seconds: float = Field(
+        default=1.0,
+        ge=0.1,
+        le=60.0,
+        alias="WORLD_BANK_RATE_LIMIT_SECONDS",
+        description="Rate limit between World Bank API requests in seconds",
+    )
+
+    # IMF Data Portal API Configuration (TASK-037)
+    imf_enabled: bool = Field(
+        default=True,
+        alias="IMF_ENABLED",
+        description="Enable IMF Data Portal API integration",
+    )
+    imf_rate_limit_seconds: float = Field(
+        default=1.0,
+        ge=0.1,
+        le=60.0,
+        alias="IMF_RATE_LIMIT_SECONDS",
+        description="Rate limit between IMF API requests in seconds",
+    )
+
     # Project paths (computed fields)
     _project_root: Optional[Path] = None
     _data_dir: Optional[Path] = None

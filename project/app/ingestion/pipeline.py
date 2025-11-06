@@ -15,10 +15,15 @@ from app.ingestion.economic_calendar_fetcher import (
     EconomicCalendarFetcherError,
 )
 from app.ingestion.fred_fetcher import FREDFetcher, FREDFetcherError
+from app.ingestion.imf_fetcher import IMFFetcher, IMFFetcherError
 from app.ingestion.news_fetcher import NewsFetcher, NewsFetcherError
 from app.ingestion.stock_data_normalizer import StockDataNormalizer
 from app.ingestion.transcript_fetcher import TranscriptFetcher, TranscriptFetcherError
 from app.ingestion.transcript_parser import TranscriptParser, TranscriptParserError
+from app.ingestion.world_bank_fetcher import (
+    WorldBankFetcher,
+    WorldBankFetcherError,
+)
 from app.ingestion.yfinance_fetcher import YFinanceFetcher, YFinanceFetcherError
 from app.rag.embedding_factory import EmbeddingError, EmbeddingGenerator
 from app.utils.config import config
@@ -110,6 +115,20 @@ class IngestionPipeline:
                 rate_limit_delay=config.fred_rate_limit_seconds,
             )
             if config.fred_enabled
+            else None
+        )
+        self.world_bank_fetcher = (
+            WorldBankFetcher(
+                rate_limit_delay=config.world_bank_rate_limit_seconds,
+            )
+            if config.world_bank_enabled
+            else None
+        )
+        self.imf_fetcher = (
+            IMFFetcher(
+                rate_limit_delay=config.imf_rate_limit_seconds,
+            )
+            if config.imf_enabled
             else None
         )
 
@@ -1112,6 +1131,278 @@ class IngestionPipeline:
             track_error(document_ingestion_total)
             raise IngestionPipelineError(
                 f"Unexpected error processing FRED series: {str(e)}"
+            ) from e
+
+    def process_world_bank_indicators(
+        self,
+        indicator_codes: List[str],
+        country_codes: Optional[List[str]] = None,
+        start_year: Optional[int] = None,
+        end_year: Optional[int] = None,
+        store_embeddings: bool = True,
+    ) -> List[str]:
+        """
+        Process World Bank indicators through the ingestion pipeline.
+
+        Args:
+            indicator_codes: List of World Bank indicator codes
+            country_codes: List of country ISO codes (optional)
+            start_year: Start year (optional)
+            end_year: End year (optional)
+            store_embeddings: Whether to store embeddings in ChromaDB (default: True)
+
+        Returns:
+            List of document chunk IDs stored in ChromaDB
+
+        Raises:
+            IngestionPipelineError: If processing fails
+        """
+        if not self.world_bank_fetcher:
+            raise IngestionPipelineError(
+                "World Bank integration is disabled. "
+                "Set WORLD_BANK_ENABLED=true in .env file."
+            )
+
+        logger.info(f"Processing {len(indicator_codes)} World Bank indicators")
+        try:
+            # Step 1: Fetch World Bank indicator data
+            logger.debug(f"Fetching World Bank indicators: {indicator_codes}")
+            indicator_data = self.world_bank_fetcher.fetch_multiple_indicators(
+                indicator_codes,
+                country_codes=country_codes,
+                start_year=start_year,
+                end_year=end_year,
+            )
+
+            if not indicator_data:
+                logger.warning("No World Bank indicator data fetched")
+                return []
+
+            # Step 2: Convert to Document objects
+            logger.debug(
+                f"Converting {len(indicator_data)} indicators to Document objects"
+            )
+            documents = []
+            for indicator_code, data in indicator_data.items():
+                if data.get("data") is None:
+                    logger.warning(
+                        f"Skipping indicator {indicator_code}: no data available"
+                    )
+                    continue
+
+                formatted_text = self.world_bank_fetcher.format_indicator_for_rag(data)
+                metadata = self.world_bank_fetcher.get_indicator_metadata(data)
+                document = Document(page_content=formatted_text, metadata=metadata)
+                documents.append(document)
+
+            if not documents:
+                logger.warning("No documents generated from World Bank indicators")
+                return []
+
+            # Step 3: Chunk documents
+            all_chunks = []
+            for doc in documents:
+                chunks = self.document_loader.chunk_document(doc)
+                all_chunks.extend(chunks)
+
+            if not all_chunks:
+                logger.warning("No chunks generated from World Bank indicators")
+                return []
+
+            logger.info(
+                f"Generated {len(all_chunks)} chunks from World Bank indicators"
+            )
+
+            # Step 4: Generate embeddings
+            logger.debug(f"Generating embeddings for {len(all_chunks)} chunks")
+            texts = [chunk.page_content for chunk in all_chunks]
+            embeddings = self.embedding_generator.embed_documents(texts)
+
+            if len(embeddings) != len(all_chunks):
+                logger.error(
+                    f"Embedding count ({len(embeddings)}) does not match "
+                    f"chunk count ({len(all_chunks)})"
+                )
+                raise IngestionPipelineError(
+                    f"Embedding count ({len(embeddings)}) does not match "
+                    f"chunk count ({len(all_chunks)})"
+                )
+
+            logger.debug(f"Generated {len(embeddings)} embeddings")
+
+            # Track chunks created
+            document_chunks_created.observe(len(all_chunks))
+
+            # Step 5: Store in ChromaDB (if requested)
+            if store_embeddings:
+                logger.debug(f"Storing {len(all_chunks)} chunks in ChromaDB")
+                ids = self.chroma_store.add_documents(all_chunks, embeddings)
+                logger.info(
+                    f"Successfully stored {len(ids)} chunks from World Bank indicators"
+                )
+                track_success(document_ingestion_total)
+                return ids
+            else:
+                logger.debug("Skipping ChromaDB storage (store_embeddings=False)")
+                track_success(document_ingestion_total)
+                return [f"chunk_{i}" for i in range(len(all_chunks))]
+
+        except WorldBankFetcherError as e:
+            logger.error(f"World Bank fetching failed: {str(e)}", exc_info=True)
+            track_error(document_ingestion_total)
+            raise IngestionPipelineError(f"World Bank fetching failed: {str(e)}") from e
+        except EmbeddingError as e:
+            logger.error(f"Embedding generation failed: {str(e)}", exc_info=True)
+            track_error(document_ingestion_total)
+            raise IngestionPipelineError(
+                f"Embedding generation failed: {str(e)}"
+            ) from e
+        except ChromaStoreError as e:
+            logger.error(f"ChromaDB storage failed: {str(e)}", exc_info=True)
+            track_error(document_ingestion_total)
+            raise IngestionPipelineError(f"ChromaDB storage failed: {str(e)}") from e
+        except Exception as e:
+            logger.error(
+                f"Unexpected error processing World Bank indicators: {str(e)}",
+                exc_info=True,
+            )
+            track_error(document_ingestion_total)
+            raise IngestionPipelineError(
+                f"Unexpected error processing World Bank indicators: {str(e)}"
+            ) from e
+
+    def process_imf_indicators(
+        self,
+        indicator_codes: List[str],
+        country_codes: Optional[List[str]] = None,
+        start_year: Optional[int] = None,
+        end_year: Optional[int] = None,
+        store_embeddings: bool = True,
+    ) -> List[str]:
+        """
+        Process IMF indicators through the ingestion pipeline.
+
+        Args:
+            indicator_codes: List of IMF indicator codes
+            country_codes: List of country ISO codes (optional)
+            start_year: Start year (optional)
+            end_year: End year (optional)
+            store_embeddings: Whether to store embeddings in ChromaDB (default: True)
+
+        Returns:
+            List of document chunk IDs stored in ChromaDB
+
+        Raises:
+            IngestionPipelineError: If processing fails
+        """
+        if not self.imf_fetcher:
+            raise IngestionPipelineError(
+                "IMF integration is disabled. Set IMF_ENABLED=true in .env file."
+            )
+
+        logger.info(f"Processing {len(indicator_codes)} IMF indicators")
+        try:
+            # Step 1: Fetch IMF indicator data
+            logger.debug(f"Fetching IMF indicators: {indicator_codes}")
+            indicator_data = self.imf_fetcher.fetch_multiple_indicators(
+                indicator_codes,
+                country_codes=country_codes,
+                start_year=start_year,
+                end_year=end_year,
+            )
+
+            if not indicator_data:
+                logger.warning("No IMF indicator data fetched")
+                return []
+
+            # Step 2: Convert to Document objects
+            logger.debug(
+                f"Converting {len(indicator_data)} indicators to Document objects"
+            )
+            documents = []
+            for indicator_code, data in indicator_data.items():
+                if data.get("data") is None:
+                    logger.warning(
+                        f"Skipping indicator {indicator_code}: no data available"
+                    )
+                    continue
+
+                formatted_text = self.imf_fetcher.format_indicator_for_rag(data)
+                metadata = self.imf_fetcher.get_indicator_metadata(data)
+                document = Document(page_content=formatted_text, metadata=metadata)
+                documents.append(document)
+
+            if not documents:
+                logger.warning("No documents generated from IMF indicators")
+                return []
+
+            # Step 3: Chunk documents
+            all_chunks = []
+            for doc in documents:
+                chunks = self.document_loader.chunk_document(doc)
+                all_chunks.extend(chunks)
+
+            if not all_chunks:
+                logger.warning("No chunks generated from IMF indicators")
+                return []
+
+            logger.info(f"Generated {len(all_chunks)} chunks from IMF indicators")
+
+            # Step 4: Generate embeddings
+            logger.debug(f"Generating embeddings for {len(all_chunks)} chunks")
+            texts = [chunk.page_content for chunk in all_chunks]
+            embeddings = self.embedding_generator.embed_documents(texts)
+
+            if len(embeddings) != len(all_chunks):
+                logger.error(
+                    f"Embedding count ({len(embeddings)}) does not match "
+                    f"chunk count ({len(all_chunks)})"
+                )
+                raise IngestionPipelineError(
+                    f"Embedding count ({len(embeddings)}) does not match "
+                    f"chunk count ({len(all_chunks)})"
+                )
+
+            logger.debug(f"Generated {len(embeddings)} embeddings")
+
+            # Track chunks created
+            document_chunks_created.observe(len(all_chunks))
+
+            # Step 5: Store in ChromaDB (if requested)
+            if store_embeddings:
+                logger.debug(f"Storing {len(all_chunks)} chunks in ChromaDB")
+                ids = self.chroma_store.add_documents(all_chunks, embeddings)
+                logger.info(
+                    f"Successfully stored {len(ids)} chunks from IMF indicators"
+                )
+                track_success(document_ingestion_total)
+                return ids
+            else:
+                logger.debug("Skipping ChromaDB storage (store_embeddings=False)")
+                track_success(document_ingestion_total)
+                return [f"chunk_{i}" for i in range(len(all_chunks))]
+
+        except IMFFetcherError as e:
+            logger.error(f"IMF fetching failed: {str(e)}", exc_info=True)
+            track_error(document_ingestion_total)
+            raise IngestionPipelineError(f"IMF fetching failed: {str(e)}") from e
+        except EmbeddingError as e:
+            logger.error(f"Embedding generation failed: {str(e)}", exc_info=True)
+            track_error(document_ingestion_total)
+            raise IngestionPipelineError(
+                f"Embedding generation failed: {str(e)}"
+            ) from e
+        except ChromaStoreError as e:
+            logger.error(f"ChromaDB storage failed: {str(e)}", exc_info=True)
+            track_error(document_ingestion_total)
+            raise IngestionPipelineError(f"ChromaDB storage failed: {str(e)}") from e
+        except Exception as e:
+            logger.error(
+                f"Unexpected error processing IMF indicators: {str(e)}", exc_info=True
+            )
+            track_error(document_ingestion_total)
+            raise IngestionPipelineError(
+                f"Unexpected error processing IMF indicators: {str(e)}"
             ) from e
 
 
