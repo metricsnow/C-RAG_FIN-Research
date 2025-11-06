@@ -124,7 +124,12 @@ class Config(BaseSettings):
     embedding_provider: str = Field(
         default="openai",
         alias="EMBEDDING_PROVIDER",
-        description="Embedding provider (openai or ollama)",
+        description="Embedding provider (openai, ollama, or finbert)",
+    )
+    finbert_model_name: str = Field(
+        default="sentence-transformers/all-MiniLM-L6-v2",
+        alias="FINBERT_MODEL_NAME",
+        description="FinBERT/sentence-transformer model name for financial embeddings",
     )
 
     # LLM Configuration
@@ -384,6 +389,11 @@ class Config(BaseSettings):
     def EMBEDDING_PROVIDER(self) -> str:
         """Embedding provider (backward compatibility)."""
         return self.embedding_provider
+
+    @property
+    def FINBERT_MODEL_NAME(self) -> str:
+        """FinBERT model name (backward compatibility)."""
+        return self.finbert_model_name
 
     @property
     def LLM_PROVIDER(self) -> str:

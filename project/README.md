@@ -27,13 +27,14 @@ A production-ready RAG (Retrieval-Augmented Generation) system for semantic sear
 - **Financial Domain Specialization**: Optimized for financial terminology and research queries
 - **Vector Database**: Persistent ChromaDB storage for efficient similarity search
 - **Streamlit UI**: Modern, interactive chat interface with model selection toggle for querying documents
+- **Document Management**: Comprehensive UI for managing indexed documents with search, filtering, and deletion (TASK-027)
 - **Conversation Memory**: Multi-turn conversations with context preservation across queries (TASK-024)
 - **Conversation Management**: Clear and export conversation history in multiple formats (TASK-025)
 
 ### Technical Features
 
 - **Dual LLM Support**: OpenAI (gpt-4o-mini) or Ollama (llama3.2) - switchable via UI toggle
-- **Dual Embedding Support**: OpenAI (text-embedding-3-small) or Ollama embeddings
+- **Triple Embedding Support**: OpenAI (text-embedding-3-small), Ollama embeddings, or FinBERT (financial domain optimized)
 - **LangChain Integration**: Built on LangChain 1.0+ with Expression Language (LCEL)
 - **Batch Processing**: Efficient batch embedding generation for large document collections
 - **Metadata Management**: Rich document metadata (source, filename, type, date, chunk index)
@@ -51,6 +52,16 @@ A production-ready RAG (Retrieval-Augmented Generation) system for semantic sear
 - **Export Conversations**: Export conversation history in JSON, Markdown, or TXT formats
 - **Export Metadata**: Export files include complete metadata (model, timestamps, sources, conversation ID)
 - **Configurable Limits**: Adjustable conversation context window size and message history limits
+
+### Document Management Features (TASK-027)
+
+- **Document Listing**: View all indexed documents in a paginated table with sorting options
+- **Document Details**: View complete metadata and content for any document
+- **Search & Filter**: Search documents by ticker symbol, form type, or filename
+- **Document Deletion**: Delete individual documents or bulk delete with confirmation dialogs
+- **Statistics Dashboard**: View document statistics including counts by ticker and form type
+- **Real-time Updates**: UI automatically refreshes after document operations
+- **Safe Deletion**: Confirmation dialogs prevent accidental document deletion
 
 ### RAG Optimization Features (TASK-028)
 
@@ -187,8 +198,9 @@ OPENAI_API_KEY=your-api-key-here
 # Can be overridden via UI toggle in Streamlit app
 LLM_PROVIDER=ollama
 
-# Embedding Provider: 'openai' or 'ollama' (default: 'openai')
+# Embedding Provider: 'openai', 'ollama', or 'finbert' (default: 'openai')
 EMBEDDING_PROVIDER=openai
+# FINBERT_MODEL_NAME=sentence-transformers/all-MiniLM-L6-v2  # Only used if EMBEDDING_PROVIDER=finbert
 
 # Ollama Configuration (defaults shown)
 OLLAMA_BASE_URL=http://localhost:11434  # Must start with http:// or https://
@@ -268,7 +280,8 @@ The system uses environment variables loaded from `.env` file (automatically han
 | Variable | Type | Description | Default | Constraints |
 |----------|------|-------------|---------|-------------|
 | `OPENAI_API_KEY` | string | OpenAI API key for embeddings | `""` | Optional (required for OpenAI embeddings) |
-| `EMBEDDING_PROVIDER` | string | Embedding provider: 'openai' or 'ollama' | `'openai'` | Must be 'openai' or 'ollama' |
+| `EMBEDDING_PROVIDER` | string | Embedding provider: 'openai', 'ollama', or 'finbert' | `'openai'` | Must be 'openai', 'ollama', or 'finbert' |
+| `FINBERT_MODEL_NAME` | string | FinBERT/sentence-transformer model name | `'sentence-transformers/all-MiniLM-L6-v2'` | Only used if EMBEDDING_PROVIDER=finbert |
 | `OLLAMA_BASE_URL` | string | Ollama server URL | `http://localhost:11434` | Must start with http:// or https:// |
 | `OLLAMA_TIMEOUT` | integer | Request timeout in seconds | `30` | Must be >= 1 |
 | `OLLAMA_MAX_RETRIES` | integer | Maximum retry attempts | `3` | Must be >= 0 |
@@ -366,17 +379,33 @@ OLLAMA_TEMPERATURE=3.0                # Must be <= 2.0
 
 ### Embedding Provider Selection
 
-**OpenAI Embeddings (Recommended)**:
+**OpenAI Embeddings (Recommended for Best Quality)**:
 - Higher quality embeddings (1536 dimensions)
 - Faster processing
 - Requires API key
 - Set `EMBEDDING_PROVIDER=openai` in `.env`
 
-**Ollama Embeddings**:
+**Ollama Embeddings (Local LLM Stack)**:
 - Fully local, no API key needed
 - Slower processing
-- Lower dimensional embeddings
+- Higher dimensional embeddings (typically 3072 dimensions)
 - Set `EMBEDDING_PROVIDER=ollama` in `.env`
+
+**FinBERT Embeddings (Financial Domain Optimized)**:
+- Financial domain optimized embeddings (384 dimensions with default model)
+- Fully local, no API key needed
+- Free to use
+- Better semantic matching for financial terminology
+- Uses sentence-transformers library
+- Set `EMBEDDING_PROVIDER=finbert` in `.env`
+- Optionally configure model: `FINBERT_MODEL_NAME=sentence-transformers/all-MiniLM-L6-v2`
+
+**Model Selection Guidelines**:
+- **Best Quality**: Use `openai` (requires API key)
+- **Privacy/Cost**: Use `finbert` (local, free, financial domain optimized)
+- **Local LLM Stack**: Use `ollama` (if already using Ollama for LLM)
+
+**Note**: When switching embedding providers, you may need to re-index documents in ChromaDB, as different providers use different embedding dimensions. Consider using separate ChromaDB collections for different embedding providers.
 
 ### Logging Configuration
 

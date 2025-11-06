@@ -49,6 +49,7 @@ if not _app_init.exists():
 import streamlit as st  # noqa: E402
 
 from app.rag import RAGQueryError, RAGQuerySystem, create_rag_system  # noqa: E402
+from app.ui.document_management import render_document_management  # noqa: E402
 from app.utils.conversation_export import export_conversation  # noqa: E402
 from app.utils.health import start_health_check_server  # noqa: E402
 from app.utils.logger import get_logger  # noqa: E402
@@ -254,7 +255,28 @@ def main():
         st.divider()
         st.markdown("**Total:** " + str(len(tickers)) + " companies")
 
-    # Main content area
+    # Main content area with tabs
+    # Create main tabs for Chat and Document Management
+    main_tab1, main_tab2 = st.tabs(["💬 Chat", "📄 Document Management"])
+
+    with main_tab1:
+        render_chat_interface(rag_system, model_provider, model_name)
+
+    with main_tab2:
+        render_document_management()
+
+
+def render_chat_interface(
+    rag_system: RAGQuerySystem, model_provider: str, model_name: str
+) -> None:
+    """
+    Render the chat interface.
+
+    Args:
+        rag_system: Initialized RAG query system
+        model_provider: Current model provider name
+        model_name: Current model name
+    """
     # Title and description
     st.title("📊 Financial Research Assistant")
     st.markdown(

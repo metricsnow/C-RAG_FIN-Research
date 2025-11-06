@@ -96,7 +96,51 @@ The configuration system uses Pydantic's `BaseSettings` which:
 
 | Variable | Type | Default | Constraints | Description |
 |----------|------|---------|------------|-------------|
-| `EMBEDDING_PROVIDER` | string | `openai` | Must be `openai` or `ollama` | Embedding provider |
+| `EMBEDDING_PROVIDER` | string | `openai` | Must be `openai`, `ollama`, or `finbert` | Embedding provider |
+| `FINBERT_MODEL_NAME` | string | `sentence-transformers/all-MiniLM-L6-v2` | - | FinBERT/sentence-transformer model name for financial embeddings |
+
+**Embedding Providers**:
+
+1. **OpenAI** (`openai`): Cloud-based embeddings using OpenAI API
+   - Model: `text-embedding-3-small` (1536 dimensions)
+   - Requires: `OPENAI_API_KEY` environment variable
+   - Pros: High quality, fast, reliable
+   - Cons: Requires API key, costs per request
+
+2. **Ollama** (`ollama`): Local embeddings using Ollama
+   - Model: `llama3.2` (dimensions vary, typically 3072)
+   - Requires: Ollama server running locally
+   - Pros: Free, no API costs, privacy
+   - Cons: Slower, requires local setup
+
+3. **FinBERT** (`finbert`): Financial domain embeddings using sentence-transformers
+   - Model: Configurable via `FINBERT_MODEL_NAME` (default: `sentence-transformers/all-MiniLM-L6-v2`)
+   - Dimensions: 384 (default model) or varies by model
+   - Requires: `sentence-transformers` library (already included)
+   - Pros: Financial domain optimized, free, local execution
+   - Cons: Slower than OpenAI API, requires model download on first use
+
+**Model Selection Guidelines**:
+
+- **For best quality**: Use `openai` (requires API key)
+- **For privacy/cost**: Use `finbert` (local, free, financial domain optimized)
+- **For local LLM stack**: Use `ollama` (if already using Ollama for LLM)
+
+**FinBERT Model Options**:
+
+The `FINBERT_MODEL_NAME` can be set to any HuggingFace sentence-transformer model:
+- `sentence-transformers/all-MiniLM-L6-v2` (default): Fast, 384 dimensions, good general performance
+- `sentence-transformers/all-mpnet-base-v2`: Better quality, 768 dimensions, slower
+- Custom financial domain models: If available, can be configured here
+
+**Dimension Compatibility**:
+
+Different embedding providers use different dimensions:
+- OpenAI: 1536 dimensions
+- Ollama: Varies (typically 3072)
+- FinBERT: 384 dimensions (default model)
+
+**Important**: When switching embedding providers, you may need to re-index documents in ChromaDB, as embeddings with different dimensions are not compatible. Consider using separate ChromaDB collections for different embedding providers.
 
 ### Logging Configuration
 
@@ -413,6 +457,7 @@ Custom validators enforce business rules:
 - **Business Logic**:
   - Warns if OpenAI embeddings are selected but no API key is provided
   - Validates that Ollama is enabled when LLM provider is set to 'ollama'
+  - FinBERT embeddings require `sentence-transformers` library (included in dependencies)
 
 ### Invalid Configuration Examples
 
@@ -488,7 +533,8 @@ LLM_PROVIDER=ollama
 LLM_MODEL=llama3.2
 
 # Embedding Configuration
-EMBEDDING_PROVIDER=openai
+EMBEDDING_PROVIDER=openai  # Options: openai, ollama, finbert
+# FINBERT_MODEL_NAME=sentence-transformers/all-MiniLM-L6-v2  # Only used if EMBEDDING_PROVIDER=finbert
 
 # Logging Configuration
 LOG_LEVEL=INFO

@@ -24,6 +24,7 @@ def test_embedding_generator_initialization(embedding_generator):
     assert embedding_generator.provider in [
         "openai",
         "ollama",
+        "finbert",
     ], "Provider should be valid"
     assert (
         embedding_generator.embeddings is not None
@@ -168,6 +169,27 @@ def test_embedding_factory_create_ollama(embedding_generator):
             pytest.skip("Ollama embeddings not available")
     else:
         pytest.skip("Ollama not configured, skipping Ollama-specific test")
+
+
+@pytest.mark.integration
+def test_embedding_factory_create_finbert():
+    """Test creating FinBERT embeddings."""
+    try:
+        embeddings = EmbeddingFactory.create_embeddings("finbert")
+        assert embeddings is not None, "Should create FinBERT embeddings"
+
+        # Test that it can generate embeddings
+        test_text = "Financial markets involve trading securities."
+        embedding = embeddings.embed_query(test_text)
+        assert isinstance(embedding, list), "Embedding should be a list"
+        assert len(embedding) > 0, "Embedding should have dimensions"
+        # FinBERT typically uses 384 dimensions (all-MiniLM-L6-v2)
+        assert len(embedding) in [384, 768], "FinBERT should have expected dimensions"
+    except EmbeddingError as e:
+        if "sentence-transformers" in str(e).lower():
+            pytest.skip("sentence-transformers not installed, skipping FinBERT test")
+        else:
+            raise
 
 
 @pytest.mark.integration

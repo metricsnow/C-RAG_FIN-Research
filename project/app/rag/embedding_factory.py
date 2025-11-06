@@ -1,7 +1,7 @@
 """
 Embedding factory module for generating document embeddings.
 
-Supports OpenAI and Ollama embedding models with batch processing
+Supports OpenAI, Ollama, and FinBERT embedding models with batch processing
 and error handling.
 """
 
@@ -11,7 +11,9 @@ try:
     from langchain_openai import OpenAIEmbeddings
 except ImportError:
     # Fallback to langchain_community for older versions
-    from langchain_community.embeddings import OpenAIEmbeddings  # type: ignore[assignment]
+    from langchain_community.embeddings import (  # type: ignore[assignment]
+        OpenAIEmbeddings,
+    )
 
 from langchain_core.embeddings import Embeddings
 
@@ -27,11 +29,107 @@ class EmbeddingError(Exception):
     pass
 
 
+class FinBERTEmbeddings(Embeddings):
+    """
+    FinBERT embeddings using sentence-transformers.
+
+    Wraps sentence-transformers models for financial domain embeddings.
+    Uses ProsusAI/finbert or other financial domain models.
+    """
+
+    def __init__(self, model_name: str = "sentence-transformers/all-MiniLM-L6-v2"):
+        """
+        Initialize FinBERT embeddings.
+
+        Args:
+            model_name: HuggingFace model name for financial embeddings.
+                Default: 'sentence-transformers/all-MiniLM-L6-v2'
+                For financial domain, consider models like:
+                - 'sentence-transformers/all-MiniLM-L6-v2' (generic, fast)
+                - 'sentence-transformers/all-mpnet-base-v2' (better quality)
+                - Custom financial domain models if available
+        """
+        try:
+            from sentence_transformers import SentenceTransformer
+
+            logger.info(f"Loading FinBERT model: {model_name}")
+            self.model = SentenceTransformer(model_name)
+            self.model_name = model_name
+            logger.info(f"FinBERT model '{model_name}' loaded successfully")
+        except ImportError:
+            logger.error(
+                "sentence-transformers not installed. "
+                "Please install: pip install sentence-transformers"
+            )
+            raise EmbeddingError(
+                "sentence-transformers not installed. "
+                "Please install: pip install sentence-transformers"
+            )
+        except Exception as e:
+            logger.error(f"Failed to load FinBERT model: {str(e)}", exc_info=True)
+            raise EmbeddingError(f"Failed to load FinBERT model: {str(e)}") from e
+
+    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+        """
+        Generate embeddings for multiple documents.
+
+        Args:
+            texts: List of texts to embed
+
+        Returns:
+            List of embedding vectors
+        """
+        logger.debug(f"Generating FinBERT embeddings for {len(texts)} documents")
+        try:
+            embeddings = self.model.encode(
+                texts,
+                convert_to_numpy=True,
+                show_progress_bar=False,
+                normalize_embeddings=True,
+            )
+            # Convert numpy array to list of lists
+            return embeddings.tolist()
+        except Exception as e:
+            logger.error(
+                f"Failed to generate FinBERT document embeddings: {str(e)}",
+                exc_info=True,
+            )
+            raise EmbeddingError(
+                f"Failed to generate FinBERT document embeddings: {str(e)}"
+            ) from e
+
+    def embed_query(self, text: str) -> List[float]:
+        """
+        Generate embedding for a single query text.
+
+        Args:
+            text: Text to embed
+
+        Returns:
+            Embedding vector as list of floats
+        """
+        logger.debug(f"Generating FinBERT query embedding for text: '{text[:50]}...'")
+        try:
+            embedding = self.model.encode(
+                text,
+                convert_to_numpy=True,
+                normalize_embeddings=True,
+            )
+            return embedding.tolist()
+        except Exception as e:
+            logger.error(
+                f"Failed to generate FinBERT query embedding: {str(e)}", exc_info=True
+            )
+            raise EmbeddingError(
+                f"Failed to generate FinBERT query embedding: {str(e)}"
+            ) from e
+
+
 class EmbeddingFactory:
     """
     Factory for creating embedding models.
 
-    Supports OpenAI and Ollama embedding providers with automatic
+    Supports OpenAI, Ollama, and FinBERT embedding providers with automatic
     configuration based on environment settings.
     """
 
@@ -41,7 +139,7 @@ class EmbeddingFactory:
         Create embeddings instance based on provider.
 
         Args:
-            provider: Embedding provider ('openai' or 'ollama').
+            provider: Embedding provider ('openai', 'ollama', or 'finbert').
                 If None, uses config.EMBEDDING_PROVIDER
 
         Returns:
@@ -60,11 +158,13 @@ class EmbeddingFactory:
             return EmbeddingFactory._create_openai_embeddings()
         elif provider == "ollama":
             return EmbeddingFactory._create_ollama_embeddings()
+        elif provider == "finbert":
+            return EmbeddingFactory._create_finbert_embeddings()
         else:
             logger.error(f"Unsupported embedding provider: {provider}")
             raise EmbeddingError(
                 f"Unsupported embedding provider: {provider}. "
-                "Supported providers: 'openai', 'ollama'"
+                "Supported providers: 'openai', 'ollama', 'finbert'"
             )
 
     @staticmethod
@@ -86,7 +186,8 @@ class EmbeddingFactory:
             )
 
         try:
-            # OpenAIEmbeddings API may vary between langchain_openai and langchain_community
+            # OpenAIEmbeddings API may vary between
+            # langchain_openai and langchain_community
             embeddings = OpenAIEmbeddings(
                 model="text-embedding-3-small",
                 openai_api_key=config.OPENAI_API_KEY,
@@ -137,6 +238,32 @@ class EmbeddingFactory:
             logger.error(f"Failed to create Ollama embeddings: {str(e)}", exc_info=True)
             raise EmbeddingError(f"Failed to create Ollama embeddings: {str(e)}") from e
 
+    @staticmethod
+    def _create_finbert_embeddings() -> FinBERTEmbeddings:
+        """
+        Create FinBERT embeddings instance.
+
+        Returns:
+            FinBERTEmbeddings instance
+
+        Raises:
+            EmbeddingError: If FinBERT model cannot be loaded
+        """
+        logger.debug("Creating FinBERT embeddings instance")
+        try:
+            # Get model name from config
+            model_name = config.FINBERT_MODEL_NAME
+            embeddings = FinBERTEmbeddings(model_name=model_name)
+            logger.info("FinBERT embeddings instance created successfully")
+            return embeddings
+        except Exception as e:
+            logger.error(
+                f"Failed to create FinBERT embeddings: {str(e)}", exc_info=True
+            )
+            raise EmbeddingError(
+                f"Failed to create FinBERT embeddings: {str(e)}"
+            ) from e
+
 
 class EmbeddingGenerator:
     """
@@ -151,7 +278,7 @@ class EmbeddingGenerator:
         Initialize embedding generator.
 
         Args:
-            provider: Embedding provider ('openai' or 'ollama').
+            provider: Embedding provider ('openai', 'ollama', or 'finbert').
                 If None, uses config.EMBEDDING_PROVIDER
         """
         self.provider = provider or config.EMBEDDING_PROVIDER
@@ -234,7 +361,7 @@ def get_embedding_generator(provider: Optional[str] = None) -> EmbeddingGenerato
     Get an embedding generator instance.
 
     Args:
-        provider: Embedding provider ('openai' or 'ollama').
+        provider: Embedding provider ('openai', 'ollama', or 'finbert').
             If None, uses config.EMBEDDING_PROVIDER
 
     Returns:

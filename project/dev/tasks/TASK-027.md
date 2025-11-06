@@ -7,7 +7,7 @@
 | **Task ID** | TASK-027 |
 | **Task Name** | Document Source Management UI |
 | **Priority** | Medium |
-| **Status** | Waiting |
+| **Status** | Done |
 | **Impact** | Medium |
 | **Created** | 2025-01-27 |
 | **Related PRD** | Phase 1 - F10: Document Source Management |
@@ -105,24 +105,24 @@ Implement a user interface for managing document sources in the vector database.
 
 ### Must Have
 
-- [ ] List all indexed documents in UI
-- [ ] Display document metadata (filename, ticker, form type, date)
-- [ ] View document details (metadata, chunk count, statistics)
-- [ ] Delete individual documents
-- [ ] Confirmation dialog before deletion
-- [ ] Search documents by ticker
-- [ ] Search documents by form type
-- [ ] Filter documents by metadata
-- [ ] Document statistics display
-- [ ] UI updates after document deletion
+- [x] List all indexed documents in UI
+- [x] Display document metadata (filename, ticker, form type, date)
+- [x] View document details (metadata, chunk count, statistics)
+- [x] Delete individual documents
+- [x] Confirmation dialog before deletion
+- [x] Search documents by ticker
+- [x] Search documents by form type
+- [x] Filter documents by metadata
+- [x] Document statistics display
+- [x] UI updates after document deletion
 
 ### Should Have
 
-- [ ] Bulk delete functionality
-- [ ] Pagination for document list
-- [ ] Sort options (by date, ticker, form type)
+- [x] Bulk delete functionality
+- [x] Pagination for document list
+- [x] Sort options (by date, ticker, form type)
 - [ ] Export document list (optional)
-- [ ] Document count statistics
+- [x] Document count statistics
 
 ### Nice to Have
 

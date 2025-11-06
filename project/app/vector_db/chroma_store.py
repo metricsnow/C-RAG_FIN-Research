@@ -10,7 +10,6 @@ from typing import Any, Dict, List, Optional
 
 import chromadb
 from chromadb import Collection
-from chromadb.config import Settings
 from langchain_core.documents import Document
 
 from app.utils.config import config
@@ -91,11 +90,13 @@ class ChromaStore:
                     f"Failed to get or create collection '{self.collection_name}'"
                 )
             logger.info(
-                f"Collection '{self.collection_name}' ready (count: {self.collection.count()})"
+                f"Collection '{self.collection_name}' ready "
+                f"(count: {self.collection.count()})"
             )
         except Exception as e:
             logger.error(
-                f"Failed to get or create collection '{self.collection_name}': {str(e)}",
+                f"Failed to get or create collection "
+                f"'{self.collection_name}': {str(e)}",
                 exc_info=True,
             )
             raise ChromaStoreError(
@@ -143,7 +144,8 @@ class ChromaStore:
 
         if len(ids) != len(documents):
             raise ChromaStoreError(
-                f"IDs count ({len(ids)}) does not match documents count ({len(documents)})"
+                f"IDs count ({len(ids)}) does not match "
+                f"documents count ({len(documents)})"
             )
 
         if self.collection is None:
@@ -209,9 +211,8 @@ class ChromaStore:
                 where_document=where_document,  # type: ignore[arg-type]
                 include=["metadatas", "documents", "distances"],
             )
-            logger.debug(
-                f"Query returned {len(results.get('ids', [])[0] if results.get('ids') else [])} results"
-            )
+            result_count = len(results.get("ids", [])[0] if results.get("ids") else [])
+            logger.debug(f"Query returned {result_count} results")
 
             # Convert to simpler format (single query result)
             return {
@@ -250,7 +251,8 @@ class ChromaStore:
             raise ChromaStoreError("Collection is not initialized")
 
         logger.debug(
-            f"Querying ChromaDB by text: n_results={n_results}, query='{query_text[:50]}...'"
+            f"Querying ChromaDB by text: n_results={n_results}, "
+            f"query='{query_text[:50]}...'"
         )
         try:
             # Type ignore for ChromaDB API compatibility
@@ -261,9 +263,8 @@ class ChromaStore:
                 where_document=where_document,  # type: ignore[arg-type]
                 include=["metadatas", "documents", "distances"],
             )
-            logger.debug(
-                f"Query returned {len(results.get('ids', [])[0] if results.get('ids') else [])} results"
-            )
+            result_count = len(results.get("ids", [])[0] if results.get("ids") else [])
+            logger.debug(f"Query returned {result_count} results")
 
             # Convert to simpler format (single query result)
             return {
@@ -384,6 +385,59 @@ class ChromaStore:
             raise ChromaStoreError(
                 f"Failed to delete collection '{self.collection_name}': {str(e)}"
             ) from e
+
+    def delete_documents(
+        self,
+        ids: Optional[List[str]] = None,
+        where: Optional[Dict[str, Any]] = None,
+    ) -> int:
+        """
+        Delete documents from the collection by IDs or metadata filter.
+
+        Args:
+            ids: Optional list of document IDs to delete
+            where: Optional metadata filter dictionary to delete matching documents
+
+        Returns:
+            Number of documents deleted
+
+        Raises:
+            ChromaStoreError: If deletion fails
+            ValueError: If neither ids nor where is provided
+
+        Note:
+            Either ids or where must be provided. If both are provided,
+            ids takes precedence.
+        """
+        if self.collection is None:
+            raise ChromaStoreError("Collection is not initialized")
+
+        if ids is None and where is None:
+            raise ValueError("Either ids or where must be provided")
+
+        logger.info(
+            f"Deleting documents from collection '{self.collection_name}': "
+            f"ids={ids is not None and len(ids) or 0}, where={where}"
+        )
+
+        try:
+            if ids is not None:
+                # Delete by IDs
+                self.collection.delete(ids=ids)
+                deleted_count = len(ids)
+            else:
+                # Delete by metadata filter
+                # First, get count of documents to be deleted
+                results = self.collection.get(where=where)
+                deleted_count = len(results.get("ids", []))
+                # Then delete them
+                self.collection.delete(where=where)
+
+            logger.info(f"Successfully deleted {deleted_count} documents")
+            return deleted_count
+        except Exception as e:
+            logger.error(f"Failed to delete documents: {str(e)}", exc_info=True)
+            raise ChromaStoreError(f"Failed to delete documents: {str(e)}") from e
 
     def reset(self) -> None:
         """
