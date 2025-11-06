@@ -97,6 +97,9 @@ async def query(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Query processing failed: {str(e)}",
         ) from e
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
     except Exception as e:
         logger.error(f"Unexpected error in query endpoint: {str(e)}", exc_info=True)
         raise HTTPException(

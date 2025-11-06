@@ -184,6 +184,19 @@ The project is organized into several key modules, each implementing specific st
 .
 ├── project/                    # Main application code
 │   ├── app/                    # Application source code
+│   │   ├── api/                # FastAPI backend
+│   │   │   ├── auth.py              # Authentication middleware
+│   │   │   ├── main.py              # FastAPI application entry point
+│   │   │   ├── middleware.py        # Request middleware
+│   │   │   ├── models/              # API data models
+│   │   │   │   ├── documents.py     # Document models
+│   │   │   │   ├── ingestion.py     # Ingestion models
+│   │   │   │   └── query.py         # Query models
+│   │   │   └── routes/              # API route handlers
+│   │   │       ├── documents.py     # Document endpoints
+│   │   │       ├── health.py        # Health check endpoints
+│   │   │       ├── ingestion.py     # Ingestion endpoints
+│   │   │       └── query.py         # Query endpoints
 │   │   ├── ingestion/          # Document ingestion pipeline
 │   │   │   ├── document_loader.py    # Multi-format document loading
 │   │   │   ├── edgar_fetcher.py      # SEC EDGAR API integration
@@ -196,41 +209,68 @@ The project is organized into several key modules, each implementing specific st
 │   │   │   ├── query_refinement.py   # Query expansion and refinement
 │   │   │   └── retrieval_optimizer.py # Hybrid search and reranking
 │   │   ├── ui/                 # Streamlit frontend
-│   │   │   └── app.py                # Interactive chat interface
+│   │   │   ├── app.py                # Interactive chat interface
+│   │   │   └── document_management.py # Document management UI
 │   │   ├── utils/              # Configuration and utilities
 │   │   │   ├── config.py            # Pydantic-based configuration
+│   │   │   ├── conversation_export.py # Conversation export utilities
+│   │   │   ├── conversation_memory.py # Conversation state management
+│   │   │   ├── document_manager.py   # Document management utilities
+│   │   │   ├── health.py            # Health check utilities
 │   │   │   ├── logger.py            # Structured logging
-│   │   │   ├── metrics.py           # Prometheus metrics
-│   │   │   └── conversation_memory.py # Conversation state management
+│   │   │   └── metrics.py           # Prometheus metrics
 │   │   └── vector_db/          # ChromaDB integration
 │   │       └── chroma_store.py      # Vector store operations
 │   ├── docs/                   # Documentation
+│   │   ├── api.md              # API documentation
+│   │   ├── configuration.md   # Configuration guide
+│   │   ├── deployment.md       # Deployment guide
+│   │   ├── edgar_integration.md # SEC EDGAR integration docs
 │   │   ├── prd-phase1.md       # Phase 1 Product Requirements
 │   │   ├── prd-phase2.md       # Phase 2 Planning Document
-│   │   ├── deployment.md       # Deployment guide
-│   │   └── edgar_integration.md # SEC EDGAR integration docs
+│   │   ├── testing.md          # Testing documentation
+│   │   └── sphinx/             # Sphinx documentation build
 │   ├── dev/                    # Development tasks and bugs
-│   │   ├── tasks/              # Active tasks
-│   │   └── archive/            # Completed tasks
+│   │   ├── archive/            # Completed tasks and bugs
+│   │   │   ├── bugs_done/      # Completed bug reports
+│   │   │   └── tasks_done/     # Completed tasks
+│   │   ├── bugs/               # Active bug reports
+│   │   └── tasks/              # Active tasks
 │   ├── scripts/                # Utility scripts
-│   │   ├── fetch_edgar_data.py      # SEC data fetching utilities
-│   │   ├── validate_chromadb.py     # Database validation
-│   │   └── run_streamlit.py         # Application launcher
+│   │   ├── deploy_local.sh          # Local deployment script
+│   │   ├── deploy_with_ngrok.sh     # ngrok deployment script
+│   │   ├── example_chromadb_usage.py # ChromaDB usage examples
+│   │   ├── fetch_edgar_data.py       # SEC data fetching utilities
+│   │   ├── run_streamlit.py         # Streamlit application launcher
+│   │   ├── start_api.py              # API server launcher
+│   │   ├── start_streamlit.sh       # Streamlit startup script
+│   │   ├── validate_chromadb_comprehensive.py # Comprehensive DB validation
+│   │   ├── validate_chromadb_data.py # Database data validation
+│   │   ├── validate_setup.py        # Setup validation
+│   │   └── verify_document_indexing.py # Document indexing verification
 │   ├── tests/                  # Comprehensive test suite
 │   │   ├── test_rag_chain_comprehensive.py  # RAG chain tests
 │   │   ├── test_chromadb_comprehensive.py   # Vector DB tests
 │   │   ├── test_pipeline_comprehensive.py   # Ingestion tests
 │   │   └── test_end_to_end.py               # Integration tests
+│   ├── pyproject.toml          # Project configuration and dependencies
+│   ├── pytest.ini              # pytest configuration
+│   ├── requirements.txt        # Python dependencies
+│   ├── streamlit_app.py        # Streamlit application entry point
+│   ├── START_STREAMLIT.sh      # Streamlit startup script
 │   └── README.md               # Detailed project README
 ```
 
 ## Documentation
 
 - **[Project README](project/README.md)**: Comprehensive setup, usage, and architecture guide
+- **[API Documentation](project/docs/api.md)**: FastAPI endpoints and usage
+- **[Configuration Guide](project/docs/configuration.md)**: Configuration options and environment variables
 - **[Phase 1 PRD](project/docs/prd-phase1.md)**: Complete Phase 1 MVP requirements and specifications
 - **[Phase 2 PRD](project/docs/prd-phase2.md)**: Phase 2 enhancement planning
 - **[Deployment Guide](project/docs/deployment.md)**: Deployment instructions for local, ngrok, and VPS
 - **[SEC EDGAR Integration](project/docs/edgar_integration.md)**: SEC EDGAR data fetching documentation
+- **[Testing Documentation](project/docs/testing.md)**: Testing guidelines and test suite information
 
 ## Deployment Options
 

@@ -4,11 +4,24 @@ Query API request/response models.
 
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class SourceMetadata(BaseModel):
     """Source document metadata for citations."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "source": "data/documents/AAPL_10-K_2023.txt",
+                "filename": "AAPL_10-K_2023.txt",
+                "ticker": "AAPL",
+                "form_type": "10-K",
+                "chunk_index": 0,
+                "date": "2023-09-30",
+            }
+        }
+    )
 
     source: Optional[str] = Field(
         None, description="Source document path or identifier"
@@ -19,37 +32,12 @@ class SourceMetadata(BaseModel):
     chunk_index: Optional[int] = Field(None, description="Chunk index in document")
     date: Optional[str] = Field(None, description="Document date")
 
-    class Config:
-        """Pydantic config."""
-
-        json_schema_extra = {
-            "example": {
-                "source": "data/documents/AAPL_10-K_2023.txt",
-                "filename": "AAPL_10-K_2023.txt",
-                "ticker": "AAPL",
-                "form_type": "10-K",
-                "chunk_index": 0,
-                "date": "2023-09-30",
-            }
-        }
-
 
 class QueryRequest(BaseModel):
     """RAG query request model."""
 
-    question: str = Field(..., description="Natural language question", min_length=1)
-    top_k: Optional[int] = Field(
-        None, ge=1, le=20, description="Number of top chunks to retrieve (optional)"
-    )
-    conversation_history: Optional[List[Dict[str, Any]]] = Field(
-        None,
-        description="Previous conversation messages for context (optional)",
-    )
-
-    class Config:
-        """Pydantic config."""
-
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "question": "What was Apple's revenue in 2023?",
                 "top_k": 5,
@@ -62,22 +50,23 @@ class QueryRequest(BaseModel):
                 ],
             }
         }
+    )
+
+    question: str = Field(..., description="Natural language question", min_length=1)
+    top_k: Optional[int] = Field(
+        None, ge=1, le=20, description="Number of top chunks to retrieve (optional)"
+    )
+    conversation_history: Optional[List[Dict[str, Any]]] = Field(
+        None,
+        description="Previous conversation messages for context (optional)",
+    )
 
 
 class QueryResponse(BaseModel):
     """RAG query response model."""
 
-    answer: str = Field(..., description="Generated answer")
-    sources: List[SourceMetadata] = Field(
-        default_factory=list, description="Source documents used"
-    )
-    chunks_used: int = Field(..., ge=0, description="Number of chunks used")
-    error: Optional[str] = Field(None, description="Error message if query failed")
-
-    class Config:
-        """Pydantic config."""
-
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "answer": "Apple's revenue in 2023 was $383.3 billion...",
                 "sources": [
@@ -94,3 +83,11 @@ class QueryResponse(BaseModel):
                 "error": None,
             }
         }
+    )
+
+    answer: str = Field(..., description="Generated answer")
+    sources: List[SourceMetadata] = Field(
+        default_factory=list, description="Source documents used"
+    )
+    chunks_used: int = Field(..., ge=0, description="Number of chunks used")
+    error: Optional[str] = Field(None, description="Error message if query failed")

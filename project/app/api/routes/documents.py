@@ -196,6 +196,7 @@ async def delete_document(
         # Delete document using document manager
         deleted_count = doc_manager.delete_documents([doc_id])
         if deleted_count == 0:
+            logger.warning(f"Document not found for deletion: {doc_id}")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Document not found: {doc_id}",
@@ -208,6 +209,8 @@ async def delete_document(
             "doc_id": doc_id,
         }
 
+    except HTTPException:
+        raise
     except DocumentManagerError as e:
         logger.error(f"Document manager error: {str(e)}", exc_info=True)
         raise HTTPException(

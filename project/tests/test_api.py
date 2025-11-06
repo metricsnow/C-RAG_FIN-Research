@@ -502,8 +502,9 @@ class TestErrorHandling:
 
     def test_500_internal_error_handling(self, api_client, api_headers):
         """Test that internal errors are handled gracefully."""
-        with patch("app.api.routes.query.create_rag_system") as mock_rag:
-            mock_rag.side_effect = Exception("Internal error")
+        # Patch get_rag_system to raise an exception
+        with patch("app.api.routes.query.get_rag_system") as mock_get_rag:
+            mock_get_rag.side_effect = Exception("Internal error")
 
             response = api_client.post(
                 "/api/v1/query",

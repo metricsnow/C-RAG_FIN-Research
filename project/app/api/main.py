@@ -5,6 +5,9 @@ Creates and configures the FastAPI application with all routes,
 middleware, and error handlers.
 """
 
+from contextlib import asynccontextmanager
+from typing import AsyncGenerator
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse  # noqa: E501
@@ -16,6 +19,37 @@ from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    """
+    Lifespan context manager for FastAPI application.
+
+    Handles startup and shutdown events.
+
+    Args:
+        app: FastAPI application instance
+
+    Yields:
+        None
+    """
+    # Startup
+    logger.info(
+        f"FastAPI application starting: "
+        f"title={config.api_title}, version={config.api_version}"
+    )
+    logger.info(f"API server will run on {config.api_host}:{config.api_port}")
+    if config.api_key:
+        logger.info("API key authentication enabled")
+    else:
+        logger.warning("API key authentication disabled (no API_KEY configured)")
+
+    yield
+
+    # Shutdown
+    logger.info("FastAPI application shutting down")
+
+
 # Create FastAPI application
 app = FastAPI(
     title=config.api_title,
@@ -24,6 +58,7 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url="/openapi.json",
+    lifespan=lifespan,
 )
 
 # Configure CORS
@@ -102,25 +137,3 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
             ),
         },
     )
-
-
-# Startup event
-@app.on_event("startup")
-async def startup_event() -> None:
-    """Initialize application on startup."""
-    logger.info(
-        f"FastAPI application starting: "
-        f"title={config.api_title}, version={config.api_version}"
-    )
-    logger.info(f"API server will run on {config.api_host}:{config.api_port}")
-    if config.api_key:
-        logger.info("API key authentication enabled")
-    else:
-        logger.warning("API key authentication disabled (no API_KEY configured)")
-
-
-# Shutdown event
-@app.on_event("shutdown")
-async def shutdown_event() -> None:
-    """Cleanup on application shutdown."""
-    logger.info("FastAPI application shutting down")

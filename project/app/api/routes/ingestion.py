@@ -62,7 +62,8 @@ async def ingest_document(
     """
     try:
         # Get parameters from request or defaults
-        file_path = request.file_path if request else None
+        # FastAPI will parse JSON body into request if provided
+        file_path = request.file_path if request and request.file_path else None
         store_embeddings = request.store_embeddings if request else True
 
         # Validate input
