@@ -283,6 +283,7 @@ The system includes conversation memory functionality that maintains context acr
 | `CONVERSATION_ENABLED` | boolean | `true` | `true`/`false`, `1`/`0`, `yes`/`no` | Enable conversation memory for context in queries |
 | `CONVERSATION_MAX_TOKENS` | integer | `2000` | Range: 100 - 10000 | Maximum tokens for conversation context |
 | `CONVERSATION_MAX_HISTORY` | integer | `10` | Range: 1 - 50 | Maximum number of previous messages to include |
+| `CONVERSATION_USE_LANGCHAIN_MEMORY` | boolean | `true` | `true`/`false`, `1`/`0`, `yes`/`no` | Use LangChain memory components for conversation management (TASK-031) |
 
 **Conversation Memory Features**:
 
@@ -291,24 +292,40 @@ The system includes conversation memory functionality that maintains context acr
    - Context automatically included in RAG queries
    - Recent messages prioritized over older ones
 
-2. **Token Management**: Prevents context window overflow with intelligent token counting.
+2. **LangChain Memory Integration** (TASK-031): Uses LangChain-compatible memory components for robust conversation management.
+   - `ConversationBufferMemory`-like interface for conversation history
+   - LangChain message format compatibility
+   - Seamless integration with RAG chain
+   - Automatic memory synchronization with Streamlit session state
+   - Memory statistics and status display in UI
+
+3. **Token Management**: Prevents context window overflow with intelligent token counting.
    - Uses `tiktoken` for accurate token counting
    - Automatically trims conversation history to fit within limits
    - Prioritizes recent messages when trimming
+   - Works with both LangChain memory and legacy conversation memory
 
-3. **Configurable Limits**: Adjustable limits for conversation context.
+4. **Configurable Limits**: Adjustable limits for conversation context.
    - `CONVERSATION_MAX_TOKENS`: Maximum tokens for conversation context (default: 2000)
    - `CONVERSATION_MAX_HISTORY`: Maximum number of messages to include (default: 10)
+   - `CONVERSATION_USE_LANGCHAIN_MEMORY`: Enable LangChain memory components (default: true)
 
 **Example Configuration**:
 ```bash
-# Enable conversation memory (recommended)
+# Enable conversation memory with LangChain integration (recommended)
 CONVERSATION_ENABLED=true
+CONVERSATION_USE_LANGCHAIN_MEMORY=true
 CONVERSATION_MAX_TOKENS=2000
 CONVERSATION_MAX_HISTORY=10
 
 # Disable conversation memory (single-turn queries only)
 CONVERSATION_ENABLED=false
+
+# Use legacy conversation memory (without LangChain components)
+CONVERSATION_ENABLED=true
+CONVERSATION_USE_LANGCHAIN_MEMORY=false
+CONVERSATION_MAX_TOKENS=2000
+CONVERSATION_MAX_HISTORY=10
 
 # Increase context window for longer conversations
 CONVERSATION_MAX_TOKENS=4000
@@ -320,11 +337,20 @@ CONVERSATION_MAX_HISTORY=5
 ```
 
 **How It Works**:
-- Conversation history is stored in Streamlit session state (`st.session_state.messages`)
-- When a query is made, previous messages are automatically included as context
-- Token counting ensures conversation context doesn't exceed LLM context window
-- Recent messages are prioritized when trimming conversation history
-- Backward compatible: works with or without conversation history
+- **LangChain Memory Mode** (default, `CONVERSATION_USE_LANGCHAIN_MEMORY=true`):
+  - Uses `ConversationBufferMemory`-compatible interface for conversation management
+  - Conversation history stored in LangChain message format (HumanMessage, AIMessage)
+  - Automatically syncs with Streamlit session state on each query
+  - Memory statistics displayed in UI (message count, token count, limits)
+  - Memory cleared when conversation is cleared in UI
+- **Legacy Memory Mode** (`CONVERSATION_USE_LANGCHAIN_MEMORY=false`):
+  - Uses original conversation memory implementation
+  - Conversation history stored in Streamlit session state (`st.session_state.messages`)
+  - When a query is made, previous messages are automatically included as context
+- **Common Behavior**:
+  - Token counting ensures conversation context doesn't exceed LLM context window
+  - Recent messages are prioritized when trimming conversation history
+  - Backward compatible: works with or without conversation history
 
 **Performance Considerations**:
 - Conversation memory adds minimal overhead (< 10% performance impact)

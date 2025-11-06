@@ -31,6 +31,7 @@ A production-ready RAG (Retrieval-Augmented Generation) system for semantic sear
 - **FastAPI Backend**: Production-ready RESTful API for programmatic access and integration (TASK-029)
 - **Document Management**: Comprehensive UI for managing indexed documents with search, filtering, and deletion (TASK-027)
 - **Conversation Memory**: Multi-turn conversations with context preservation across queries (TASK-024)
+- **LangChain Memory Integration**: LangChain-compatible conversation memory with buffer management (TASK-031)
 - **Conversation Management**: Clear and export conversation history in multiple formats (TASK-025)
 
 ### Technical Features
@@ -46,15 +47,18 @@ A production-ready RAG (Retrieval-Augmented Generation) system for semantic sear
 - **Interactive Model Selection**: UI toggle to switch between local Ollama and OpenAI LLMs
 - **RESTful API**: FastAPI backend with OpenAPI documentation, authentication, and rate limiting (TASK-029)
 
-### Conversation Memory Features (TASK-024, TASK-025)
+### Conversation Memory Features (TASK-024, TASK-025, TASK-031)
 
 - **Context Preservation**: Maintains conversation history across multiple queries in the same session
+- **LangChain Memory Integration**: Uses LangChain-compatible `ConversationBufferMemory` for robust conversation management
 - **Follow-up Questions**: Ask follow-up questions that reference previous conversation context
 - **Token Management**: Intelligent token counting prevents context window overflow
+- **Memory Statistics**: Real-time display of memory usage (message count, token count, limits) in UI
 - **Clear Conversation**: Clear conversation history with confirmation dialog to prevent accidental loss
 - **Export Conversations**: Export conversation history in JSON, Markdown, or TXT formats
 - **Export Metadata**: Export files include complete metadata (model, timestamps, sources, conversation ID)
 - **Configurable Limits**: Adjustable conversation context window size and message history limits
+- **Backward Compatible**: Falls back to legacy conversation memory if LangChain memory is disabled
 
 ### Document Management Features (TASK-027)
 
