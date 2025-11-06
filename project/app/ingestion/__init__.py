@@ -19,6 +19,14 @@ from app.ingestion.pipeline import (
     create_pipeline,
 )
 from app.ingestion.stock_data_normalizer import StockDataNormalizer
+from app.ingestion.transcript_fetcher import (
+    TranscriptFetcher,
+    TranscriptFetcherError,
+)
+from app.ingestion.transcript_parser import (
+    TranscriptParser,
+    TranscriptParserError,
+)
 from app.ingestion.yfinance_fetcher import (
     YFinanceFetcher,
     YFinanceFetcherError,
@@ -56,6 +64,10 @@ __all__ = [
     "YFinanceFetcher",
     "YFinanceFetcherError",
     "StockDataNormalizer",
+    "TranscriptFetcher",
+    "TranscriptFetcherError",
+    "TranscriptParser",
+    "TranscriptParserError",
     "ENHANCED_PARSERS_AVAILABLE",
 ]
 

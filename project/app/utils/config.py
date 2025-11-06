@@ -363,6 +363,26 @@ class Config(BaseSettings):
         description="Enable XBRL financial statement extraction",
     )
 
+    # Earnings Call Transcripts Configuration (TASK-033)
+    # Note: TIKR does not offer an API. This implementation uses web scraping only.
+    transcript_enabled: bool = Field(
+        default=True,
+        alias="TRANSCRIPT_ENABLED",
+        description="Enable earnings call transcript integration",
+    )
+    transcript_rate_limit_seconds: float = Field(
+        default=1.0,
+        ge=0.1,
+        le=60.0,
+        alias="TRANSCRIPT_RATE_LIMIT_SECONDS",
+        description="Rate limit between transcript requests in seconds",
+    )
+    transcript_use_web_scraping: bool = Field(
+        default=True,
+        alias="TRANSCRIPT_USE_WEB_SCRAPING",
+        description="Enable web scraping for transcripts (required)",
+    )
+
     # Project paths (computed fields)
     _project_root: Optional[Path] = None
     _data_dir: Optional[Path] = None

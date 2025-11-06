@@ -232,7 +232,8 @@ As a quantitative developer, I want access to comprehensive financial fundamenta
   - Form S-1 IPO data
   - DEF 14A proxy statements
 - [ ] Earnings call transcripts integration:
-  - TIKR API or web scraping
+  - API Ninjas Earnings Call API (free tier) ⭐ RECOMMENDED
+  - Alternative: Benzinga, Finnworlds, Quartr APIs (paid options)
   - Transcript storage and indexing
   - Speaker annotation
 - [ ] Financial news aggregation:
@@ -253,9 +254,9 @@ As a quantitative developer, I want access to comprehensive financial fundamenta
 
 **Dependencies:**
 - SEC EDGAR API (enhanced)
-- TIKR API or web scraping
+- API Ninjas Earnings Call API (free tier) or alternative APIs
 - RSS parsing libraries
-- Web scraping libraries (BeautifulSoup, Scrapy)
+- Web scraping libraries (BeautifulSoup, Scrapy) - for news only
 - Economic calendar APIs
 
 ---
@@ -526,7 +527,8 @@ As a quantitative researcher, I want access to alternative data sources so that 
 - **World Bank API**: GDP, inflation, unemployment, trade data (188 countries)
 - **Trading Economics API**: Economic indicators (196 countries)
 - **SEC EDGAR API**: Enhanced filings (XBRL, Forms 8-K, 4, S-1, DEF 14A)
-- **TIKR API**: Earnings call transcripts (90-day free tier)
+- **API Ninjas Earnings Call API**: Earnings call transcripts (free tier available) ⭐ RECOMMENDED
+- **Alternative APIs**: Benzinga, Finnworlds, Quartr (paid options)
 - **Economic Calendar APIs**: FXStreet, Dukascopy, Tradays
 
 **NLP and Analysis:**
@@ -581,7 +583,7 @@ As a quantitative researcher, I want access to alternative data sources so that 
 - Economic calendar integration
 
 **Week 13-14: Alternative Data Sources**
-- Earnings transcript integration (TIKR)
+- Earnings transcript integration (API Ninjas or alternative APIs)
 - Financial news aggregation (RSS/Web scraping)
 - Central bank data scraping
 - Data normalization and storage
@@ -684,7 +686,7 @@ As a quantitative researcher, I want access to alternative data sources so that 
 - Real-time: Interest rate decisions
 - Periodic: Press conferences, communications
 
-### Earnings Transcripts (TIKR)
+### Earnings Transcripts (API Ninjas / Alternative APIs)
 
 **Data Types:**
 - Earnings call transcripts
@@ -696,7 +698,15 @@ As a quantitative researcher, I want access to alternative data sources so that 
 **Update Frequency:**
 - 1-2 days post-earnings call
 - Quarterly for most companies
-- Coverage: 90-day free history (US companies)
+- Coverage: Varies by API (API Ninjas: 8,000+ companies from 2000+)
+
+**API Options:**
+- **API Ninjas** (Recommended): Free tier, 8,000+ companies, data from 2000+
+- **Benzinga**: Paid service, comprehensive coverage, real-time
+- **Finnworlds**: Paid service, JSON/XML formats
+- **Quartr**: Paid service, high-accuracy transcripts
+
+**⚠️ Important**: TIKR does not offer an API. Web scraping is risky and may violate ToS.
 
 ### Financial News and Sentiment
 
@@ -784,7 +794,7 @@ As a quantitative researcher, I want access to alternative data sources so that 
 
 ### External Dependencies
 
-- **API Keys**: FRED API, Trading Economics (if required), TIKR API
+- **API Keys**: FRED API, Trading Economics (if required), API Ninjas (free tier available)
 - **Data Sources**: Free tier access to various data providers
 - **Libraries**: yfinance, fredapi, transformers (FinBERT), TextBlob, VADER
 

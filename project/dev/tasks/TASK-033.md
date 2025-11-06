@@ -7,7 +7,7 @@
 | **Task ID** | TASK-033 |
 | **Task Name** | Earnings Call Transcripts Integration |
 | **Priority** | Medium |
-| **Status** | Waiting |
+| **Status** | In Progress - Partial (Web scraping implemented, API integration pending) |
 | **Impact** | Medium |
 | **Created** | 2025-01-27 |
 | **Related PRD** | Phase 2 - P2-F5: Enhanced Data Sources - Financial Fundamentals |
@@ -19,7 +19,9 @@
 
 ## Objective
 
-Integrate earnings call transcript data sources (TIKR API or web scraping) to fetch, parse, and index earnings call transcripts with speaker annotation for comprehensive financial analysis.
+Integrate earnings call transcript data sources using legitimate APIs (API Ninjas Earnings Call API recommended) to fetch, parse, and index earnings call transcripts with speaker annotation for comprehensive financial analysis.
+
+**⚠️ IMPORTANT**: TIKR does not offer an API. Web scraping is risky and may violate ToS. Use legitimate APIs only.
 
 ---
 
@@ -31,7 +33,7 @@ Integrate earnings call transcript data sources (TIKR API or web scraping) to fe
 - No forward guidance extraction capability
 
 **Required State:**
-- Earnings call transcript fetching (TIKR API or web scraping)
+- Earnings call transcript fetching via legitimate API (API Ninjas recommended)
 - Transcript storage and indexing in vector database
 - Speaker annotation (management, analysts, etc.)
 - Integration with RAG system for querying
@@ -44,10 +46,11 @@ Integrate earnings call transcript data sources (TIKR API or web scraping) to fe
 ### Functional Requirements
 
 1. **Transcript Fetching**
-   - TIKR API integration (90-day free tier) OR web scraping
+   - API Ninjas Earnings Call API integration (free tier available)
+   - Alternative: Benzinga, Finnworlds, or Quartr APIs (paid options)
    - Fetch transcripts for specified tickers
    - Fetch transcripts by date range
-   - Handle multiple transcript sources
+   - Handle multiple transcript sources with fallback
 
 2. **Transcript Parsing**
    - Parse transcript structure
@@ -84,10 +87,11 @@ Integrate earnings call transcript data sources (TIKR API or web scraping) to fe
 **Files to Modify:**
 - `app/ingestion/pipeline.py` - Add transcript ingestion support
 - `app/utils/config.py` - Add transcript configuration options
-- `requirements.txt` - Add TIKR API or scraping dependencies
+- `requirements.txt` - Add API client dependencies (requests already included)
 
 **Dependencies:**
-- TIKR API (optional) or web scraping libraries
+- API Ninjas Earnings Call API (free tier) - RECOMMENDED
+- Alternative APIs: Benzinga, Finnworlds, Quartr (paid options)
 - ChromaDB for storage
 - Integration with ingestion pipeline
 
@@ -97,7 +101,7 @@ Integrate earnings call transcript data sources (TIKR API or web scraping) to fe
 
 ### Must Have
 
-- [ ] Transcript fetching functional (TIKR API or web scraping)
+- [ ] Transcript fetching functional via legitimate API (API Ninjas recommended)
 - [ ] Transcript parsing with speaker identification
 - [ ] Speaker annotation (management, analysts)
 - [ ] Q&A section extraction
@@ -128,10 +132,11 @@ Integrate earnings call transcript data sources (TIKR API or web scraping) to fe
 ## Implementation Plan
 
 ### Phase 1: Transcript Fetching
-1. Research TIKR API or web scraping options
-2. Create transcript fetcher module
-3. Implement fetching for TIKR API or web scraping
-4. Test fetching functionality
+1. Research legitimate API options (API Ninjas, Benzinga, Finnworlds, Quartr)
+2. Obtain API key for API Ninjas (free tier)
+3. Create transcript fetcher module with API integration
+4. Implement fetching with error handling and fallback
+5. Test fetching functionality
 
 ### Phase 2: Transcript Parsing
 1. Analyze transcript structure
@@ -163,21 +168,37 @@ Integrate earnings call transcript data sources (TIKR API or web scraping) to fe
 
 ## Technical Considerations
 
-### TIKR API vs Web Scraping
+### API Options
 
-**TIKR API:**
-- 90-day free tier for US companies
-- Structured data format
-- Requires API key
-- Rate limiting may apply
+**API Ninjas Earnings Call API** ⭐ RECOMMENDED
+- Free tier available (rate limited)
+- Official API (no ToS violations)
+- 8,000+ companies, data from 2000+
+- JSON format, well-documented
+- URL: https://api-ninjas.com/api/earningscalltranscript
+- **Recommendation:** Use as primary source
 
-**Web Scraping:**
-- No API key required
-- More complex implementation
-- May require rate limiting
-- Less reliable (website changes)
+**Benzinga Conference Call Transcripts API**
+- Official API with comprehensive coverage
+- Real-time updates
+- Paid service
+- URL: https://www.benzinga.com/apis/cloud-product/conference-call-transcripts/
 
-**Recommendation:** Start with TIKR API if available, fallback to web scraping.
+**Finnworlds Earnings Conference Call API**
+- Official API
+- JSON and XML formats
+- Paid service
+- URL: https://finnworlds.com/conference-call-transcript-api/
+
+**Quartr Public API**
+- High-accuracy transcripts
+- Paid service
+- URL: https://quartr.dev/datasets/earnings-call-transcripts
+
+**⚠️ IMPORTANT NOTES:**
+- TIKR does NOT offer an API (removed from implementation)
+- Web scraping is risky and may violate ToS (not recommended)
+- Always use legitimate APIs with proper authentication
 
 ### Transcript Structure
 
@@ -202,7 +223,7 @@ Integrate earnings call transcript data sources (TIKR API or web scraping) to fe
     "fiscal_year": "2025",
     "transcript_type": "earnings_call",
     "speakers": ["CEO", "CFO", "Analyst 1"],
-    "source": "tikr|web_scraping",
+    "source": "api_ninjas|benzinga|finnworlds|quartr",
     "url": "transcript_url"
 }
 ```
@@ -213,10 +234,10 @@ Integrate earnings call transcript data sources (TIKR API or web scraping) to fe
 
 ### Technical Risks
 
-1. **Risk:** TIKR API limitations or changes
+1. **Risk:** API rate limiting or quota exhaustion
    - **Probability:** Medium
    - **Impact:** Medium
-   - **Mitigation:** Implement web scraping fallback, handle errors gracefully
+   - **Mitigation:** Implement rate limiting, use free tier efficiently, consider paid alternatives for production
 
 2. **Risk:** Transcript parsing accuracy
    - **Probability:** Medium
@@ -253,7 +274,9 @@ Integrate earnings call transcript data sources (TIKR API or web scraping) to fe
 - TASK-005 (ChromaDB) - ✅ Complete
 
 **External:**
-- TIKR API (optional) or web scraping libraries
+- API Ninjas Earnings Call API (free tier recommended)
+- Alternative: Benzinga, Finnworlds, or Quartr APIs (paid options)
+- requests library (already in requirements.txt)
 
 ---
 
@@ -274,6 +297,55 @@ Integrate earnings call transcript data sources (TIKR API or web scraping) to fe
 - Earnings calls provide valuable forward guidance and management commentary
 - Consider integration with sentiment analysis (TASK-039)
 - Monitor for API changes or rate limiting
+- **API Audit**: See `docs/reference/api_integration_audit.md` for validation details
+
+---
+
+## Discovered During Work
+
+### Current Implementation Status (2025-01-27)
+
+**✅ Completed:**
+- Transcript fetcher module created (`app/ingestion/transcript_fetcher.py`)
+- Transcript parser module created (`app/ingestion/transcript_parser.py`)
+- Pipeline integration completed (`app/ingestion/pipeline.py`)
+- Configuration options added (`app/utils/config.py`)
+- Fetch script created (`scripts/fetch_transcripts.py`)
+- Unit tests written (`tests/test_transcript_fetcher.py`, `tests/test_transcript_parser.py`)
+
+**⚠️ Current Implementation:**
+- Uses web scraping (Seeking Alpha, Yahoo Finance) as temporary solution
+- **RISK**: Web scraping may violate Terms of Service
+- **STATUS**: Functional but not recommended for production
+
+**🔴 URGENT - Required Actions:**
+
+1. **HIGH PRIORITY: Replace Web Scraping with API Ninjas Integration**
+   - Remove web scraping code from `transcript_fetcher.py`
+   - Implement API Ninjas Earnings Call API integration
+   - Add API key configuration (`API_NINJAS_API_KEY`)
+   - Update tests to use API Ninjas
+   - **Estimated Effort**: 2-3 hours
+   - **Risk if not done**: ToS violations, potential legal issues
+
+2. **MEDIUM PRIORITY: Update Implementation to Use API Ninjas as Primary Source**
+   - Set API Ninjas as default source
+   - Implement fallback to alternative APIs (Benzinga, Finnworlds, Quartr) if needed
+   - Update documentation
+   - **Estimated Effort**: 1-2 hours
+
+**Implementation Files to Update:**
+- `app/ingestion/transcript_fetcher.py` - Replace scraping with API calls
+- `app/utils/config.py` - Add `API_NINJAS_API_KEY` configuration
+- `tests/test_transcript_fetcher.py` - Update tests for API integration
+- `docs/reference/api_integration_audit.md` - Already documented
+
+**API Ninjas Integration Details:**
+- **URL**: https://api-ninjas.com/api/earningscalltranscript
+- **Free Tier**: Available (rate limited)
+- **Documentation**: https://api-ninjas.com/api/earningscalltranscript
+- **API Key**: Required (free registration)
+- **Format**: JSON response
 
 ---
 

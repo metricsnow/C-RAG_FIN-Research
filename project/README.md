@@ -700,6 +700,55 @@ chunk_ids = pipeline.process_stock_tickers(tickers, include_history=True)
 
 **Configuration**: See [Configuration Documentation](docs/reference/configuration.md#yfinance-configuration-task-030) for yfinance settings.
 
+#### Earnings Call Transcripts Integration (TASK-033)
+
+Fetch and index earnings call transcripts:
+
+```bash
+# Fetch transcript for single ticker
+python scripts/fetch_transcripts.py --ticker AAPL
+
+# Fetch transcript for specific date
+python scripts/fetch_transcripts.py --ticker AAPL --date 2025-01-15
+
+# Fetch transcripts for multiple tickers
+python scripts/fetch_transcripts.py --tickers AAPL MSFT GOOGL
+
+# Specify source (seeking_alpha or yahoo_finance)
+python scripts/fetch_transcripts.py --ticker AAPL --source seeking_alpha
+
+# Dry run (don't store in ChromaDB)
+python scripts/fetch_transcripts.py --ticker AAPL --no-store
+```
+
+**⚠️ IMPORTANT**: Current implementation uses web scraping (temporary). **URGENT**: Replace with API Ninjas API integration. See TASK-033 for details.
+
+**Programmatic Usage**:
+```python
+from app.ingestion.pipeline import IngestionPipeline
+
+# Create pipeline
+pipeline = IngestionPipeline()
+
+# Process single transcript
+chunk_ids = pipeline.process_transcript("AAPL", date="2025-01-15")
+
+# Process multiple transcripts
+tickers = ["AAPL", "MSFT", "GOOGL"]
+chunk_ids = pipeline.process_transcripts(tickers, date="2025-01-15")
+```
+
+**Data Extracted**:
+- **Transcript Text**: Full earnings call transcript
+- **Speaker Information**: Management, analysts, operators with role classification
+- **Q&A Sections**: Question and answer pairs
+- **Management Commentary**: Management statements and insights
+- **Forward Guidance**: Forward-looking statements and guidance
+
+**⚠️ Current Status**: Uses web scraping (risky - may violate ToS). API Ninjas integration pending.
+
+**Configuration**: See [Configuration Documentation](docs/reference/configuration.md#transcript-configuration-task-033) for transcript settings.
+
 #### Manual Document Ingestion
 
 1. **Place documents** in `data/documents/`:
