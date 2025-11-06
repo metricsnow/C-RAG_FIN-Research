@@ -230,6 +230,16 @@ LOG_FILE_BACKUP_COUNT=5                  # Must be >= 1
 # Application Configuration (optional)
 MAX_DOCUMENT_SIZE_MB=10                  # Must be >= 1
 DEFAULT_TOP_K=5                          # Must be >= 1
+
+# API Configuration (TASK-029) - Optional FastAPI Backend
+API_ENABLED=true                         # Enable/disable API server
+API_HOST=0.0.0.0                         # Server host address
+API_PORT=8000                            # Server port (1024-65535)
+API_TITLE=Financial Research Assistant API
+API_VERSION=1.0.0
+API_KEY=                                 # API key for authentication (empty = disabled)
+API_RATE_LIMIT_PER_MINUTE=60             # Requests per minute per API key/IP
+API_CORS_ORIGINS=*                       # CORS allowed origins (comma-separated, * for all)
 ```
 
 **Note**: The system will work with default values if `.env` is not created, but OpenAI embeddings require an API key. Invalid configuration values will be caught at startup with clear error messages thanks to Pydantic validation.
@@ -249,7 +259,27 @@ ollama pull llama3.2  # Or: ollama pull mistral
 python scripts/test_ollama.py
 ```
 
-### Step 6: Validate Setup
+### Step 6: (Optional) Start FastAPI Backend
+
+The FastAPI backend is optional and can run independently of the Streamlit frontend:
+
+```bash
+# Start API server
+python scripts/start_api.py
+
+# Or using uvicorn directly
+uvicorn app.api.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+**Access Points**:
+- API Base URL: `http://localhost:8000`
+- Interactive Docs (Swagger): `http://localhost:8000/docs`
+- Alternative Docs (ReDoc): `http://localhost:8000/redoc`
+- Health Check: `http://localhost:8000/api/v1/health`
+
+**Note**: The API server can run alongside Streamlit or independently. Both services share the same ChromaDB database and configuration.
+
+### Step 7: Validate Setup
 
 Run the validation script to verify all dependencies:
 
@@ -1041,14 +1071,18 @@ See comprehensive guide: [`docs/deployment.md`](docs/deployment.md)
 
 ## API Documentation
 
-The application includes a production-ready FastAPI backend (TASK-029) that provides RESTful API access to all core functionality.
+The application includes a production-ready FastAPI backend (TASK-029) that provides RESTful API access to all core functionality. The API is fully documented with OpenAPI/Swagger and includes authentication, rate limiting, and comprehensive error handling.
 
 ### Quick Start
 
 **Start the API server**:
+
 ```bash
-source venv/bin/activate
+# Using the startup script (recommended)
 python scripts/start_api.py
+
+# Or using uvicorn directly
+uvicorn app.api.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 The API will be available at `http://localhost:8000` with interactive documentation at `http://localhost:8000/docs`.

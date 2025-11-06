@@ -4,7 +4,7 @@ Document ingestion API routes.
 
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 
 from app.api.auth import verify_api_key
 from app.api.models.ingestion import IngestionRequest, IngestionResponse
@@ -40,6 +40,7 @@ def get_ingestion_pipeline() -> IngestionPipeline:
 
 @router.post("", response_model=IngestionResponse, status_code=status.HTTP_201_CREATED)
 async def ingest_document(
+    fastapi_request: Request,
     request: IngestionRequest | None = None,
     file: UploadFile | None = File(None),  # noqa: B008
     pipeline: IngestionPipeline = Depends(get_ingestion_pipeline),  # noqa: B008
@@ -49,6 +50,7 @@ async def ingest_document(
     Ingest a document from file path or uploaded file.
 
     Args:
+        fastapi_request: FastAPI request object for accessing raw request data
         request: Ingestion request with file_path and store_embeddings (optional)
         file: Uploaded file (if ingesting from upload)
         pipeline: Ingestion pipeline instance (dependency injection)
@@ -61,8 +63,16 @@ async def ingest_document(
         HTTPException: If ingestion fails
     """
     try:
+        # Handle both JSON body and form data
+        # FastAPI doesn't parse JSON when File parameter is present,
+        # so we need to manually parse JSON body if request is None
+        if request is None and fastapi_request.headers.get(
+            "content-type", ""
+        ).startswith("application/json"):
+            body = await fastapi_request.json()
+            request = IngestionRequest(**body) if body else None
+
         # Get parameters from request or defaults
-        # FastAPI will parse JSON body into request if provided
         file_path = request.file_path if request and request.file_path else None
         store_embeddings = request.store_embeddings if request else True
 

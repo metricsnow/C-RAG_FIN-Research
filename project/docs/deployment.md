@@ -61,12 +61,17 @@ The application consists of:
    ```bash
    # In a separate terminal
    python scripts/start_api.py
+
+   # Or using uvicorn directly
+   uvicorn app.api.main:app --host 0.0.0.0 --port 8000
    ```
 
 6. **Access the application**:
    - Streamlit UI: `http://localhost:8501`
    - FastAPI API: `http://localhost:8000`
-   - API Documentation: `http://localhost:8000/docs`
+   - API Documentation (Swagger): `http://localhost:8000/docs`
+   - API Documentation (ReDoc): `http://localhost:8000/redoc`
+   - API Health Check: `http://localhost:8000/api/v1/health`
 
 ### Option 2: Local Deployment with ngrok (Demo/Testing)
 
