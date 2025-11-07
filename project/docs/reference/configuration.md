@@ -420,6 +420,54 @@ API_RATE_LIMIT_PER_MINUTE=60
 API_CORS_ORIGINS=*
 ```
 
+### API Client Configuration (TASK-045) ✅
+
+The Streamlit frontend uses an API client to communicate with the FastAPI backend. The API client configuration allows you to control how the frontend connects to the backend.
+
+| Variable | Type | Default | Constraints | Description |
+|----------|------|---------|------------|-------------|
+| `API_CLIENT_BASE_URL` | string | `http://localhost:8000` | Must be valid URL | Base URL for FastAPI backend |
+| `API_CLIENT_KEY` | string | `""` | - | API key for authentication (uses `API_KEY` if empty) |
+| `API_CLIENT_TIMEOUT` | integer | `30` | Range: 1 - 300 | Request timeout in seconds |
+| `API_CLIENT_ENABLED` | boolean | `true` | `true`/`false`, `1`/`0`, `yes`/`no` | Enable API client (false = use direct RAG calls) |
+
+**API Client Features**:
+
+1. **Automatic Fallback**: If API is unavailable, automatically falls back to direct RAG calls
+2. **Health Checks**: Verifies API health before operations
+3. **Retry Logic**: Automatically retries transient failures (429, 500, 502, 503, 504) with exponential backoff
+4. **Connection Pooling**: Efficient HTTP session management
+5. **Error Handling**: Comprehensive error handling with user-friendly messages
+
+**Example Configuration**:
+```bash
+# Enable API client (recommended for production)
+API_CLIENT_ENABLED=true
+API_CLIENT_BASE_URL=http://localhost:8000
+
+# Use custom API key (optional, uses API_KEY if empty)
+API_CLIENT_KEY=your-api-key-here
+
+# Configure timeout
+API_CLIENT_TIMEOUT=30
+
+# Disable API client (use direct RAG calls)
+API_CLIENT_ENABLED=false
+```
+
+**When to Use API Client**:
+- **Production deployments**: Enables proper frontend/backend separation
+- **Multiple frontend clients**: Supports web, mobile, and CLI clients
+- **Improved testability**: Frontend can be tested with mocked API calls
+- **Scalability**: Backend can be scaled independently
+
+**When to Disable API Client**:
+- **Development**: Faster iteration without API server
+- **Standalone deployments**: Single-process deployments
+- **Legacy compatibility**: Maintains backward compatibility
+
+**Backward Compatibility**: The frontend maintains full backward compatibility. If `API_CLIENT_ENABLED=false` or the API is unavailable, the system automatically falls back to direct RAG calls, preserving all existing functionality.
+
 **Starting the API Server**:
 ```bash
 # Using startup script

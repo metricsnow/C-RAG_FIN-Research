@@ -334,6 +334,12 @@ API_KEY=                                 # API key for authentication (empty = d
 API_RATE_LIMIT_PER_MINUTE=60             # Requests per minute per API key/IP
 API_CORS_ORIGINS=*                       # CORS allowed origins (comma-separated, * for all)
 
+# API Client Configuration - Streamlit Frontend Integration (TASK-045)
+API_CLIENT_ENABLED=true                  # Enable API client (false = use direct RAG calls)
+API_CLIENT_BASE_URL=http://localhost:8000  # FastAPI backend URL
+API_CLIENT_KEY=                          # Optional: API key (uses API_KEY if empty)
+API_CLIENT_TIMEOUT=30                    # Request timeout in seconds (1-300)
+
 # Earnings Call Transcripts Configuration
 API_NINJAS_API_KEY=                      # API Ninjas API key for earnings call transcripts (free tier available at https://api-ninjas.com)
 TRANSCRIPT_USE_API_NINJAS=true           # Use API Ninjas API for transcripts (recommended, default: true)
