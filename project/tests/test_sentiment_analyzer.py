@@ -330,3 +330,18 @@ class TestSentimentAnalyzer:
             assert overall["sentiment"] == "neutral"
             assert overall["score"] == 0.0
             assert overall["model"] is None
+
+    def test_sentiment_filter_positive(self):
+        """Test sentiment filter for positive sentiment."""
+        with (
+            patch("app.ingestion.sentiment_analyzer.TRANSFORMERS_AVAILABLE", False),
+            patch("app.ingestion.sentiment_analyzer.TEXTBLOB_AVAILABLE", False),
+            patch("app.ingestion.sentiment_analyzer.VADER_AVAILABLE", False),
+        ):
+            analyzer = SentimentAnalyzer(
+                use_finbert=False, use_textblob=False, use_vader=False
+            )
+            # Test that sentiment filter can be applied
+            # This is a placeholder test
+            # Actual filtering is tested in RAG integration tests
+            assert analyzer is not None

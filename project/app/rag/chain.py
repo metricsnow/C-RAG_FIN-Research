@@ -274,7 +274,9 @@ Answer:"""
 
         return "\n\n".join(formatted_parts)
 
-    def _retrieve_context(self, question: str) -> List[Document]:
+    def _retrieve_context(
+        self, question: str, sentiment_filter: Optional[str] = None
+    ) -> List[Document]:
         """
         Retrieve relevant context chunks from ChromaDB.
 
@@ -282,6 +284,9 @@ Answer:"""
 
         Args:
             question: User's question
+            sentiment_filter: Optional sentiment filter
+                ('positive', 'negative', 'neutral').
+                If provided, only retrieves documents with matching sentiment.
 
         Returns:
             List of Document objects with retrieved chunks
@@ -289,7 +294,16 @@ Answer:"""
         Raises:
             RAGQueryError: If retrieval fails
         """
-        logger.debug(f"Retrieving context for question: '{question[:50]}...'")
+        logger.debug(
+            f"Retrieving context for question: '{question[:50]}...'"
+            + (f" (sentiment_filter={sentiment_filter})" if sentiment_filter else "")
+        )
+
+        # Build sentiment filter if provided
+        where_filter = None
+        if sentiment_filter:
+            where_filter = {"sentiment": sentiment_filter}
+            logger.debug(f"Applying sentiment filter: {sentiment_filter}")
 
         # Use optimized retrieval if available
         if self.use_optimizations and self.retrieval_optimizer:
@@ -352,6 +366,7 @@ Answer:"""
             results = self.chroma_store.query_by_embedding(
                 query_embedding=query_embedding,
                 n_results=retrieval_count,
+                where=where_filter,
             )
 
             # Convert to Document objects and prioritize SEC EDGAR documents
@@ -435,6 +450,7 @@ Answer:"""
         top_k: Optional[int] = None,
         timeout: Optional[int] = None,
         conversation_history: Optional[List[Dict[str, Any]]] = None,
+        sentiment_filter: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Process a natural language query and generate an answer.
@@ -445,6 +461,9 @@ Answer:"""
             timeout: Query timeout in seconds (optional)
             conversation_history: List of previous conversation messages (optional).
                 Each message should be a dict with 'role' and 'content' keys.
+            sentiment_filter: Optional sentiment filter
+                ('positive', 'negative', 'neutral').
+                If provided, only retrieves documents with matching sentiment.
 
         Returns:
             Dictionary with keys:
@@ -476,10 +495,14 @@ Answer:"""
                     # Temporarily override top_k
                     original_top_k = self.top_k
                     self.top_k = current_top_k
-                    retrieved_docs = self._retrieve_context(question)
+                    retrieved_docs = self._retrieve_context(
+                        question, sentiment_filter=sentiment_filter
+                    )
                     self.top_k = original_top_k
                 else:
-                    retrieved_docs = self._retrieve_context(question)
+                    retrieved_docs = self._retrieve_context(
+                        question, sentiment_filter=sentiment_filter
+                    )
 
             # Track chunks retrieved
             rag_context_chunks_retrieved.observe(len(retrieved_docs))

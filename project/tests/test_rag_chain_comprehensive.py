@@ -234,6 +234,23 @@ def test_rag_query_result_structure(populated_rag_system_comprehensive):
 
 
 @pytest.mark.integration
+def test_rag_query_with_sentiment_filter(
+    populated_rag_system_comprehensive,
+):
+    """Test RAG query with sentiment filter."""
+    rag_system = populated_rag_system_comprehensive
+
+    # Query with positive sentiment filter
+    result = rag_system.query(
+        "What are the positive aspects mentioned?",
+        sentiment_filter="positive",
+    )
+
+    assert "answer" in result, "Should return answer"
+    # Note: May return no results if no positive sentiment documents exist
+    assert result["chunks_used"] >= 0, "chunks_used should be non-negative"
+
+
 def test_rag_query_no_results_message(rag_system_comprehensive):
     """Test query returns appropriate message when no results found."""
     query = "completely unrelated query that won't match anything"

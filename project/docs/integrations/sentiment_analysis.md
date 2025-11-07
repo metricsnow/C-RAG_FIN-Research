@@ -6,9 +6,10 @@ The Financial Research Assistant integrates comprehensive sentiment analysis cap
 
 ## Implementation Status
 
-**Status**: ✅ Complete (2025-01-27)
+**Status**: ✅ Complete (2025-11-06)
 **Models Supported**: FinBERT, TextBlob, VADER
 **Integration**: Automatic during document ingestion
+**Sentiment-Aware Queries**: ✅ Supported via RAG system
 
 ## Sentiment Analysis Models
 
@@ -211,39 +212,109 @@ SENTIMENT_EXTRACT_RISKS=true
 
 ## Querying with Sentiment Metadata
 
-Sentiment metadata enables sentiment-aware queries through the RAG system.
+Sentiment metadata enables sentiment-aware queries through the RAG system. You can filter queries by sentiment to retrieve only documents with specific sentiment (positive, negative, or neutral).
 
-**Example Queries**:
+### RAG System Integration
+
+The RAG query system supports sentiment filtering directly through the `sentiment_filter` parameter:
+
+**Basic Usage**:
 ```python
-# Query for positive sentiment documents
-"Find documents with positive sentiment about revenue growth"
+from app.rag.chain import create_rag_system
 
-# Query for forward guidance
-"Show me forward guidance statements from earnings calls"
+rag_system = create_rag_system()
 
-# Query for risk factors
-"What are the risk factors mentioned in recent filings?"
+# Query with positive sentiment filter
+result = rag_system.query(
+    "What are the positive aspects mentioned?",
+    sentiment_filter="positive"
+)
+
+# Query with negative sentiment filter
+result = rag_system.query(
+    "What are the concerns or risks?",
+    sentiment_filter="negative"
+)
+
+# Query with neutral sentiment filter
+result = rag_system.query(
+    "What are the neutral statements?",
+    sentiment_filter="neutral"
+)
+
+# Query without sentiment filter (default behavior)
+result = rag_system.query(
+    "What is the revenue outlook?"
+)
 ```
 
-**Metadata Filtering**:
+**Sentiment Filter Options**:
+- `"positive"`: Only retrieve documents with positive sentiment
+- `"negative"`: Only retrieve documents with negative sentiment
+- `"neutral"`: Only retrieve documents with neutral sentiment
+- `None` (default): No sentiment filtering (retrieves all documents)
+
+**Example Use Cases**:
+```python
+# Find positive forward guidance
+result = rag_system.query(
+    "What is the revenue guidance?",
+    sentiment_filter="positive"
+)
+
+# Find risk factors (typically negative sentiment)
+result = rag_system.query(
+    "What are the main risks?",
+    sentiment_filter="negative"
+)
+
+# Find balanced/neutral analysis
+result = rag_system.query(
+    "What is the market analysis?",
+    sentiment_filter="neutral"
+)
+```
+
+### Direct ChromaDB Filtering
+
+You can also query ChromaDB directly with sentiment filters:
+
 ```python
 from app.vector_db import ChromaStore
+from app.rag.embedding_factory import EmbeddingGenerator
 
 store = ChromaStore()
+embedding_generator = EmbeddingGenerator()
+
+# Generate query embedding
+query_text = "What are the positive aspects?"
+query_embedding = embedding_generator.embed_query(query_text)
 
 # Query with sentiment filter
 results = store.query_by_embedding(
-    query_embedding=embedding,
+    query_embedding=query_embedding,
     n_results=10,
     where={"sentiment": "positive"}
 )
 
 # Query for documents with forward guidance
 results = store.query_by_embedding(
-    query_embedding=embedding,
+    query_embedding=query_embedding,
     n_results=10,
     where={"has_forward_guidance": True}
 )
+```
+
+### Natural Language Queries
+
+You can also use natural language queries that implicitly reference sentiment:
+
+```python
+# These queries work with or without sentiment filters
+"Find documents with positive sentiment about revenue growth"
+"Show me forward guidance statements from earnings calls"
+"What are the risk factors mentioned in recent filings?"
+"What are the concerns about market conditions?"
 ```
 
 ## Integration with Other Features

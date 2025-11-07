@@ -125,6 +125,9 @@ Process a natural language query using the RAG system and return an answer with 
 - `question` (string, required): Natural language question
 - `top_k` (integer, optional): Number of top chunks to retrieve (1-20, default: 5)
 - `conversation_history` (array, optional): Previous conversation messages for context
+- `sentiment_filter` (string, optional): Filter results by sentiment - `"positive"`, `"negative"`, or `"neutral"` (not yet available via API, use programmatic access)
+
+**Note**: Sentiment filtering is available when using the RAG system programmatically. See [Sentiment Analysis Documentation](../integrations/sentiment_analysis.md#rag-system-integration) for details.
 
 **Response** (200 OK):
 ```json
