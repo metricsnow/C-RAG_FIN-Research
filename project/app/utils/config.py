@@ -316,6 +316,33 @@ class Config(BaseSettings):
         description="CORS allowed origins (comma-separated, * for all)",
     )
 
+    # API Client Configuration (TASK-045)
+    api_client_base_url: str = Field(
+        default="http://localhost:8000",
+        alias="API_CLIENT_BASE_URL",
+        description="Base URL for FastAPI backend (for frontend API client)",
+    )
+    api_client_key: str = Field(
+        default="",
+        alias="API_CLIENT_KEY",
+        description="API key for authentication (if required, uses API_KEY if empty)",
+    )
+    api_client_timeout: int = Field(
+        default=30,
+        ge=1,
+        le=300,
+        alias="API_CLIENT_TIMEOUT",
+        description="Request timeout in seconds for API client",
+    )
+    api_client_enabled: bool = Field(
+        default=True,
+        alias="API_CLIENT_ENABLED",
+        description=(
+            "Enable API client "
+            "(False = use direct calls, for backward compatibility)"
+        ),
+    )
+
     # yfinance Configuration (TASK-030)
     yfinance_enabled: bool = Field(
         default=True,

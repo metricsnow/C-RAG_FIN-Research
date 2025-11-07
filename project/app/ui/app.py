@@ -49,7 +49,14 @@ if not _app_init.exists():
 import streamlit as st  # noqa: E402
 
 from app.rag import RAGQueryError, RAGQuerySystem, create_rag_system  # noqa: E402
+from app.ui.api_client import (  # noqa: E402
+    APIClient,
+    APIClientError,
+    APIConnectionError,
+    APIError,
+)
 from app.ui.document_management import render_document_management  # noqa: E402
+from app.utils.config import config  # noqa: E402
 from app.utils.conversation_export import export_conversation  # noqa: E402
 from app.utils.health import start_health_check_server  # noqa: E402
 from app.utils.logger import get_logger  # noqa: E402
@@ -110,11 +117,37 @@ def get_available_tickers() -> List[Dict[str, Any]]:
     return st.session_state.available_tickers
 
 
+def initialize_api_client() -> APIClient:
+    """
+    Initialize API client for FastAPI backend.
+
+    Returns:
+        APIClient instance
+    """
+    if "api_client" not in st.session_state:
+        logger.info("Initializing API client for Streamlit app")
+        try:
+            st.session_state.api_client = APIClient()
+            logger.info("API client initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize API client: {str(e)}", exc_info=True)
+            st.error(f"Failed to initialize API client: {str(e)}")
+            st.info(
+                "💡 **Tip:** Make sure the FastAPI backend is running. "
+                "You can start it with: python scripts/start_api.py"
+            )
+            st.stop()
+
+    return st.session_state.api_client
+
+
 def initialize_rag_system(
     llm_provider: str = None, llm_model: str = None
 ) -> RAGQuerySystem:
     """
     Initialize RAG query system with optional LLM provider override.
+
+    Used as fallback when API client is disabled.
 
     Args:
         llm_provider: LLM provider ('ollama' or 'openai'). If None, uses config default
@@ -225,10 +258,37 @@ def main():
 
     st.divider()
 
-    # Initialize RAG system with selected model
-    rag_system = initialize_rag_system(
-        llm_provider=model_provider, llm_model=model_name
-    )
+    # Initialize API client or RAG system based on configuration
+    api_client = None
+    rag_system = None
+
+    if config.api_client_enabled:
+        try:
+            api_client = initialize_api_client()
+            # Check API health
+            try:
+                health = api_client.health_check()
+                if health.get("status") != "healthy":
+                    st.warning(
+                        "⚠️ API health check failed. Falling back to direct RAG calls."
+                    )
+                    api_client = None
+            except APIConnectionError:
+                st.warning(
+                    "⚠️ Cannot connect to API. Falling back to direct RAG calls. "
+                    "Make sure the FastAPI backend is running."
+                )
+                api_client = None
+        except Exception as e:
+            logger.warning(f"API client initialization failed: {str(e)}")
+            st.warning("⚠️ API client unavailable. Falling back to direct RAG calls.")
+            api_client = None
+
+    # Fallback to direct RAG system if API client is disabled or unavailable
+    if not api_client:
+        rag_system = initialize_rag_system(
+            llm_provider=model_provider, llm_model=model_name
+        )
 
     # Sidebar with available tickers
     with st.sidebar:
@@ -260,14 +320,17 @@ def main():
     main_tab1, main_tab2 = st.tabs(["💬 Chat", "📄 Document Management"])
 
     with main_tab1:
-        render_chat_interface(rag_system, model_provider, model_name)
+        render_chat_interface(api_client, rag_system, model_provider, model_name)
 
     with main_tab2:
         render_document_management()
 
 
 def render_chat_interface(
-    rag_system: RAGQuerySystem, model_provider: str, model_name: str
+    api_client: APIClient | None,
+    rag_system: RAGQuerySystem | None,
+    model_provider: str,
+    model_name: str,
 ) -> None:
     """
     Render the chat interface.
@@ -629,15 +692,31 @@ def render_chat_interface(
                         else []
                     )
 
-                    # Query RAG system with conversation history and filters
-                    result = rag_system.query(
-                        prompt,
-                        conversation_history=(
-                            conversation_history if conversation_history else None
-                        ),
-                        filters=filters_to_use,
-                        enable_query_parsing=enable_parsing_to_use,
-                    )
+                    # Query via API client or direct RAG system
+                    if api_client:
+                        # Use API client
+                        result = api_client.query(
+                            question=prompt,
+                            conversation_history=(
+                                conversation_history if conversation_history else None
+                            ),
+                            filters=filters_to_use,
+                            enable_query_parsing=enable_parsing_to_use,
+                        )
+                    elif rag_system:
+                        # Fallback to direct RAG system
+                        result = rag_system.query(
+                            prompt,
+                            conversation_history=(
+                                conversation_history if conversation_history else None
+                            ),
+                            filters=filters_to_use,
+                            enable_query_parsing=enable_parsing_to_use,
+                        )
+                    else:
+                        raise RuntimeError(
+                            "Neither API client nor RAG system available"
+                        )
 
                     answer = result.get(
                         "answer", "I'm sorry, I couldn't generate an answer."
@@ -670,9 +749,38 @@ def render_chat_interface(
                         }
                     )
 
-                except RAGQueryError as e:
+                except (RAGQueryError, APIError) as e:
                     error_msg = f"Error processing query: {str(e)}"
-                    logger.error(f"RAG query error: {str(e)}", exc_info=True)
+                    logger.error(f"Query error: {str(e)}", exc_info=True)
+                    st.error(error_msg)
+                    st.session_state.messages.append(
+                        {
+                            "role": "assistant",
+                            "content": error_msg,
+                            "sources": [],
+                        }
+                    )
+                except APIConnectionError as e:
+                    error_msg = (
+                        f"⚠️ Cannot connect to API: {str(e)}. "
+                        "Please ensure the FastAPI backend is running."
+                    )
+                    logger.error(f"API connection error: {str(e)}", exc_info=True)
+                    st.error(error_msg)
+                    st.info(
+                        "💡 **Tip:** Start the API server with: "
+                        "`python scripts/start_api.py`"
+                    )
+                    st.session_state.messages.append(
+                        {
+                            "role": "assistant",
+                            "content": error_msg,
+                            "sources": [],
+                        }
+                    )
+                except APIClientError as e:
+                    error_msg = f"API client error: {str(e)}"
+                    logger.error(f"API client error: {str(e)}", exc_info=True)
                     st.error(error_msg)
                     st.session_state.messages.append(
                         {

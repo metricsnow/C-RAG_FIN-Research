@@ -4,6 +4,8 @@
 
 The Financial Research Assistant includes a production-ready RESTful API built with FastAPI. The API provides programmatic access to all core functionality including RAG queries, document ingestion, and document management.
 
+**Frontend Integration (TASK-045)**: The Streamlit frontend now uses the FastAPI backend via an API client wrapper, providing proper separation between frontend and backend. The frontend can fall back to direct RAG calls if the API is unavailable, maintaining backward compatibility.
+
 ## Base URL
 
 Default: `http://localhost:8000`
@@ -1006,3 +1008,125 @@ For issues or questions:
 3. Check the interactive API documentation at `/docs`
 4. Verify configuration in `.env` file
 5. Review test suite in `tests/test_api.py` for usage examples
+
+---
+
+## Frontend Integration (TASK-045)
+
+### Streamlit API Client
+
+The Streamlit frontend uses an API client wrapper (`app/ui/api_client.py`) to communicate with the FastAPI backend instead of calling the RAG system directly. This provides:
+
+- **Separation of Concerns**: Frontend and backend are decoupled
+- **Multiple Frontend Support**: Enables web, mobile, and CLI clients
+- **Improved Testability**: Frontend can be tested with mocked API calls
+- **Consistent Error Handling**: Unified error handling across the application
+- **Backward Compatibility**: Falls back to direct RAG calls if API is unavailable
+
+### Configuration
+
+The API client is configured via environment variables in `.env`:
+
+```bash
+# API Client Configuration
+API_CLIENT_BASE_URL=http://localhost:8000  # FastAPI backend URL
+API_CLIENT_KEY=                            # Optional: API key (uses API_KEY if empty)
+API_CLIENT_TIMEOUT=30                      # Request timeout in seconds
+API_CLIENT_ENABLED=true                    # Enable API client (false = use direct calls)
+```
+
+### Usage in Streamlit
+
+The Streamlit app automatically uses the API client when `API_CLIENT_ENABLED=true`:
+
+1. **Initialization**: The app checks API health on startup
+2. **Fallback**: If API is unavailable, falls back to direct RAG calls
+3. **Error Handling**: User-friendly error messages for connection failures
+
+### API Client Features
+
+- **Automatic Retry**: Retries transient failures (429, 500, 502, 503, 504)
+- **Connection Pooling**: Efficient HTTP session management
+- **Timeout Management**: Configurable request timeouts
+- **Error Handling**: Comprehensive error handling with user-friendly messages
+- **Health Checks**: Automatic API health verification
+
+### Example: Using API Client Programmatically
+
+```python
+from app.ui.api_client import APIClient
+
+# Initialize client
+client = APIClient(
+    base_url="http://localhost:8000",
+    api_key="your-api-key",  # Optional
+    timeout=30
+)
+
+# Check API health
+health = client.health_check()
+print(health)  # {"status": "healthy", ...}
+
+# Query documents
+result = client.query(
+    question="What was Apple's revenue in 2023?",
+    top_k=5,
+    filters={"ticker": "AAPL", "form_type": "10-K"}
+)
+print(result["answer"])
+print(result["sources"])
+
+# List documents
+documents = client.list_documents()
+print(f"Found {len(documents)} documents")
+
+# Get document details
+doc = client.get_document("doc_id")
+print(doc["content"])
+
+# Delete document
+success = client.delete_document("doc_id")
+```
+
+### Error Handling
+
+The API client provides specific exception types:
+
+```python
+from app.ui.api_client import (
+    APIClientError,
+    APIConnectionError,
+    APIError,
+)
+
+try:
+    result = client.query("Test question")
+except APIConnectionError as e:
+    # API server is down or unreachable
+    print(f"Connection failed: {e}")
+except APIError as e:
+    # API returned an error response
+    print(f"API error ({e.status_code}): {e}")
+except APIClientError as e:
+    # General client error
+    print(f"Client error: {e}")
+```
+
+### Backward Compatibility
+
+The frontend maintains backward compatibility:
+
+- **API Client Enabled**: Uses FastAPI backend via HTTP
+- **API Client Disabled**: Falls back to direct RAG system calls
+- **Automatic Detection**: Detects API availability and switches modes automatically
+
+To disable API client and use direct calls:
+
+```bash
+API_CLIENT_ENABLED=false
+```
+
+This is useful for:
+- Development and testing
+- Standalone deployments without API server
+- Legacy compatibility

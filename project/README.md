@@ -32,6 +32,7 @@ A production-ready RAG (Retrieval-Augmented Generation) system for semantic sear
 - **Vector Database**: Persistent ChromaDB storage for efficient similarity search
 - **Streamlit UI**: Modern, interactive chat interface with model selection toggle for querying documents
 - **FastAPI Backend**: Production-ready RESTful API for programmatic access and integration with OpenAPI documentation, authentication, and rate limiting
+- **Frontend-Backend Separation**: Streamlit frontend uses FastAPI backend via API client, enabling multiple frontend clients and improved testability
 - **Document Management**: Comprehensive UI for managing indexed documents with search, filtering, and deletion
 - **Conversation Memory**: Multi-turn conversations with context preservation across queries
 - **LangChain Memory Integration**: LangChain-compatible conversation memory with buffer management
@@ -52,6 +53,7 @@ A production-ready RAG (Retrieval-Augmented Generation) system for semantic sear
 - **Production Ready**: Multiple deployment options (local, ngrok, VPS)
 - **Interactive Model Selection**: UI toggle to switch between local Ollama and OpenAI LLMs
 - **RESTful API**: FastAPI backend with OpenAPI documentation, authentication, and rate limiting
+- **API Client Integration**: Streamlit frontend uses HTTP client to communicate with FastAPI backend, with automatic fallback to direct calls
 
 ### Conversation Memory Features
 
@@ -407,6 +409,21 @@ uvicorn app.api.main:app --host 0.0.0.0 --port 8000 --reload
 - Health Check: `http://localhost:8000/api/v1/health`
 
 **Note**: The API server can run alongside Streamlit or independently. Both services share the same ChromaDB database and configuration.
+
+**API Client Integration (TASK-045)**: The Streamlit frontend automatically uses the FastAPI backend when available. Configure the API client in `.env`:
+
+```bash
+# API Client Configuration (for Streamlit frontend)
+API_CLIENT_BASE_URL=http://localhost:8000  # FastAPI backend URL
+API_CLIENT_KEY=                             # Optional: API key (uses API_KEY if empty)
+API_CLIENT_TIMEOUT=30                       # Request timeout in seconds
+API_CLIENT_ENABLED=true                     # Enable API client (false = use direct calls)
+```
+
+The frontend will automatically:
+- Use the API client when `API_CLIENT_ENABLED=true` and API is available
+- Fall back to direct RAG calls if API is unavailable
+- Display user-friendly error messages for connection failures
 
 ### Step 7: Validate Setup
 
@@ -1515,6 +1532,44 @@ For detailed documentation, see [News Aggregation Integration](docs/integrations
    pipeline = create_pipeline()
    chunk_ids = pipeline.process_document_objects(documents)
    ```
+
+### Frontend-Backend Integration (TASK-045)
+
+The Streamlit frontend uses an API client wrapper to communicate with the FastAPI backend, providing proper separation between frontend and backend.
+
+**Benefits**:
+- **Separation of Concerns**: Frontend and backend are decoupled
+- **Multiple Frontend Support**: Enables web, mobile, and CLI clients
+- **Improved Testability**: Frontend can be tested with mocked API calls
+- **Consistent Error Handling**: Unified error handling across the application
+- **Backward Compatibility**: Falls back to direct RAG calls if API is unavailable
+
+**Configuration**:
+```bash
+# Enable API client (default: true)
+API_CLIENT_ENABLED=true
+
+# API base URL (default: http://localhost:8000)
+API_CLIENT_BASE_URL=http://localhost:8000
+
+# API key (optional, uses API_KEY if empty)
+API_CLIENT_KEY=
+
+# Request timeout in seconds (default: 30)
+API_CLIENT_TIMEOUT=30
+```
+
+**Usage**:
+1. Start the FastAPI backend: `python scripts/start_api.py`
+2. Start the Streamlit frontend: `streamlit run app/ui/app.py`
+3. The frontend will automatically detect and use the API backend
+4. If the API is unavailable, the frontend falls back to direct RAG calls
+
+**Error Handling**:
+- Connection failures show user-friendly error messages
+- Automatic retry for transient failures
+- Health check before operations
+- Graceful degradation when API unavailable
 
 ### Using the FastAPI Backend
 

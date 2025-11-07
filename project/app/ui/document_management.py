@@ -8,11 +8,17 @@ from the ChromaDB vector database.
 import os
 import tempfile
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import pandas as pd
 import streamlit as st
 
+from app.ui.api_client import (
+    APIClient,
+    APIConnectionError,
+    APIError,
+)
+from app.utils.config import config
 from app.utils.document_manager import DocumentManager, DocumentManagerError
 from app.utils.logger import get_logger
 
@@ -30,18 +36,44 @@ def render_document_management() -> None:
     """
     st.header("📄 Document Management")
 
-    # Initialize document manager
-    if "document_manager" not in st.session_state:
-        try:
-            st.session_state.document_manager = DocumentManager()
-        except Exception as e:
-            logger.error(
-                f"Failed to initialize document manager: {str(e)}", exc_info=True
-            )
-            st.error(f"Failed to initialize document manager: {str(e)}")
-            return
+    # Initialize API client or document manager based on configuration
+    api_client: Optional[APIClient] = None
+    doc_manager: Optional[DocumentManager] = None
 
-    doc_manager: DocumentManager = st.session_state.document_manager
+    if config.api_client_enabled:
+        # Try to use API client
+        if "api_client" not in st.session_state:
+            try:
+                st.session_state.api_client = APIClient()
+            except Exception as e:
+                logger.warning(
+                    f"Failed to initialize API client: {str(e)}", exc_info=True
+                )
+                st.warning(
+                    "⚠️ API client unavailable. Falling back to direct DocumentManager."
+                )
+        else:
+            api_client = st.session_state.api_client
+            # Check API health
+            try:
+                health = api_client.health_check()
+                if health.get("status") != "healthy":
+                    api_client = None
+            except APIConnectionError:
+                api_client = None
+
+    # Fallback to direct DocumentManager if API client is disabled or unavailable
+    if not api_client:
+        if "document_manager" not in st.session_state:
+            try:
+                st.session_state.document_manager = DocumentManager()
+            except Exception as e:
+                logger.error(
+                    f"Failed to initialize document manager: {str(e)}", exc_info=True
+                )
+                st.error(f"Failed to initialize document manager: {str(e)}")
+                return
+        doc_manager = st.session_state.document_manager
 
     # Create tabs
     tab1, tab2, tab3, tab4 = st.tabs(
@@ -54,30 +86,39 @@ def render_document_management() -> None:
     )
 
     with tab1:
-        render_documents_list(doc_manager)
+        render_documents_list(api_client, doc_manager)
 
     with tab2:
-        render_statistics(doc_manager)
+        render_statistics(api_client, doc_manager)
 
     with tab3:
-        render_search_and_filter(doc_manager)
+        render_search_and_filter(api_client, doc_manager)
 
     with tab4:
-        render_reindex_interface(doc_manager)
+        render_reindex_interface(api_client, doc_manager)
 
 
-def render_documents_list(doc_manager: DocumentManager) -> None:
+def render_documents_list(
+    api_client: Optional[APIClient], doc_manager: Optional[DocumentManager]
+) -> None:
     """
     Render the documents list with pagination, sorting, and deletion.
 
     Args:
-        doc_manager: DocumentManager instance
+        api_client: APIClient instance (if using API)
+        doc_manager: DocumentManager instance (if using direct calls)
     """
     st.subheader("All Documents")
 
     try:
-        # Get all documents
-        all_documents = doc_manager.get_all_documents()
+        # Get all documents via API or direct call
+        if api_client:
+            all_documents = api_client.list_documents()
+        elif doc_manager:
+            all_documents = doc_manager.get_all_documents()
+        else:
+            st.error("Neither API client nor DocumentManager available")
+            return
 
         if not all_documents:
             st.info("No documents found in the database.")
@@ -166,11 +207,17 @@ def render_documents_list(doc_manager: DocumentManager) -> None:
             # Version history
             source_name = extract_filename(selected_doc.get("metadata", {}))
             try:
-                version_history = doc_manager.get_version_history(source_name)
+                if api_client:
+                    version_history = api_client.get_version_history(source_name)
+                elif doc_manager:
+                    version_history = doc_manager.get_version_history(source_name)
+                else:
+                    version_history = []
+
                 if version_history:
                     with st.expander("📚 Version History", expanded=False):
                         render_version_history(
-                            version_history, source_name, doc_manager
+                            version_history, source_name, api_client, doc_manager
                         )
             except Exception as e:
                 logger.debug(f"Could not load version history: {str(e)}")
@@ -223,6 +270,18 @@ def render_documents_list(doc_manager: DocumentManager) -> None:
                             "✅ Confirm Re-index", type="primary", key="confirm_reindex"
                         ):
                             try:
+                                # Re-indexing requires DocumentManager
+                                # (file upload via API is complex)
+                                if not doc_manager:
+                                    st.error(
+                                        "Re-indexing requires DocumentManager. "
+                                        "Please disable API client mode "
+                                        "for re-indexing."
+                                    )
+                                    if tmp_path.exists():
+                                        os.unlink(tmp_path)
+                                    return
+
                                 result = doc_manager.reindex_document(
                                     tmp_path,
                                     preserve_metadata=preserve_metadata,
@@ -272,23 +331,45 @@ def render_documents_list(doc_manager: DocumentManager) -> None:
                         "✅ Confirm Delete", type="primary", key="confirm_delete"
                     ):
                         try:
-                            deleted_count = doc_manager.delete_documents(
-                                [st.session_state.delete_confirm_id]
-                            )
-                            if deleted_count > 0:
-                                st.success("✅ Deleted document successfully!")
-                                # Clear confirmation state
-                                del st.session_state.delete_confirm_id
-                                del st.session_state.delete_confirm_filename
-                                # Reset page to 0
-                                st.session_state.doc_page = 0
-                                # Clear cache to refresh data
-                                if "document_manager" in st.session_state:
-                                    del st.session_state.document_manager
-                                st.rerun()
+                            if api_client:
+                                success = api_client.delete_document(
+                                    st.session_state.delete_confirm_id
+                                )
+                                if success:
+                                    st.success("✅ Deleted document successfully!")
+                                else:
+                                    st.error("Failed to delete document.")
+                            elif doc_manager:
+                                deleted_count = doc_manager.delete_documents(
+                                    [st.session_state.delete_confirm_id]
+                                )
+                                if deleted_count > 0:
+                                    st.success("✅ Deleted document successfully!")
+                                else:
+                                    st.error("Failed to delete document.")
                             else:
-                                st.error("Failed to delete document.")
-                        except DocumentManagerError as e:
+                                st.error(
+                                    "Neither API client nor DocumentManager available"
+                                )
+                                return
+
+                            # Clear confirmation state
+                            del st.session_state.delete_confirm_id
+                            del st.session_state.delete_confirm_filename
+                            # Reset page to 0
+                            st.session_state.doc_page = 0
+                            # Clear cache to refresh data
+                            if "document_manager" in st.session_state:
+                                del st.session_state.document_manager
+                            if "api_client" in st.session_state:
+                                # Force refresh on next call
+                                pass
+                            st.rerun()
+                        except (
+                            DocumentManagerError,
+                            APIError,
+                            APIConnectionError,
+                        ) as e:
                             st.error(f"Error deleting document: {str(e)}")
                             logger.error(
                                 f"Failed to delete document: {str(e)}", exc_info=True
@@ -300,7 +381,7 @@ def render_documents_list(doc_manager: DocumentManager) -> None:
                         del st.session_state.delete_confirm_filename
                         st.rerun()
 
-    except DocumentManagerError as e:
+    except (DocumentManagerError, APIError, APIConnectionError) as e:
         st.error(f"Error loading documents: {str(e)}")
         logger.error(f"Failed to load documents: {str(e)}", exc_info=True)
     except Exception as e:
@@ -308,17 +389,71 @@ def render_documents_list(doc_manager: DocumentManager) -> None:
         logger.error(f"Unexpected error in document list: {str(e)}", exc_info=True)
 
 
-def render_statistics(doc_manager: DocumentManager) -> None:
+def _compute_statistics(documents: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    Compute statistics from document list (client-side).
+
+    Args:
+        documents: List of document dictionaries
+
+    Returns:
+        Statistics dictionary
+    """
+    stats = {
+        "total_documents": len(documents),
+        "total_chunks": len(documents),
+        "unique_tickers": set(),
+        "unique_form_types": set(),
+        "documents_by_ticker": {},
+        "documents_by_form_type": {},
+    }
+
+    for doc in documents:
+        metadata = doc.get("metadata", {})
+        ticker = metadata.get("ticker")
+        form_type = metadata.get("form_type")
+
+        if ticker:
+            stats["unique_tickers"].add(ticker)
+            stats["documents_by_ticker"][ticker] = (
+                stats["documents_by_ticker"].get(ticker, 0) + 1
+            )
+
+        if form_type:
+            stats["unique_form_types"].add(form_type)
+            stats["documents_by_form_type"][form_type] = (
+                stats["documents_by_form_type"].get(form_type, 0) + 1
+            )
+
+    stats["unique_tickers"] = len(stats["unique_tickers"])
+    stats["unique_form_types"] = len(stats["unique_form_types"])
+
+    return stats
+
+
+def render_statistics(
+    api_client: Optional[APIClient], doc_manager: Optional[DocumentManager]
+) -> None:
     """
     Render document statistics dashboard.
 
     Args:
-        doc_manager: DocumentManager instance
+        api_client: APIClient instance (if using API)
+        doc_manager: DocumentManager instance (if using direct calls)
     """
     st.subheader("Document Statistics")
 
     try:
-        stats = doc_manager.get_statistics()
+        if api_client:
+            # Get documents via API and compute stats client-side
+            all_documents = api_client.list_documents()
+            stats = _compute_statistics(all_documents)
+        elif doc_manager:
+            # Use DocumentManager statistics
+            stats = doc_manager.get_statistics()
+        else:
+            st.error("Neither API client nor DocumentManager available")
+            return
 
         # Key metrics
         col1, col2, col3, col4 = st.columns(4)
@@ -355,7 +490,7 @@ def render_statistics(doc_manager: DocumentManager) -> None:
             st.bar_chart(form_type_df.set_index("Form Type"))
             st.dataframe(form_type_df, use_container_width=True, hide_index=True)
 
-    except DocumentManagerError as e:
+    except (DocumentManagerError, APIError, APIConnectionError) as e:
         st.error(f"Error loading statistics: {str(e)}")
         logger.error(f"Failed to load statistics: {str(e)}", exc_info=True)
     except Exception as e:
@@ -363,12 +498,61 @@ def render_statistics(doc_manager: DocumentManager) -> None:
         logger.error(f"Unexpected error in statistics: {str(e)}", exc_info=True)
 
 
-def render_search_and_filter(doc_manager: DocumentManager) -> None:
+def _filter_documents(
+    documents: List[Dict[str, Any]],
+    ticker: Optional[str] = None,
+    form_type: Optional[str] = None,
+    filename: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """
+    Filter documents by metadata (client-side).
+
+    Args:
+        documents: List of document dictionaries
+        ticker: Ticker symbol filter
+        form_type: Form type filter
+        filename: Filename filter (partial match)
+
+    Returns:
+        Filtered list of documents
+    """
+    filtered = documents
+
+    if ticker:
+        ticker_upper = ticker.upper()
+        filtered = [
+            doc
+            for doc in filtered
+            if doc.get("metadata", {}).get("ticker", "").upper() == ticker_upper
+        ]
+
+    if form_type:
+        filtered = [
+            doc
+            for doc in filtered
+            if doc.get("metadata", {}).get("form_type") == form_type
+        ]
+
+    if filename:
+        filename_lower = filename.lower()
+        filtered = [
+            doc
+            for doc in filtered
+            if filename_lower in extract_filename(doc.get("metadata", {})).lower()
+        ]
+
+    return filtered
+
+
+def render_search_and_filter(
+    api_client: Optional[APIClient], doc_manager: Optional[DocumentManager]
+) -> None:
     """
     Render search and filter interface.
 
     Args:
-        doc_manager: DocumentManager instance
+        api_client: APIClient instance (if using API)
+        doc_manager: DocumentManager instance (if using direct calls)
     """
     st.subheader("Search & Filter Documents")
 
@@ -395,9 +579,23 @@ def render_search_and_filter(doc_manager: DocumentManager) -> None:
             filename = filename_filter.strip() if filename_filter else None
 
             try:
-                filtered_docs = doc_manager.get_documents_by_metadata(
-                    ticker=ticker, form_type=form_type, filename=filename
-                )
+                if api_client:
+                    # Get all documents and filter client-side
+                    all_documents = api_client.list_documents()
+                    filtered_docs = _filter_documents(
+                        all_documents,
+                        ticker=ticker,
+                        form_type=form_type,
+                        filename=filename,
+                    )
+                elif doc_manager:
+                    # Use DocumentManager filtering
+                    filtered_docs = doc_manager.get_documents_by_metadata(
+                        ticker=ticker, form_type=form_type, filename=filename
+                    )
+                else:
+                    st.error("Neither API client nor DocumentManager available")
+                    return
 
                 if not filtered_docs:
                     st.info("No documents found matching the search criteria.")
@@ -444,13 +642,31 @@ def render_search_and_filter(doc_manager: DocumentManager) -> None:
                         with col1:
                             if st.button("✅ Confirm Bulk Delete", type="primary"):
                                 try:
-                                    deleted_count = doc_manager.delete_documents(
-                                        st.session_state.bulk_delete_ids
-                                    )
-                                    st.success(
-                                        f"✅ Deleted {deleted_count} documents "
-                                        f"successfully!"
-                                    )
+                                    if api_client:
+                                        # Delete via API (one by one)
+                                        deleted_count = 0
+                                        for doc_id in st.session_state.bulk_delete_ids:
+                                            if api_client.delete_document(doc_id):
+                                                deleted_count += 1
+                                        st.success(
+                                            f"✅ Deleted {deleted_count} documents "
+                                            f"successfully!"
+                                        )
+                                    elif doc_manager:
+                                        deleted_count = doc_manager.delete_documents(
+                                            st.session_state.bulk_delete_ids
+                                        )
+                                        st.success(
+                                            f"✅ Deleted {deleted_count} documents "
+                                            f"successfully!"
+                                        )
+                                    else:
+                                        st.error(
+                                            "Neither API client nor "
+                                            "DocumentManager available"
+                                        )
+                                        return
+
                                     # Clear state
                                     del st.session_state.bulk_delete_ids
                                     del st.session_state.bulk_delete_count
@@ -458,7 +674,11 @@ def render_search_and_filter(doc_manager: DocumentManager) -> None:
                                     if "document_manager" in st.session_state:
                                         del st.session_state.document_manager
                                     st.rerun()
-                                except DocumentManagerError as e:
+                                except (
+                                    DocumentManagerError,
+                                    APIError,
+                                    APIConnectionError,
+                                ) as e:
                                     st.error(f"Error deleting documents: {str(e)}")
                                     logger.error(
                                         f"Failed to delete documents: {str(e)}",
@@ -471,7 +691,7 @@ def render_search_and_filter(doc_manager: DocumentManager) -> None:
                                 del st.session_state.bulk_delete_count
                                 st.rerun()
 
-            except DocumentManagerError as e:
+            except (DocumentManagerError, APIError, APIConnectionError) as e:
                 st.error(f"Error searching documents: {str(e)}")
                 logger.error(f"Failed to search documents: {str(e)}", exc_info=True)
 
@@ -568,7 +788,8 @@ def extract_filename(metadata: Dict[str, Any]) -> str:
 def render_version_history(
     version_history: List[Dict[str, Any]],
     source: str,
-    doc_manager: DocumentManager,
+    api_client: Optional[APIClient],
+    doc_manager: Optional[DocumentManager],
 ) -> None:
     """
     Render version history for a document.
@@ -576,7 +797,8 @@ def render_version_history(
     Args:
         version_history: List of version information dictionaries
         source: Source filename
-        doc_manager: DocumentManager instance
+        api_client: APIClient instance (if using API)
+        doc_manager: DocumentManager instance (if using direct calls)
     """
     st.markdown(f"### Version History for: {source}")
 
@@ -619,7 +841,15 @@ def render_version_history(
 
         if st.button("🔍 Compare Versions", key="compare_versions"):
             try:
-                comparison = doc_manager.compare_versions(source, version1, version2)
+                if api_client:
+                    comparison = api_client.compare_versions(source, version1, version2)
+                elif doc_manager:
+                    comparison = doc_manager.compare_versions(
+                        source, version1, version2
+                    )
+                else:
+                    st.error("Neither API client nor DocumentManager available")
+                    return
                 st.markdown("#### Comparison Results")
 
                 # Display version info
@@ -638,19 +868,36 @@ def render_version_history(
                     st.dataframe(diff_df, use_container_width=True, hide_index=True)
                 else:
                     st.info("No differences found between versions.")
-            except DocumentManagerError as e:
+            except (DocumentManagerError, APIError, APIConnectionError) as e:
                 st.error(f"Error comparing versions: {str(e)}")
                 logger.error(f"Failed to compare versions: {str(e)}", exc_info=True)
 
 
-def render_reindex_interface(doc_manager: DocumentManager) -> None:
+def render_reindex_interface(
+    api_client: Optional[APIClient], doc_manager: Optional[DocumentManager]
+) -> None:
     """
     Render re-indexing interface.
 
     Args:
-        doc_manager: DocumentManager instance
+        api_client: APIClient instance (if using API)
+        doc_manager: DocumentManager instance (if using direct calls)
     """
     st.subheader("Document Re-indexing")
+
+    # Re-indexing via API requires file upload which is complex
+    # For now, only support re-indexing via DocumentManager
+    if api_client and not doc_manager:
+        st.info(
+            "⚠️ Re-indexing via API is not yet fully supported. "
+            "Please use direct DocumentManager mode (set API_CLIENT_ENABLED=false) "
+            "or use the API endpoint directly for re-indexing."
+        )
+        return
+
+    if not doc_manager:
+        st.error("DocumentManager not available for re-indexing")
+        return
 
     try:
         # Get all documents grouped by source
