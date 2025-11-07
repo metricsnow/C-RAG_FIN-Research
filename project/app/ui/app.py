@@ -302,7 +302,7 @@ def render_chat_interface(
             logger.debug(f"Could not get memory stats: {e}")
 
     # Conversation management buttons
-    col1, col2, col3 = st.columns([1, 1, 2])
+    col1, col2, col3 = st.columns([1, 1, 1])
     with col1:
         # Clear conversation button with confirmation
         if "show_clear_confirm" not in st.session_state:
@@ -329,11 +329,12 @@ def render_chat_interface(
                     st.rerun()
 
     with col2:
-        # Export conversation button
+        # Export and sharing section
         if len(st.session_state.messages) > 0:
+            # Export format selection
             export_format = st.selectbox(
                 "Export Format",
-                ["JSON", "Markdown", "TXT"],
+                ["JSON", "Markdown", "TXT", "PDF", "Word (DOCX)", "CSV"],
                 key="export_format",
                 label_visibility="collapsed",
             )
@@ -343,37 +344,76 @@ def render_chat_interface(
                 st.session_state.export_data = None
             if "export_filename" not in st.session_state:
                 st.session_state.export_filename = None
+            if "export_mime" not in st.session_state:
+                st.session_state.export_mime = None
 
             # Export button
             if st.button("💾 Export", key="export_button"):
                 try:
                     # Get current model info
                     current_model = f"{model_provider}/{model_name}"
+                    # Map UI format names to export format names
+                    format_map = {
+                        "JSON": "json",
+                        "Markdown": "markdown",
+                        "TXT": "txt",
+                        "PDF": "pdf",
+                        "Word (DOCX)": "docx",
+                        "CSV": "csv",
+                    }
+                    export_format_lower = format_map.get(export_format, "json")
+
                     # Export conversation
                     content, filename = export_conversation(
                         messages=st.session_state.messages,
-                        format_type=export_format.lower(),
+                        format_type=export_format_lower,
                         model=current_model,
                     )
                     # Store in session state for download button
                     st.session_state.export_data = content
                     st.session_state.export_filename = filename
+
+                    # Set MIME type based on format
+                    mime_types = {
+                        "json": "application/json",
+                        "markdown": "text/markdown",
+                        "txt": "text/plain",
+                        "pdf": "application/pdf",
+                        "docx": (
+                            "application/vnd.openxmlformats-officedocument"
+                            ".wordprocessingml.document"
+                        ),
+                        "csv": "text/csv",
+                    }
+                    st.session_state.export_mime = mime_types.get(
+                        export_format_lower, "application/octet-stream"
+                    )
                     st.rerun()
+                except ImportError as e:
+                    logger.error(
+                        f"Export failed - missing library: {str(e)}", exc_info=True
+                    )
+                    st.error(
+                        f"Export failed: {str(e)}\n\n"
+                        "Please install required library:\n"
+                        "- For PDF: `pip install reportlab`\n"
+                        "- For Word: `pip install python-docx`"
+                    )
                 except Exception as e:
                     logger.error(f"Export failed: {str(e)}", exc_info=True)
                     st.error(f"Failed to export conversation: {str(e)}")
 
             # Show download button if export data is available
-            if st.session_state.export_data and st.session_state.export_filename:
+            if (
+                st.session_state.export_data
+                and st.session_state.export_filename
+                and st.session_state.export_mime
+            ):
                 st.download_button(
                     label="📥 Download Export",
                     data=st.session_state.export_data,
                     file_name=st.session_state.export_filename,
-                    mime=(
-                        "application/json"
-                        if export_format.lower() == "json"
-                        else "text/plain"
-                    ),
+                    mime=st.session_state.export_mime,
                     key="download_export",
                 )
         else:
@@ -383,6 +423,53 @@ def render_chat_interface(
                 st.session_state.export_data = None
             if "export_filename" in st.session_state:
                 st.session_state.export_filename = None
+            if "export_mime" in st.session_state:
+                st.session_state.export_mime = None
+
+    with col3:
+        # Sharing section
+        if len(st.session_state.messages) > 0:
+            if st.button("🔗 Share", key="share_button"):
+                try:
+                    from app.utils.sharing import create_shareable_conversation
+
+                    # Get base URL from query params or use default
+                    query_params = st.query_params
+                    base_url = query_params.get("base_url", "http://localhost:8501")
+
+                    # Create shareable link
+                    share_data = create_shareable_conversation(
+                        messages=st.session_state.messages,
+                        base_url=base_url,
+                        shorten=False,  # Can be made configurable
+                    )
+
+                    # Store in session state
+                    st.session_state.share_link = share_data.get("link")
+                    st.session_state.share_short_link = share_data.get("short_link")
+                    st.rerun()
+                except Exception as e:
+                    logger.error(f"Sharing failed: {str(e)}", exc_info=True)
+                    st.error(f"Failed to create shareable link: {str(e)}")
+
+            # Show shareable link if available
+            if "share_link" in st.session_state and st.session_state.share_link:
+                st.text_input(
+                    "Shareable Link",
+                    value=st.session_state.share_link,
+                    key="share_link_display",
+                    disabled=True,
+                    label_visibility="collapsed",
+                )
+                # Copy button
+                if st.button("📋 Copy Link", key="copy_share_link"):
+                    st.write("Link copied to clipboard!")
+        else:
+            st.caption("No conversation to share")
+            if "share_link" in st.session_state:
+                del st.session_state.share_link
+            if "share_short_link" in st.session_state:
+                del st.session_state.share_short_link
 
     st.divider()
 

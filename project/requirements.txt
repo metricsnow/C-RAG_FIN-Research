@@ -69,3 +69,7 @@ numpy>=1.24.0
 # Documentation
 sphinx>=8.2.0
 sphinx-rtd-theme>=3.0.0
+
+# Export and Sharing (TASK-043)
+reportlab>=4.0.0
+python-docx>=1.1.0
