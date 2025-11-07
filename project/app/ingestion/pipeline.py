@@ -9,6 +9,10 @@ from typing import List, Optional
 
 from langchain_core.documents import Document
 
+from app.ingestion.alternative_data_fetcher import (
+    AlternativeDataFetcher,
+    AlternativeDataFetcherError,
+)
 from app.ingestion.central_bank_fetcher import (
     CentralBankFetcher,
     CentralBankFetcherError,
@@ -18,12 +22,17 @@ from app.ingestion.economic_calendar_fetcher import (
     EconomicCalendarFetcher,
     EconomicCalendarFetcherError,
 )
+from app.ingestion.esg_fetcher import ESGFetcher, ESGFetcherError
 from app.ingestion.fred_fetcher import FREDFetcher, FREDFetcherError
 from app.ingestion.imf_fetcher import IMFFetcher, IMFFetcherError
 from app.ingestion.news_fetcher import NewsFetcher, NewsFetcherError
 from app.ingestion.sentiment_analyzer import (
     SentimentAnalyzer,
     SentimentAnalyzerError,
+)
+from app.ingestion.social_media_fetcher import (
+    SocialMediaFetcher,
+    SocialMediaFetcherError,
 )
 from app.ingestion.stock_data_normalizer import StockDataNormalizer
 from app.ingestion.transcript_fetcher import TranscriptFetcher, TranscriptFetcherError
@@ -154,6 +163,37 @@ class IngestionPipeline:
                 use_web_scraping=config.central_bank_use_web_scraping,
             )
             if config.central_bank_enabled
+            else None
+        )
+        # Alternative Data Sources (TASK-044)
+        self.social_media_fetcher = (
+            SocialMediaFetcher(
+                reddit_enabled=config.social_media_reddit_enabled,
+                twitter_enabled=config.social_media_twitter_enabled,
+                sentiment_enabled=config.social_media_sentiment_enabled,
+                rate_limit_delay=config.social_media_rate_limit,
+            )
+            if config.social_media_enabled
+            else None
+        )
+        self.esg_fetcher = (
+            ESGFetcher(
+                msci_enabled=config.esg_msci_enabled,
+                sustainalytics_enabled=config.esg_sustainalytics_enabled,
+                cdp_enabled=config.esg_cdp_enabled,
+                rate_limit_delay=config.esg_rate_limit,
+            )
+            if config.esg_enabled
+            else None
+        )
+        self.alternative_data_fetcher = (
+            AlternativeDataFetcher(
+                linkedin_enabled=config.alternative_data_linkedin_enabled,
+                supply_chain_enabled=config.alternative_data_supply_chain_enabled,
+                ipo_enabled=config.alternative_data_ipo_enabled,
+                rate_limit_delay=config.alternative_data_rate_limit,
+            )
+            if config.alternative_data_enabled
             else None
         )
 
@@ -1689,6 +1729,361 @@ class IngestionPipeline:
             track_error(document_ingestion_total)
             raise IngestionPipelineError(
                 f"Unexpected error processing central bank communications: {str(e)}"
+            ) from e
+
+    def process_social_media(
+        self,
+        subreddits: Optional[List[str]] = None,
+        twitter_query: Optional[str] = None,
+        limit: int = 25,
+        store_embeddings: bool = True,
+    ) -> List[str]:
+        """
+        Process social media posts (Reddit and Twitter/X).
+
+        Args:
+            subreddits: List of Reddit subreddits to fetch from
+            twitter_query: Twitter/X search query
+            limit: Maximum number of posts per source (default: 25)
+            store_embeddings: Whether to store embeddings in ChromaDB (default: True)
+
+        Returns:
+            List of chunk IDs
+
+        Raises:
+            IngestionPipelineError: If processing fails
+        """
+        if not self.social_media_fetcher:
+            raise IngestionPipelineError("Social media fetcher is not enabled")
+
+        logger.info("Processing social media posts")
+        try:
+            # Step 1: Fetch social media posts
+            all_posts = []
+
+            # Fetch Reddit posts if enabled
+            if self.social_media_fetcher.reddit_enabled:
+                logger.debug("Fetching Reddit posts")
+                reddit_posts = self.social_media_fetcher.fetch_reddit_posts(
+                    subreddits=subreddits, limit=limit
+                )
+                all_posts.extend(reddit_posts)
+
+            # Fetch Twitter tweets if enabled
+            if self.social_media_fetcher.twitter_enabled and twitter_query:
+                logger.debug(f"Fetching Twitter tweets for query: {twitter_query}")
+                twitter_tweets = self.social_media_fetcher.fetch_twitter_tweets(
+                    query=twitter_query, max_results=limit
+                )
+                all_posts.extend(twitter_tweets)
+
+            if not all_posts:
+                logger.warning("No social media posts fetched")
+                return []
+
+            # Step 2: Convert to Document objects
+            logger.debug(f"Converting {len(all_posts)} posts to Document objects")
+            documents = self.social_media_fetcher.to_documents(all_posts)
+
+            if not documents:
+                logger.warning("No documents generated from social media posts")
+                return []
+
+            # Step 3: Chunk documents
+            all_chunks = []
+            for doc in documents:
+                chunks = self.document_loader.chunk_document(doc)
+                all_chunks.extend(chunks)
+
+            if not all_chunks:
+                logger.warning("No chunks generated from social media posts")
+                return []
+
+            logger.info(f"Generated {len(all_chunks)} chunks from social media posts")
+
+            # Step 4: Generate embeddings
+            logger.debug(f"Generating embeddings for {len(all_chunks)} chunks")
+            texts = [chunk.page_content for chunk in all_chunks]
+            embeddings = self.embedding_generator.embed_documents(texts)
+
+            if len(embeddings) != len(all_chunks):
+                logger.error(
+                    f"Embedding count ({len(embeddings)}) does not match "
+                    f"chunk count ({len(all_chunks)})"
+                )
+                raise IngestionPipelineError(
+                    f"Embedding count ({len(embeddings)}) does not match "
+                    f"chunk count ({len(all_chunks)})"
+                )
+
+            # Track chunks created
+            document_chunks_created.observe(len(all_chunks))
+
+            # Step 5: Store in ChromaDB (if requested)
+            if store_embeddings:
+                logger.debug(f"Storing {len(all_chunks)} chunks in ChromaDB")
+                ids = self.chroma_store.add_documents(all_chunks, embeddings)
+                logger.info(
+                    f"Successfully stored {len(ids)} chunks from social media posts"
+                )
+                track_success(document_ingestion_total)
+                return ids
+            else:
+                logger.debug("Skipping ChromaDB storage (store_embeddings=False)")
+                track_success(document_ingestion_total)
+                return [f"chunk_{i}" for i in range(len(all_chunks))]
+
+        except SocialMediaFetcherError as e:
+            logger.error(f"Social media fetching failed: {str(e)}", exc_info=True)
+            track_error(document_ingestion_total)
+            raise IngestionPipelineError(
+                f"Social media fetching failed: {str(e)}"
+            ) from e
+        except Exception as e:
+            logger.error(
+                f"Unexpected error processing social media posts: {str(e)}",
+                exc_info=True,
+            )
+            track_error(document_ingestion_total)
+            raise IngestionPipelineError(
+                f"Unexpected error processing social media posts: {str(e)}"
+            ) from e
+
+    def process_esg_data(
+        self,
+        tickers: List[str],
+        providers: Optional[List[str]] = None,
+        store_embeddings: bool = True,
+    ) -> List[str]:
+        """
+        Process ESG data for multiple tickers.
+
+        Args:
+            tickers: List of ticker symbols
+            providers: List of ESG providers (["msci", "sustainalytics", "cdp"])
+            store_embeddings: Whether to store embeddings in ChromaDB (default: True)
+
+        Returns:
+            List of chunk IDs
+
+        Raises:
+            IngestionPipelineError: If processing fails
+        """
+        if not self.esg_fetcher:
+            raise IngestionPipelineError("ESG fetcher is not enabled")
+
+        logger.info(f"Processing ESG data for {len(tickers)} tickers")
+        try:
+            # Step 1: Fetch ESG data
+            logger.debug("Fetching ESG data")
+            esg_data = self.esg_fetcher.fetch_esg_data(
+                tickers=tickers, providers=providers
+            )
+
+            if not esg_data:
+                logger.warning("No ESG data fetched")
+                return []
+
+            # Step 2: Convert to Document objects
+            logger.debug(f"Converting {len(esg_data)} ESG records to Document objects")
+            documents = self.esg_fetcher.to_documents(esg_data)
+
+            if not documents:
+                logger.warning("No documents generated from ESG data")
+                return []
+
+            # Step 3: Chunk documents
+            all_chunks = []
+            for doc in documents:
+                chunks = self.document_loader.chunk_document(doc)
+                all_chunks.extend(chunks)
+
+            if not all_chunks:
+                logger.warning("No chunks generated from ESG data")
+                return []
+
+            logger.info(f"Generated {len(all_chunks)} chunks from ESG data")
+
+            # Step 4: Generate embeddings
+            logger.debug(f"Generating embeddings for {len(all_chunks)} chunks")
+            texts = [chunk.page_content for chunk in all_chunks]
+            embeddings = self.embedding_generator.embed_documents(texts)
+
+            if len(embeddings) != len(all_chunks):
+                logger.error(
+                    f"Embedding count ({len(embeddings)}) does not match "
+                    f"chunk count ({len(all_chunks)})"
+                )
+                raise IngestionPipelineError(
+                    f"Embedding count ({len(embeddings)}) does not match "
+                    f"chunk count ({len(all_chunks)})"
+                )
+
+            # Track chunks created
+            document_chunks_created.observe(len(all_chunks))
+
+            # Step 5: Store in ChromaDB (if requested)
+            if store_embeddings:
+                logger.debug(f"Storing {len(all_chunks)} chunks in ChromaDB")
+                ids = self.chroma_store.add_documents(all_chunks, embeddings)
+                logger.info(f"Successfully stored {len(ids)} chunks from ESG data")
+                track_success(document_ingestion_total)
+                return ids
+            else:
+                logger.debug("Skipping ChromaDB storage (store_embeddings=False)")
+                track_success(document_ingestion_total)
+                return [f"chunk_{i}" for i in range(len(all_chunks))]
+
+        except ESGFetcherError as e:
+            logger.error(f"ESG fetching failed: {str(e)}", exc_info=True)
+            track_error(document_ingestion_total)
+            raise IngestionPipelineError(f"ESG fetching failed: {str(e)}") from e
+        except Exception as e:
+            logger.error(
+                f"Unexpected error processing ESG data: {str(e)}", exc_info=True
+            )
+            track_error(document_ingestion_total)
+            raise IngestionPipelineError(
+                f"Unexpected error processing ESG data: {str(e)}"
+            ) from e
+
+    def process_alternative_data(
+        self,
+        tickers: Optional[List[str]] = None,
+        linkedin_company: Optional[str] = None,
+        form_s1_limit: int = 10,
+        store_embeddings: bool = True,
+    ) -> List[str]:
+        """
+        Process alternative data (LinkedIn jobs, supply chain, Form S-1).
+
+        Args:
+            tickers: List of ticker symbols for Form S-1 and supply chain
+            linkedin_company: Company name for LinkedIn job search
+            form_s1_limit: Maximum number of Form S-1 filings to fetch (default: 10)
+            store_embeddings: Whether to store embeddings in ChromaDB (default: True)
+
+        Returns:
+            List of chunk IDs
+
+        Raises:
+            IngestionPipelineError: If processing fails
+        """
+        if not self.alternative_data_fetcher:
+            raise IngestionPipelineError("Alternative data fetcher is not enabled")
+
+        logger.info("Processing alternative data")
+        try:
+            # Step 1: Fetch alternative data
+            all_data = []
+
+            # Fetch LinkedIn jobs if enabled
+            if self.alternative_data_fetcher.linkedin_enabled and linkedin_company:
+                logger.debug(f"Fetching LinkedIn jobs for {linkedin_company}")
+                linkedin_jobs = self.alternative_data_fetcher.fetch_linkedin_jobs(
+                    company=linkedin_company, ticker=tickers[0] if tickers else None
+                )
+                all_data.extend(linkedin_jobs)
+
+            # Fetch supply chain data if enabled
+            if self.alternative_data_fetcher.supply_chain_enabled and tickers:
+                logger.debug(f"Fetching supply chain data for {tickers}")
+                for ticker in tickers:
+                    supply_chain_data = (
+                        self.alternative_data_fetcher.fetch_supply_chain_data(
+                            ticker=ticker
+                        )
+                    )
+                    all_data.extend(supply_chain_data)
+
+            # Fetch Form S-1 filings if enabled
+            if self.alternative_data_fetcher.ipo_enabled:
+                logger.debug("Fetching Form S-1 filings")
+                if tickers:
+                    for ticker in tickers:
+                        form_s1_filings = (
+                            self.alternative_data_fetcher.fetch_form_s1_filings(
+                                ticker=ticker, limit=form_s1_limit
+                            )
+                        )
+                        all_data.extend(form_s1_filings)
+                else:
+                    form_s1_filings = (
+                        self.alternative_data_fetcher.fetch_form_s1_filings(
+                            limit=form_s1_limit
+                        )
+                    )
+                    all_data.extend(form_s1_filings)
+
+            if not all_data:
+                logger.warning("No alternative data fetched")
+                return []
+
+            # Step 2: Convert to Document objects
+            logger.debug(f"Converting {len(all_data)} records to Document objects")
+            documents = self.alternative_data_fetcher.to_documents(all_data)
+
+            if not documents:
+                logger.warning("No documents generated from alternative data")
+                return []
+
+            # Step 3: Chunk documents
+            all_chunks = []
+            for doc in documents:
+                chunks = self.document_loader.chunk_document(doc)
+                all_chunks.extend(chunks)
+
+            if not all_chunks:
+                logger.warning("No chunks generated from alternative data")
+                return []
+
+            logger.info(f"Generated {len(all_chunks)} chunks from alternative data")
+
+            # Step 4: Generate embeddings
+            logger.debug(f"Generating embeddings for {len(all_chunks)} chunks")
+            texts = [chunk.page_content for chunk in all_chunks]
+            embeddings = self.embedding_generator.embed_documents(texts)
+
+            if len(embeddings) != len(all_chunks):
+                logger.error(
+                    f"Embedding count ({len(embeddings)}) does not match "
+                    f"chunk count ({len(all_chunks)})"
+                )
+                raise IngestionPipelineError(
+                    f"Embedding count ({len(embeddings)}) does not match "
+                    f"chunk count ({len(all_chunks)})"
+                )
+
+            # Track chunks created
+            document_chunks_created.observe(len(all_chunks))
+
+            # Step 5: Store in ChromaDB (if requested)
+            if store_embeddings:
+                logger.debug(f"Storing {len(all_chunks)} chunks in ChromaDB")
+                ids = self.chroma_store.add_documents(all_chunks, embeddings)
+                logger.info(
+                    f"Successfully stored {len(ids)} chunks from alternative data"
+                )
+                track_success(document_ingestion_total)
+                return ids
+            else:
+                logger.debug("Skipping ChromaDB storage (store_embeddings=False)")
+                track_success(document_ingestion_total)
+                return [f"chunk_{i}" for i in range(len(all_chunks))]
+
+        except AlternativeDataFetcherError as e:
+            logger.error(f"Alternative data fetching failed: {str(e)}", exc_info=True)
+            track_error(document_ingestion_total)
+            raise IngestionPipelineError(
+                f"Alternative data fetching failed: {str(e)}"
+            ) from e
+        except Exception as e:
+            logger.error(
+                f"Unexpected error processing alternative data: {str(e)}", exc_info=True
+            )
+            track_error(document_ingestion_total)
+            raise IngestionPipelineError(
+                f"Unexpected error processing alternative data: {str(e)}"
             ) from e
 
 

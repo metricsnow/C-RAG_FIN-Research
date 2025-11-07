@@ -407,6 +407,99 @@ class Config(BaseSettings):
         alias="NEWS_ENABLED",
         description="Enable financial news aggregation",
     )
+
+    # Alternative Data Sources Configuration (TASK-044)
+    social_media_enabled: bool = Field(
+        default=False,
+        alias="SOCIAL_MEDIA_ENABLED",
+        description="Enable social media sentiment fetching (Reddit, Twitter/X)",
+    )
+    social_media_reddit_enabled: bool = Field(
+        default=False,
+        alias="SOCIAL_MEDIA_REDDIT_ENABLED",
+        description=(
+            "Enable Reddit fetching "
+            "(requires REDDIT_CLIENT_ID, REDDIT_CLIENT_SECRET)"
+        ),
+    )
+    social_media_twitter_enabled: bool = Field(
+        default=False,
+        alias="SOCIAL_MEDIA_TWITTER_ENABLED",
+        description=(
+            "Enable Twitter/X fetching "
+            "(requires TWITTER_BEARER_TOKEN or OAuth credentials)"
+        ),
+    )
+    social_media_sentiment_enabled: bool = Field(
+        default=True,
+        alias="SOCIAL_MEDIA_SENTIMENT_ENABLED",
+        description="Enable sentiment analysis for social media posts",
+    )
+    social_media_rate_limit: float = Field(
+        default=1.0,
+        ge=0.1,
+        le=10.0,
+        alias="SOCIAL_MEDIA_RATE_LIMIT",
+        description="Rate limit delay for social media API requests (seconds)",
+    )
+
+    esg_enabled: bool = Field(
+        default=False,
+        alias="ESG_ENABLED",
+        description="Enable ESG data fetching (requires API keys for providers)",
+    )
+    esg_msci_enabled: bool = Field(
+        default=False,
+        alias="ESG_MSCI_ENABLED",
+        description="Enable MSCI ESG data (requires MSCI_ESG_API_KEY)",
+    )
+    esg_sustainalytics_enabled: bool = Field(
+        default=False,
+        alias="ESG_SUSTAINALYTICS_ENABLED",
+        description="Enable Sustainalytics ESG data (requires SUSTAINALYTICS_API_KEY)",
+    )
+    esg_cdp_enabled: bool = Field(
+        default=False,
+        alias="ESG_CDP_ENABLED",
+        description="Enable CDP climate data (requires CDP_API_KEY)",
+    )
+    esg_rate_limit: float = Field(
+        default=1.0,
+        ge=0.1,
+        le=10.0,
+        alias="ESG_RATE_LIMIT",
+        description="Rate limit delay for ESG API requests (seconds)",
+    )
+
+    alternative_data_enabled: bool = Field(
+        default=False,
+        alias="ALTERNATIVE_DATA_ENABLED",
+        description=(
+            "Enable alternative data fetching " "(LinkedIn, supply chain, Form S-1)"
+        ),
+    )
+    alternative_data_linkedin_enabled: bool = Field(
+        default=False,
+        alias="ALTERNATIVE_DATA_LINKEDIN_ENABLED",
+        description="Enable LinkedIn job postings (requires LINKEDIN_API_KEY)",
+    )
+    alternative_data_supply_chain_enabled: bool = Field(
+        default=False,
+        alias="ALTERNATIVE_DATA_SUPPLY_CHAIN_ENABLED",
+        description="Enable supply chain data (requires SUPPLY_CHAIN_API_KEY)",
+    )
+    alternative_data_ipo_enabled: bool = Field(
+        default=True,
+        alias="ALTERNATIVE_DATA_IPO_ENABLED",
+        description="Enable IPO/Form S-1 data (uses SEC EDGAR, no API key required)",
+    )
+    alternative_data_rate_limit: float = Field(
+        default=1.0,
+        ge=0.1,
+        le=10.0,
+        alias="ALTERNATIVE_DATA_RATE_LIMIT",
+        description="Rate limit delay for alternative data API requests (seconds)",
+    )
     news_use_rss: bool = Field(
         default=True,
         alias="NEWS_USE_RSS",

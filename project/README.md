@@ -27,6 +27,7 @@ A production-ready RAG (Retrieval-Augmented Generation) system for semantic sear
 - **Citation Tracking**: Automatic source attribution with document references for every answer
 - **SEC EDGAR Integration**: Automated fetching and indexing of SEC filings (10-K, 10-Q, 8-K forms)
 - **Financial News Aggregation**: RSS feed parsing and web scraping for financial news (Reuters, CNBC, Bloomberg, etc.) with automatic sentiment analysis
+- **Alternative Data Sources**: Social media sentiment (Reddit, Twitter/X), ESG data (MSCI, Sustainalytics, CDP), LinkedIn jobs, supply chain data, and IPO/Form S-1 filings
 - **Financial Domain Specialization**: Optimized for financial terminology and research queries
 - **Vector Database**: Persistent ChromaDB storage for efficient similarity search
 - **Streamlit UI**: Modern, interactive chat interface with model selection toggle for querying documents
@@ -1388,6 +1389,52 @@ chunk_ids = pipeline.process_central_bank(
 **Configuration**: See [Configuration Documentation](docs/reference/configuration.md#central-bank-data-configuration-task-038) for settings. No API keys required, but rate limiting is important.
 
 **Documentation**: See [Central Bank Integration Documentation](docs/integrations/central_bank_integration.md) for detailed usage and API reference.
+
+#### Alternative Data Sources Integration
+
+Fetch and index alternative data including social media sentiment, ESG ratings, LinkedIn jobs, supply chain data, and IPO filings:
+
+**Programmatic Usage**:
+```python
+from app.ingestion.pipeline import IngestionPipeline
+
+# Create pipeline
+pipeline = IngestionPipeline()
+
+# Process social media sentiment (Reddit and Twitter/X)
+chunk_ids = pipeline.process_social_media(
+    subreddits=["stocks", "investing"],
+    twitter_query="$AAPL earnings",
+    limit=25,
+    store_embeddings=True
+)
+
+# Process ESG data for multiple tickers
+chunk_ids = pipeline.process_esg_data(
+    tickers=["AAPL", "MSFT", "GOOGL"],
+    providers=["msci", "sustainalytics", "cdp"],
+    store_embeddings=True
+)
+
+# Process alternative data (LinkedIn jobs, supply chain, Form S-1)
+chunk_ids = pipeline.process_alternative_data(
+    tickers=["AAPL"],
+    linkedin_company="Apple Inc.",
+    form_s1_limit=10,
+    store_embeddings=True
+)
+```
+
+**Features**:
+- **Social Media Sentiment**: Reddit posts and Twitter/X tweets with sentiment analysis and ticker extraction
+- **ESG Data**: MSCI, Sustainalytics, and CDP ESG ratings and scores (framework - requires API subscriptions)
+- **LinkedIn Jobs**: Hiring signal analysis from job postings (framework - requires API access)
+- **Supply Chain Data**: Port activity and shipping data (framework - requires API subscription)
+- **Form S-1 Filings**: IPO and secondary offering data from SEC EDGAR (fully implemented, free)
+
+**Configuration**: See [Configuration Documentation](docs/reference/configuration.md#alternative-data-sources-configuration-task-044) for settings. Most sources require API keys or subscriptions. Form S-1 uses free SEC EDGAR API.
+
+**Documentation**: See [Alternative Data Sources Integration Documentation](docs/integrations/alternative_data_sources.md) for detailed usage and API reference.
 
 #### Financial News Aggregation
 

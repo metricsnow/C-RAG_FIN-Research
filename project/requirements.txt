@@ -73,3 +73,7 @@ sphinx-rtd-theme>=3.0.0
 # Export and Sharing (TASK-043)
 reportlab>=4.0.0
 python-docx>=1.1.0
+
+# Alternative Data Sources (TASK-044)
+praw>=7.7.0
+tweepy>=4.14.0
