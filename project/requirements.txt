@@ -62,6 +62,10 @@ torch>=2.0.0
 textblob>=0.17.1
 vaderSentiment>=3.3.2
 
+# A/B Testing Framework (TASK-041)
+scipy>=1.11.0
+numpy>=1.24.0
+
 # Documentation
 sphinx>=8.2.0
 sphinx-rtd-theme>=3.0.0

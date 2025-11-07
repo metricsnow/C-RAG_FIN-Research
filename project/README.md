@@ -40,6 +40,7 @@ A production-ready RAG (Retrieval-Augmented Generation) system for semantic sear
 
 - **Dual LLM Support**: OpenAI (gpt-4o-mini) or Ollama (llama3.2) - switchable via UI toggle
 - **Triple Embedding Support**: OpenAI (text-embedding-3-small), Ollama embeddings, or FinBERT (financial domain optimized)
+- **Embedding A/B Testing**: Comprehensive framework for comparing embedding models with statistical significance testing
 - **LangChain Integration**: Built on LangChain 1.0+ with Expression Language (LCEL)
 - **Batch Processing**: Efficient batch embedding generation for large document collections
 - **Metadata Management**: Rich document metadata (source, filename, type, date, chunk index)
@@ -87,6 +88,16 @@ A production-ready RAG (Retrieval-Augmented Generation) system for semantic sear
 - **Multi-Stage Retrieval**: Broad initial retrieval (high recall) → refined reranking (high precision)
 - **Context Formatting**: Enhanced document context with section metadata and structure information
 - **Configurable Optimizations**: All optimizations can be enabled/disabled via environment variables
+
+### Embedding A/B Testing Features
+
+- **Multi-Provider Comparison**: Compare OpenAI, Ollama, and FinBERT embedding models side-by-side
+- **Performance Metrics**: Track query response time, retrieval accuracy, and answer quality
+- **Statistical Testing**: Two-sample t-test for statistical significance with p-values
+- **Batch Testing**: Run multiple queries across all providers with automatic randomization
+- **Comprehensive Reporting**: JSON reports and human-readable summaries with provider comparisons
+- **Retrieval-Only Mode**: Test embedding quality without full RAG pipeline overhead
+- **Command-Line Interface**: Easy-to-use script for running A/B tests
 
 ### Data Collection & Integration
 
@@ -736,6 +747,80 @@ The Document Management interface provides comprehensive tools for managing inde
 - New chunks are created with updated content
 - Version number is incremented (if enabled)
 - Metadata is preserved (if enabled)
+
+### Using Embedding A/B Testing
+
+The A/B testing framework allows you to compare embedding models (OpenAI, Ollama, FinBERT) to determine which performs best for your use case.
+
+#### Quick Start
+
+**Command-Line Usage**:
+```bash
+# Run A/B test with default queries
+python scripts/run_embedding_ab_test.py
+
+# Run with custom queries
+python scripts/run_embedding_ab_test.py --queries "What is Apple's revenue?" "Explain balance sheets"
+
+# Run with query file
+python scripts/run_embedding_ab_test.py --file queries.txt
+
+# Interactive mode
+python scripts/run_embedding_ab_test.py --interactive
+```
+
+**Python API Usage**:
+```python
+from app.rag.embedding_ab_test import EmbeddingABTest
+
+# Initialize A/B test
+ab_test = EmbeddingABTest(
+    providers=["openai", "ollama", "finbert"],
+    collection_name="documents",
+    top_k=5
+)
+
+# Run batch queries
+queries = ["What are Apple's financial metrics?", "Explain balance sheets"]
+ab_test.run_batch_queries(queries, use_rag=True)
+
+# Generate and save report
+report_path = ab_test.save_report()
+ab_test.print_summary()
+```
+
+#### Testing Modes
+
+**Full RAG Pipeline Testing** (default):
+- Tests complete query-to-answer pipeline
+- Includes LLM answer generation
+- Measures end-to-end performance
+- Use: `use_rag=True`
+
+**Retrieval-Only Mode**:
+- Tests embedding quality without LLM overhead
+- Faster and cheaper (no LLM API costs)
+- Focuses on retrieval accuracy
+- Use: `use_rag=False` or `--no-rag` flag
+
+#### Interpreting Results
+
+The framework provides:
+- **Provider Metrics**: Average response time, distance metrics, chunks retrieved
+- **Statistical Tests**: P-values and significance testing for provider comparisons
+- **Comprehensive Reports**: JSON reports with full test data
+
+**Key Metrics**:
+- **Response Time**: Lower is better (faster queries)
+- **Distance**: Lower is better (more relevant results)
+- **Chunks Retrieved**: Should match `top_k` setting
+
+**Statistical Significance**:
+- P-value < 0.05 indicates significant difference
+- Compare providers across multiple metrics
+- Consider practical significance, not just statistical
+
+For detailed documentation, see [Embedding A/B Testing Integration](docs/integrations/embedding_ab_testing.md).
 - Version tracking information is added
 
 #### Viewing Version History
@@ -2335,6 +2420,7 @@ project/
 │   ├── rag/                # RAG chain implementation
 │   │   ├── chain.py              # RAG query system
 │   │   ├── embedding_factory.py  # Embedding generation
+│   │   ├── embedding_ab_test.py  # A/B testing framework (TASK-041) ✅
 │   │   └── llm_factory.py        # LLM instance creation
 │   ├── ui/                 # Streamlit frontend
 │   │   └── app.py                # Main Streamlit application
@@ -2357,6 +2443,7 @@ project/
 │   │   ├── fred_integration.md # FRED API integration (TASK-036) ✅
 │   │   ├── imf_world_bank_integration.md # IMF/World Bank (TASK-037) ✅
 │   │   ├── central_bank_integration.md # Central bank data (TASK-038) ✅
+│   │   ├── embedding_ab_testing.md # Embedding A/B testing (TASK-041) ✅
 │   │   └── edgar_integration.md # SEC EDGAR integration
 │   ├── reference/         # Reference documentation
 │   │   ├── configuration.md # Configuration guide (includes all integrations)
@@ -2380,6 +2467,7 @@ project/
 │   ├── deploy_with_ngrok.sh # ngrok deployment script
 │   ├── fetch_edgar_data.py # EDGAR data fetching
 │   ├── fetch_news.py       # News aggregation script (TASK-034) ✅
+│   ├── run_embedding_ab_test.py # Embedding A/B testing script (TASK-041) ✅
 │   ├── fetch_stock_data.py  # Stock data fetching (TASK-030) ✅
 │   ├── fetch_transcripts.py # Transcript fetching (TASK-033) ✅
 │   ├── fetch_economic_calendar.py # Economic calendar (TASK-035) ✅
