@@ -20,9 +20,9 @@ The project is organized into several key modules, each implementing specific st
 
 - **Document Ingestion Pipeline**: Implements intelligent chunking strategies, batch embedding generation, and metadata extraction for financial documents
 - **RAG Chain**: Advanced retrieval with hybrid search (semantic + BM25), query expansion, reranking capabilities, and citation tracking
-- **Vector Database Integration**: ChromaDB implementation with persistent storage, similarity search optimization, and metadata filtering
+- **Vector Database Integration**: ChromaDB implementation with persistent storage, similarity search optimization, and metadata filtering (including sentiment-based filtering)
 - **LLM Factory Pattern**: Dual-provider support (Ollama/OpenAI) with seamless switching, demonstrating provider abstraction patterns
-- **Query Processing**: Query refinement, prompt engineering for financial domain, and context-aware retrieval optimization
+- **Query Processing**: Query refinement, prompt engineering for financial domain, context-aware retrieval optimization, and sentiment-aware query filtering
 - **Monitoring & Observability**: Prometheus metrics integration, health check endpoints, and comprehensive logging infrastructure
 
 ### State-of-the-Art Techniques Implemented
@@ -30,6 +30,7 @@ The project is organized into several key modules, each implementing specific st
 - **Hybrid Search**: Combines semantic similarity search with BM25 keyword matching for improved retrieval accuracy
 - **Query Expansion**: Automatic query refinement and expansion to improve retrieval relevance
 - **Reranking**: Cross-encoder reranking for optimal document ordering
+- **Sentiment-Aware Filtering**: Filter query results by sentiment (positive/negative/neutral) for targeted document retrieval
 - **Dual-Provider Architecture**: Flexible LLM and embedding provider switching without code changes
 - **Financial Domain Optimization**: Custom prompt engineering and domain-specific embeddings for financial terminology
 - **Production-Grade Architecture**: Type-safe configuration (Pydantic), comprehensive testing (82.75% coverage), and monitoring integration
@@ -39,7 +40,7 @@ The project is organized into several key modules, each implementing specific st
 ### Core Technologies
 - **Python 3.11+**: Modern Python with type hints, pattern matching, and performance optimizations
 - **LangChain 1.0+**: RAG framework using Expression Language (LCEL) for declarative chain composition and streaming support
-- **ChromaDB**: Vector database with persistent storage, metadata filtering, and optimized similarity search
+- **ChromaDB**: Vector database with persistent storage, metadata filtering (including sentiment-based filtering), and optimized similarity search
 - **Streamlit**: Interactive web frontend with real-time streaming and state management
 
 ### LLM & Embeddings Architecture
@@ -52,6 +53,7 @@ The project is organized into several key modules, each implementing specific st
 - **Hybrid Search**: Semantic vector search combined with BM25 keyword matching
 - **Query Refinement**: Automatic query expansion and refinement techniques
 - **Reranking**: Cross-encoder reranking for optimal document ordering
+- **Sentiment-Aware Filtering**: Filter query results by document sentiment for targeted retrieval
 - **Intelligent Chunking**: Recursive character text splitting with overlap strategies and metadata preservation
 
 ### Data Sources & Integration
@@ -63,7 +65,7 @@ The project is organized into several key modules, each implementing specific st
 - **FRED API Integration**: 840,000+ economic time series including interest rates, exchange rates, inflation, employment, GDP
 - **IMF and World Bank Data Integration**: Global economic data from IMF Data Portal and World Bank Open Data APIs for 188+ countries
 - **Central Bank Data Integration**: FOMC statements, meeting minutes, press conference transcripts, and forward guidance extraction
-- **Financial Sentiment Analysis**: Comprehensive sentiment analysis using FinBERT, TextBlob, and VADER with forward guidance and risk factor extraction
+- **Financial Sentiment Analysis**: Comprehensive sentiment analysis using FinBERT, TextBlob, and VADER with forward guidance and risk factor extraction, plus sentiment-aware query filtering
 - **Document Processing**: Multi-format support (text, Markdown) with intelligent chunking and metadata extraction
 - **Batch Processing**: Optimized batch embedding generation for efficient document indexing
 
@@ -129,6 +131,7 @@ The project is organized into several key modules, each implementing specific st
     ┌──────────────────┐
     │ Vector Search    │  Similarity search in ChromaDB (top-k retrieval)
     │ (ChromaDB)       │  Optional: Hybrid search (semantic + BM25)
+    │                  │  Optional: Sentiment filtering (positive/negative/neutral)
     └──────┬───────────┘
            │
            ▼
@@ -165,17 +168,18 @@ The project is organized into several key modules, each implementing specific st
 - **FastAPI Backend**: Production-ready RESTful API with OpenAPI documentation, authentication, and rate limiting
 - **Document Management**: Comprehensive UI for managing indexed documents with search, filtering, and deletion
 - **Conversation Memory**: Multi-turn conversations with context preservation and LangChain memory integration
-- **Financial Sentiment Analysis**: Automatic sentiment analysis for all documents using FinBERT, TextBlob, and VADER
+- **Financial Sentiment Analysis**: Automatic sentiment analysis for all documents using FinBERT, TextBlob, and VADER with sentiment-aware query filtering
 
 ### Advanced RAG Techniques
 - **Hybrid Search**: Combines semantic vector search with BM25 keyword matching for improved retrieval precision
 - **Query Refinement**: Automatic query expansion and refinement to enhance retrieval relevance
 - **Reranking**: Cross-encoder reranking implementation for optimal document ordering
+- **Sentiment-Aware Filtering**: Filter query results by document sentiment (positive/negative/neutral) for targeted retrieval
 - **Dual Embedding Support**: OpenAI (text-embedding-3-small) or Ollama embeddings with provider abstraction
 - **Intelligent Chunking**: Recursive character text splitting with overlap strategies for optimal context preservation
 
 ### Infrastructure & Architecture
-- **Vector Database**: ChromaDB with persistent storage, metadata filtering, and similarity search optimization
+- **Vector Database**: ChromaDB with persistent storage, metadata filtering (including sentiment-based filtering), and similarity search optimization
 - **Streamlit UI**: Interactive chat interface with real-time model switching and query processing
 - **FastAPI Backend**: RESTful API with OpenAPI/Swagger documentation, authentication, and rate limiting
 - **Performance Metrics**: Average query response time 3.46s with comprehensive performance monitoring
@@ -337,7 +341,7 @@ The project is organized into several key modules, each implementing specific st
 ### Completed (Phase 2)
 - ✅ FastAPI backend with OpenAPI documentation, authentication, and rate limiting
 - ✅ Enhanced data sources (yfinance, FRED, IMF, World Bank, Economic Calendar)
-- ✅ Advanced analytics (sentiment analysis with FinBERT/TextBlob/VADER, forward guidance extraction, risk factor identification)
+- ✅ Advanced analytics (sentiment analysis with FinBERT/TextBlob/VADER, forward guidance extraction, risk factor identification, sentiment-aware query filtering)
 - ✅ Conversation history management UI (clear/export features)
 - ✅ Earnings call transcripts integration
 - ✅ Financial news aggregation with RSS feeds and web scraping

@@ -335,6 +335,145 @@ curl -X DELETE "http://localhost:8000/api/v1/documents/chunk_1" \
   -H "X-API-Key: your-api-key"
 ```
 
+#### Re-index Document
+
+**POST** `/api/v1/documents/reindex`
+
+Re-index a document by uploading an updated version. This deletes old chunks and creates new ones with version tracking.
+
+**Request Body** (multipart/form-data):
+- `file` (file, required): Updated document file to re-index
+- `preserve_metadata` (boolean, optional, default: true): Whether to preserve original metadata (ticker, form_type, etc.)
+- `increment_version` (boolean, optional, default: true): Whether to increment version number
+
+**Response** (200 OK):
+```json
+{
+  "message": "Document re-indexed successfully",
+  "old_chunks_deleted": 5,
+  "new_chunks_created": 5,
+  "version": 2,
+  "new_chunk_ids": ["chunk_id_1", "chunk_id_2", ...]
+}
+```
+
+**Error Responses**:
+- `400 Bad Request`: Missing file or invalid request
+- `401 Unauthorized`: Missing or invalid API key (if authentication enabled)
+- `500 Internal Server Error`: Server error during re-indexing
+
+**Example**:
+```bash
+curl -X POST "http://localhost:8000/api/v1/documents/reindex" \
+  -H "X-API-Key: your-api-key" \
+  -F "file=@updated_document.txt" \
+  -F "preserve_metadata=true" \
+  -F "increment_version=true"
+```
+
+#### Get Version History
+
+**GET** `/api/v1/documents/{source}/versions`
+
+Get version history for a document source.
+
+**Path Parameters**:
+- `source` (string, required): Source filename
+
+**Response** (200 OK):
+```json
+{
+  "source": "document.txt",
+  "versions": [
+    {
+      "version": 1,
+      "version_date": "2025-01-27T10:00:00",
+      "chunk_count": 5,
+      "chunk_ids": ["id1", "id2", ...],
+      "metadata": {...}
+    },
+    {
+      "version": 2,
+      "version_date": "2025-01-27T11:00:00",
+      "chunk_count": 5,
+      "chunk_ids": ["id3", "id4", ...],
+      "metadata": {...}
+    }
+  ],
+  "total_versions": 2
+}
+```
+
+**Error Responses**:
+- `401 Unauthorized`: Missing or invalid API key (if authentication enabled)
+- `500 Internal Server Error`: Server error during retrieval
+
+**Example**:
+```bash
+curl -X GET "http://localhost:8000/api/v1/documents/document.txt/versions" \
+  -H "X-API-Key: your-api-key"
+```
+
+#### Compare Versions
+
+**GET** `/api/v1/documents/{source}/versions/compare`
+
+Compare two versions of a document.
+
+**Path Parameters**:
+- `source` (string, required): Source filename
+
+**Query Parameters**:
+- `version1` (integer, required): First version number to compare
+- `version2` (integer, required): Second version number to compare
+
+**Response** (200 OK):
+```json
+{
+  "source": "document.txt",
+  "version1": 1,
+  "version2": 2,
+  "comparison": {
+    "version1_info": {
+      "version": 1,
+      "version_date": "2025-01-27T10:00:00",
+      "chunk_count": 5,
+      "metadata": {...}
+    },
+    "version2_info": {
+      "version": 2,
+      "version_date": "2025-01-27T11:00:00",
+      "chunk_count": 5,
+      "metadata": {...}
+    },
+    "differences": [
+      {
+        "field": "chunk_count",
+        "version1": 5,
+        "version2": 6
+      },
+      {
+        "field": "ticker",
+        "version1": "AAPL",
+        "version2": "AAPL"
+      }
+    ]
+  }
+}
+```
+
+**Error Responses**:
+- `400 Bad Request`: Missing version parameters
+- `401 Unauthorized`: Missing or invalid API key (if authentication enabled)
+- `404 Not Found`: Version not found
+- `500 Internal Server Error`: Server error during comparison
+
+**Example**:
+```bash
+curl -X GET "http://localhost:8000/api/v1/documents/document.txt/versions/compare?version1=1&version2=2" \
+  -H "X-API-Key: your-api-key"
+```
+
 ---
 
 ### Health Check Endpoints

@@ -5,6 +5,8 @@ Provides UI for listing, searching, viewing, and deleting documents
 from the ChromaDB vector database.
 """
 
+import os
+import tempfile
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -42,8 +44,13 @@ def render_document_management() -> None:
     doc_manager: DocumentManager = st.session_state.document_manager
 
     # Create tabs
-    tab1, tab2, tab3 = st.tabs(
-        ["📋 Documents List", "📊 Statistics", "🔍 Search & Filter"]
+    tab1, tab2, tab3, tab4 = st.tabs(
+        [
+            "📋 Documents List",
+            "📊 Statistics",
+            "🔍 Search & Filter",
+            "🔄 Re-index & Versions",
+        ]
     )
 
     with tab1:
@@ -54,6 +61,9 @@ def render_document_management() -> None:
 
     with tab3:
         render_search_and_filter(doc_manager)
+
+    with tab4:
+        render_reindex_interface(doc_manager)
 
 
 def render_documents_list(doc_manager: DocumentManager) -> None:
@@ -153,15 +163,101 @@ def render_documents_list(doc_manager: DocumentManager) -> None:
             with st.expander("📄 View Document Details", expanded=False):
                 render_document_details(selected_doc)
 
-            # Delete button with confirmation
-            col1, col2 = st.columns([1, 1])
+            # Version history
+            source_name = extract_filename(selected_doc.get("metadata", {}))
+            try:
+                version_history = doc_manager.get_version_history(source_name)
+                if version_history:
+                    with st.expander("📚 Version History", expanded=False):
+                        render_version_history(
+                            version_history, source_name, doc_manager
+                        )
+            except Exception as e:
+                logger.debug(f"Could not load version history: {str(e)}")
+
+            # Action buttons
+            col1, col2, col3 = st.columns([1, 1, 1])
             with col1:
+                if st.button("🔄 Re-index Document", key="reindex_single"):
+                    st.session_state.reindex_source = source_name
+                    st.session_state.reindex_doc_id = selected_doc["id"]
+                    st.rerun()
+
+            with col2:
                 if st.button("🗑️ Delete Document", type="primary", key="delete_single"):
                     st.session_state.delete_confirm_id = selected_doc["id"]
-                    st.session_state.delete_confirm_filename = extract_filename(
-                        selected_doc.get("metadata", {})
-                    )
+                    st.session_state.delete_confirm_filename = source_name
                     st.rerun()
+
+            # Re-index confirmation and file upload
+            if "reindex_source" in st.session_state:
+                st.info("📤 Please upload the updated document file to re-index")
+                uploaded_file = st.file_uploader(
+                    "Upload Document File",
+                    type=["txt", "md", "pdf"],
+                    key="reindex_file_upload",
+                )
+
+                if uploaded_file is not None:
+                    # Save uploaded file temporarily
+                    with tempfile.NamedTemporaryFile(
+                        delete=False, suffix=os.path.splitext(uploaded_file.name)[1]
+                    ) as tmp_file:
+                        tmp_file.write(uploaded_file.getvalue())
+                        tmp_path = Path(tmp_file.name)
+
+                    col1, col2 = st.columns([1, 1])
+                    with col1:
+                        preserve_metadata = st.checkbox(
+                            "Preserve metadata (ticker, form_type, etc.)",
+                            value=True,
+                            key="reindex_preserve_metadata",
+                        )
+                        increment_version = st.checkbox(
+                            "Increment version number",
+                            value=True,
+                            key="reindex_increment_version",
+                        )
+
+                        if st.button(
+                            "✅ Confirm Re-index", type="primary", key="confirm_reindex"
+                        ):
+                            try:
+                                result = doc_manager.reindex_document(
+                                    tmp_path,
+                                    preserve_metadata=preserve_metadata,
+                                    increment_version=increment_version,
+                                )
+                                st.success(
+                                    f"✅ Re-indexed successfully! "
+                                    f"Deleted {result['old_chunks_deleted']} "
+                                    f"old chunks, created "
+                                    f"{result['new_chunks_created']} new chunks, "
+                                    f"version {result['version']}"
+                                )
+                                # Clean up
+                                os.unlink(tmp_path)
+                                del st.session_state.reindex_source
+                                del st.session_state.reindex_doc_id
+                                if "document_manager" in st.session_state:
+                                    del st.session_state.document_manager
+                                st.rerun()
+                            except DocumentManagerError as e:
+                                st.error(f"Error re-indexing document: {str(e)}")
+                                logger.error(
+                                    f"Failed to re-index document: {str(e)}",
+                                    exc_info=True,
+                                )
+                                if tmp_path.exists():
+                                    os.unlink(tmp_path)
+
+                    with col2:
+                        if st.button("❌ Cancel", key="cancel_reindex"):
+                            if tmp_path.exists():
+                                os.unlink(tmp_path)
+                            del st.session_state.reindex_source
+                            del st.session_state.reindex_doc_id
+                            st.rerun()
 
             # Confirmation dialog
             if "delete_confirm_id" in st.session_state:
@@ -467,3 +563,196 @@ def extract_filename(metadata: Dict[str, Any]) -> str:
     if isinstance(filename, str) and "/" in filename:
         return Path(filename).name
     return str(filename)
+
+
+def render_version_history(
+    version_history: List[Dict[str, Any]],
+    source: str,
+    doc_manager: DocumentManager,
+) -> None:
+    """
+    Render version history for a document.
+
+    Args:
+        version_history: List of version information dictionaries
+        source: Source filename
+        doc_manager: DocumentManager instance
+    """
+    st.markdown(f"### Version History for: {source}")
+
+    if not version_history:
+        st.info("No version history available.")
+        return
+
+    # Display version list
+    version_df_data = []
+    for version_info in version_history:
+        version_df_data.append(
+            {
+                "Version": version_info["version"],
+                "Date": version_info.get("version_date", "unknown"),
+                "Chunks": version_info["chunk_count"],
+            }
+        )
+
+    version_df = pd.DataFrame(version_df_data)
+    st.dataframe(version_df, use_container_width=True, hide_index=True)
+
+    # Version comparison
+    if len(version_history) >= 2:
+        st.divider()
+        st.markdown("### Compare Versions")
+
+        col1, col2 = st.columns(2)
+        with col1:
+            version1 = st.selectbox(
+                "Version 1",
+                [v["version"] for v in version_history],
+                key="compare_version1",
+            )
+        with col2:
+            version2 = st.selectbox(
+                "Version 2",
+                [v["version"] for v in version_history],
+                key="compare_version2",
+            )
+
+        if st.button("🔍 Compare Versions", key="compare_versions"):
+            try:
+                comparison = doc_manager.compare_versions(source, version1, version2)
+                st.markdown("#### Comparison Results")
+
+                # Display version info
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.markdown("**Version 1:**")
+                    st.json(comparison["version1_info"])
+                with col2:
+                    st.markdown("**Version 2:**")
+                    st.json(comparison["version2_info"])
+
+                # Display differences
+                if comparison["differences"]:
+                    st.markdown("#### Differences")
+                    diff_df = pd.DataFrame(comparison["differences"])
+                    st.dataframe(diff_df, use_container_width=True, hide_index=True)
+                else:
+                    st.info("No differences found between versions.")
+            except DocumentManagerError as e:
+                st.error(f"Error comparing versions: {str(e)}")
+                logger.error(f"Failed to compare versions: {str(e)}", exc_info=True)
+
+
+def render_reindex_interface(doc_manager: DocumentManager) -> None:
+    """
+    Render re-indexing interface.
+
+    Args:
+        doc_manager: DocumentManager instance
+    """
+    st.subheader("Document Re-indexing")
+
+    try:
+        # Get all documents grouped by source
+        grouped_docs = doc_manager.group_documents_by_source()
+
+        if not grouped_docs:
+            st.info("No documents found in the database.")
+            return
+
+        # Source selection
+        source_names = sorted(grouped_docs.keys())
+        selected_source = st.selectbox(
+            "Select Document Source to Re-index",
+            source_names,
+            key="reindex_source_select",
+        )
+
+        if selected_source:
+            chunks = grouped_docs[selected_source]
+            st.info(f"Found {len(chunks)} chunks for '{selected_source}'")
+
+            # Show current version
+            try:
+                current_version = doc_manager.get_current_version(selected_source)
+                st.metric(
+                    "Current Version", current_version if current_version > 0 else "N/A"
+                )
+            except Exception:
+                st.metric("Current Version", "N/A")
+
+            # File upload for re-indexing
+            st.divider()
+            st.markdown("### Upload Updated Document")
+
+            uploaded_file = st.file_uploader(
+                "Upload Document File",
+                type=["txt", "md", "pdf"],
+                key="reindex_batch_file_upload",
+            )
+
+            if uploaded_file is not None:
+                with tempfile.NamedTemporaryFile(
+                    delete=False, suffix=os.path.splitext(uploaded_file.name)[1]
+                ) as tmp_file:
+                    tmp_file.write(uploaded_file.getvalue())
+                    tmp_path = Path(tmp_file.name)
+
+                col1, col2 = st.columns([1, 1])
+                with col1:
+                    preserve_metadata = st.checkbox(
+                        "Preserve metadata (ticker, form_type, etc.)",
+                        value=True,
+                        key="reindex_batch_preserve_metadata",
+                    )
+                    increment_version = st.checkbox(
+                        "Increment version number",
+                        value=True,
+                        key="reindex_batch_increment_version",
+                    )
+
+                    if st.button(
+                        "🔄 Re-index Document",
+                        type="primary",
+                        key="reindex_batch_confirm",
+                    ):
+                        try:
+                            with st.spinner("Re-indexing document..."):
+                                result = doc_manager.reindex_document(
+                                    tmp_path,
+                                    preserve_metadata=preserve_metadata,
+                                    increment_version=increment_version,
+                                )
+                            st.success(
+                                f"✅ Re-indexed successfully!\n\n"
+                                f"- **Old chunks deleted:** "
+                                f"{result['old_chunks_deleted']}\n"
+                                f"- **New chunks created:** "
+                                f"{result['new_chunks_created']}\n"
+                                f"- **New version:** {result['version']}"
+                            )
+                            # Clean up
+                            os.unlink(tmp_path)
+                            if "document_manager" in st.session_state:
+                                del st.session_state.document_manager
+                            st.rerun()
+                        except DocumentManagerError as e:
+                            st.error(f"Error re-indexing document: {str(e)}")
+                            logger.error(
+                                f"Failed to re-index document: {str(e)}", exc_info=True
+                            )
+                            if tmp_path.exists():
+                                os.unlink(tmp_path)
+
+                with col2:
+                    if st.button("❌ Cancel", key="cancel_reindex_batch"):
+                        if tmp_path.exists():
+                            os.unlink(tmp_path)
+                        st.rerun()
+
+    except DocumentManagerError as e:
+        st.error(f"Error loading documents: {str(e)}")
+        logger.error(f"Failed to load documents: {str(e)}", exc_info=True)
+    except Exception as e:
+        st.error(f"Unexpected error: {str(e)}")
+        logger.error(f"Unexpected error in re-index interface: {str(e)}", exc_info=True)

@@ -2,7 +2,10 @@
 Document management API routes.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from pathlib import Path
+from typing import Optional
+
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 
 from app.api.auth import verify_api_key
 from app.api.models.documents import (
@@ -94,6 +97,109 @@ async def list_documents(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error during document retrieval",
+        ) from e
+
+
+@router.get("/{source}/versions", status_code=status.HTTP_200_OK)
+async def get_version_history(
+    source: str,
+    doc_manager: DocumentManager = Depends(get_document_manager),  # noqa: B008
+    api_key: str = Depends(verify_api_key),  # noqa: B008
+) -> dict:
+    """
+    Get version history for a document source.
+
+    Args:
+        source: Source filename
+        doc_manager: Document manager instance (dependency injection)
+        api_key: Verified API key (dependency injection)
+
+    Returns:
+        Version history information
+
+    Raises:
+        HTTPException: If retrieval fails
+    """
+    try:
+        logger.info(f"Retrieving version history for: {source}")
+
+        version_history = doc_manager.get_version_history(source)
+
+        logger.info(f"Retrieved {len(version_history)} versions for: {source}")
+
+        return {
+            "source": source,
+            "versions": version_history,
+            "total_versions": len(version_history),
+        }
+
+    except DocumentManagerError as e:
+        logger.error(f"Document manager error: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve version history: {str(e)}",
+        ) from e
+    except Exception as e:
+        logger.error(
+            f"Unexpected error in get_version_history endpoint: {str(e)}", exc_info=True
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error during version history retrieval",
+        ) from e
+
+
+@router.get("/{source}/versions/compare", status_code=status.HTTP_200_OK)
+async def compare_versions(
+    source: str,
+    version1: int,
+    version2: int,
+    doc_manager: DocumentManager = Depends(get_document_manager),  # noqa: B008
+    api_key: str = Depends(verify_api_key),  # noqa: B008
+) -> dict:
+    """
+    Compare two versions of a document.
+
+    Args:
+        source: Source filename
+        version1: First version number
+        version2: Second version number
+        doc_manager: Document manager instance (dependency injection)
+        api_key: Verified API key (dependency injection)
+
+    Returns:
+        Comparison results
+
+    Raises:
+        HTTPException: If comparison fails
+    """
+    try:
+        logger.info(f"Comparing versions {version1} and {version2} for: {source}")
+
+        comparison = doc_manager.compare_versions(source, version1, version2)
+
+        logger.info(f"Comparison complete for: {source}")
+
+        return {
+            "source": source,
+            "version1": version1,
+            "version2": version2,
+            "comparison": comparison,
+        }
+
+    except DocumentManagerError as e:
+        logger.error(f"Document manager error: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to compare versions: {str(e)}",
+        ) from e
+    except Exception as e:
+        logger.error(
+            f"Unexpected error in compare_versions endpoint: {str(e)}", exc_info=True
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error during version comparison",
         ) from e
 
 
@@ -225,3 +331,82 @@ async def delete_document(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error during document deletion",
         ) from e
+
+
+@router.post("/reindex", status_code=status.HTTP_200_OK)
+async def reindex_document(
+    file: UploadFile = File(...),  # noqa: B008
+    preserve_metadata: bool = True,
+    increment_version: bool = True,
+    doc_manager: DocumentManager = Depends(get_document_manager),  # noqa: B008
+    api_key: str = Depends(verify_api_key),  # noqa: B008
+) -> dict:
+    """
+    Re-index a document by uploading a new version.
+
+    Args:
+        file: Uploaded document file
+        preserve_metadata: Whether to preserve original metadata
+        increment_version: Whether to increment version number
+        doc_manager: Document manager instance (dependency injection)
+        api_key: Verified API key (dependency injection)
+
+    Returns:
+        Re-indexing result with statistics
+
+    Raises:
+        HTTPException: If re-indexing fails
+    """
+    import os
+    import tempfile
+
+    tmp_path: Optional[Path] = None
+    try:
+        logger.info(f"Re-indexing document: {file.filename}")
+
+        # Save uploaded file temporarily
+        with tempfile.NamedTemporaryFile(
+            delete=False, suffix=Path(file.filename).suffix if file.filename else ""
+        ) as tmp_file:
+            content = await file.read()
+            tmp_file.write(content)
+            tmp_path = Path(tmp_file.name)
+
+        # Re-index document
+        result = doc_manager.reindex_document(
+            tmp_path,
+            preserve_metadata=preserve_metadata,
+            increment_version=increment_version,
+        )
+
+        logger.info(
+            f"Re-indexing complete: {result['old_chunks_deleted']} deleted, "
+            f"{result['new_chunks_created']} created, version {result['version']}"
+        )
+
+        return {
+            "message": "Document re-indexed successfully",
+            "old_chunks_deleted": result["old_chunks_deleted"],
+            "new_chunks_created": result["new_chunks_created"],
+            "version": result["version"],
+            "new_chunk_ids": result["new_chunk_ids"],
+        }
+
+    except DocumentManagerError as e:
+        logger.error(f"Document manager error: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to re-index document: {str(e)}",
+        ) from e
+    except Exception as e:
+        logger.error(
+            f"Unexpected error in reindex_document endpoint: {str(e)}", exc_info=True
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error during document re-indexing",
+        ) from e
+    finally:
+        # Clean up temporary file
+        if tmp_path and tmp_path.exists():
+            os.unlink(tmp_path)

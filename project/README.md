@@ -68,6 +68,11 @@ A production-ready RAG (Retrieval-Augmented Generation) system for semantic sear
 - **Document Details**: View complete metadata and content for any document
 - **Search & Filter**: Search documents by ticker symbol, form type, or filename
 - **Document Deletion**: Delete individual documents or bulk delete with confirmation dialogs
+- **Document Re-indexing**: Re-index documents after updates, preserving metadata and tracking versions
+- **Version Tracking**: Automatic version numbering and version history for re-indexed documents
+- **Version Comparison**: Compare different versions of documents to see changes
+- **Metadata Preservation**: Preserve important metadata (ticker, form_type, etc.) during re-indexing
+- **Batch Re-indexing**: Re-index multiple documents in batch operations
 - **Statistics Dashboard**: View document statistics including counts by ticker and form type
 - **Real-time Updates**: UI automatically refreshes after document operations
 - **Safe Deletion**: Confirmation dialogs prevent accidental document deletion
@@ -693,6 +698,84 @@ What are the latest findings on algorithmic trading strategies?
 Summarize the risk factors mentioned in Microsoft's 10-K filing.
 ```
 
+### Using Document Management
+
+The Document Management interface provides comprehensive tools for managing indexed documents.
+
+#### Accessing Document Management
+
+1. **Open Streamlit UI**: Navigate to `http://localhost:8501`
+2. **Navigate to Document Management**: Click on the "Document Management" section in the sidebar
+3. **View Tabs**: The interface has four tabs:
+   - **Documents List**: Browse all indexed documents
+   - **Statistics**: View document statistics and analytics
+   - **Search & Filter**: Search and filter documents by metadata
+   - **Re-index & Versions**: Re-index documents and view version history
+
+#### Re-indexing Documents
+
+**To re-index a document:**
+
+1. **Select Document**: Go to "Documents List" tab and select a document
+2. **Click Re-index**: Click the "🔄 Re-index Document" button
+3. **Upload Updated File**: Upload the updated document file (txt, md, or pdf)
+4. **Configure Options**:
+   - **Preserve metadata**: Keep original metadata (ticker, form_type, etc.)
+   - **Increment version**: Automatically increment version number
+5. **Confirm**: Click "✅ Confirm Re-index" to start the process
+
+**Alternative Method** (Re-index & Versions tab):
+1. Go to "Re-index & Versions" tab
+2. Select document source from dropdown
+3. Upload updated file
+4. Configure options and re-index
+
+**What happens during re-indexing:**
+- Old document chunks are deleted from ChromaDB
+- Document is re-processed through the ingestion pipeline
+- New chunks are created with updated content
+- Version number is incremented (if enabled)
+- Metadata is preserved (if enabled)
+- Version tracking information is added
+
+#### Viewing Version History
+
+**To view version history:**
+
+1. **Select Document**: In "Documents List" tab, select a document
+2. **Expand Version History**: Click on "📚 Version History" expander
+3. **View Versions**: See all versions with:
+   - Version number
+   - Version date
+   - Chunk count
+   - Metadata
+
+**Note**: Only the latest version's chunks exist in ChromaDB (old chunks are deleted during re-indexing). Version history shows metadata about previous versions.
+
+#### Comparing Versions
+
+**To compare two versions:**
+
+1. **View Version History**: Expand version history for a document
+2. **Select Versions**: Choose two versions from the dropdowns
+3. **Compare**: Click "🔍 Compare Versions"
+4. **Review Differences**: See differences in:
+   - Chunk counts
+   - Metadata fields
+   - Version information
+
+**Note**: Version comparison requires both versions to exist. Since re-indexing deletes old chunks, you can typically only compare the current version with itself or versions that still exist.
+
+#### Batch Re-indexing
+
+**To re-index multiple documents:**
+
+Use the API endpoint for batch operations:
+```bash
+# Re-index multiple documents programmatically
+# See API documentation for batch re-indexing details
+```
+
 ### Data Collection
 
 #### Automated SEC EDGAR Fetching
@@ -1217,6 +1300,22 @@ X-API-Key: your-api-key (if configured)
 
 # Delete document
 DELETE /api/v1/documents/{doc_id}
+X-API-Key: your-api-key (if configured)
+
+# Re-index document (upload updated file)
+POST /api/v1/documents/reindex
+X-API-Key: your-api-key (if configured)
+Content-Type: multipart/form-data
+file: <file>
+preserve_metadata: true
+increment_version: true
+
+# Get version history for a document source
+GET /api/v1/documents/{source}/versions
+X-API-Key: your-api-key (if configured)
+
+# Compare two versions
+GET /api/v1/documents/{source}/versions/compare?version1=1&version2=2
 X-API-Key: your-api-key (if configured)
 ```
 
@@ -2335,7 +2434,7 @@ project/
 **Total Implemented**: 39 tasks completed, 13 tasks waiting
 
 **Recent Updates** (2025-11-06):
-- TASK-039: Financial Sentiment Analysis - Complete (FinBERT, TextBlob, VADER with forward guidance and risk extraction) ✅
+- TASK-039: Financial Sentiment Analysis - Complete (FinBERT, TextBlob, VADER with forward guidance, risk extraction, and sentiment-aware query filtering) ✅
 - TASK-033_maintanance: Comprehensive codebase validation - Complete (96% test pass rate, comprehensive validation)
 - TASK-034: Financial News Aggregation - Complete (RSS feeds, web scraping, ticker detection, categorization)
 - TASK-035: Economic Calendar Integration - Complete (Trading Economics API integration)

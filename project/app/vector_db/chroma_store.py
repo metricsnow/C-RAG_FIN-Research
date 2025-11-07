@@ -439,6 +439,64 @@ class ChromaStore:
             logger.error(f"Failed to delete documents: {str(e)}", exc_info=True)
             raise ChromaStoreError(f"Failed to delete documents: {str(e)}") from e
 
+    def update_documents(
+        self,
+        ids: List[str],
+        metadatas: Optional[List[Dict[str, Any]]] = None,
+        documents: Optional[List[str]] = None,
+        embeddings: Optional[List[List[float]]] = None,
+    ) -> None:
+        """
+        Update documents in the collection.
+
+        Args:
+            ids: List of document IDs to update
+            metadatas: Optional list of metadata dictionaries
+            documents: Optional list of document texts
+            embeddings: Optional list of embedding vectors
+
+        Raises:
+            ChromaStoreError: If update fails
+            ValueError: If ids is empty or lengths don't match
+        """
+        if self.collection is None:
+            raise ChromaStoreError("Collection is not initialized")
+
+        if not ids:
+            raise ValueError("ids cannot be empty")
+
+        if metadatas and len(metadatas) != len(ids):
+            raise ValueError(
+                f"metadatas count ({len(metadatas)}) does not match "
+                f"ids count ({len(ids)})"
+            )
+
+        if documents and len(documents) != len(ids):
+            raise ValueError(
+                f"documents count ({len(documents)}) does not match "
+                f"ids count ({len(ids)})"
+            )
+
+        if embeddings and len(embeddings) != len(ids):
+            raise ValueError(
+                f"embeddings count ({len(embeddings)}) does not match "
+                f"ids count ({len(ids)})"
+            )
+
+        logger.info(f"Updating {len(ids)} documents in collection")
+        try:
+            # Type ignore for ChromaDB API compatibility
+            self.collection.update(
+                ids=ids,
+                metadatas=metadatas,  # type: ignore[arg-type]
+                documents=documents,
+                embeddings=embeddings,  # type: ignore[arg-type]
+            )
+            logger.info(f"Successfully updated {len(ids)} documents")
+        except Exception as e:
+            logger.error(f"Failed to update documents: {str(e)}", exc_info=True)
+            raise ChromaStoreError(f"Failed to update documents: {str(e)}") from e
+
     def reset(self) -> None:
         """
         Reset the collection (delete all documents).

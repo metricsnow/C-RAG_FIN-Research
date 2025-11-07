@@ -7,7 +7,7 @@
 | **Task ID** | TASK-040 |
 | **Task Name** | Document Re-indexing and Versioning |
 | **Priority** | Medium |
-| **Status** | Waiting |
+| **Status** | Done |
 | **Impact** | Medium |
 | **Created** | 2025-01-27 |
 | **Related PRD** | Phase 2 - P2-F8: Document Source Management |
@@ -41,11 +41,11 @@ Add document re-indexing functionality and versioning support to the existing do
 
 ### Acceptance Criteria
 
-- [ ] Document re-indexing functional
-- [ ] Document versioning implemented
-- [ ] Version history tracking
-- [ ] UI integration for re-indexing
-- [ ] Unit and integration tests passing
+- [x] Document re-indexing functional
+- [x] Document versioning implemented
+- [x] Version history tracking
+- [x] UI integration for re-indexing
+- [x] Unit and integration tests passing
 
 ---
 

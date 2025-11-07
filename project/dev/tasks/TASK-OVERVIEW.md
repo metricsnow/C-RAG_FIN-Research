@@ -4,7 +4,7 @@
 
 **Created**: 2025-01-27
 **Total Tasks**: 52 (13 MVP + 10 Post-MVP Enhancements + 4 Phase 1 Missing Features + 1 RAG Optimization + 21 Phase 2 Features + 2 Maintenance + 1 Validation)
-**Status**: 31 tasks completed, 21 tasks waiting
+**Status**: 32 tasks completed, 20 tasks waiting
 
 ---
 
@@ -170,7 +170,7 @@ Before starting Milestone 1, ensure:
 | TASK-037 | IMF and World Bank Data Integration | Medium | TASK-004 ✅ | Waiting |
 | TASK-038 | Central Bank Data Integration | Medium | TASK-004 ✅ | Waiting |
 | TASK-039 | Financial Sentiment Analysis Implementation | Medium | TASK-033 (Optional), TASK-034 (Optional) | Waiting |
-| TASK-040 | Document Re-indexing and Versioning | Medium | TASK-027 ✅ | Waiting |
+| TASK-040 | Document Re-indexing and Versioning | Medium | TASK-027 ✅ | ✅ Done |
 | TASK-041 | Financial Embeddings A/B Testing Framework | Low | TASK-006 ✅, TASK-026 (Optional) | Waiting |
 | TASK-045 | Streamlit Frontend API Integration | Medium | TASK-029 ✅, TASK-008 ✅ | Waiting |
 
@@ -259,9 +259,9 @@ Before starting Milestone 1, ensure:
 
 | Status | Count |
 |--------|-------|
-| Waiting | 15 |
+| Waiting | 14 |
 | In Progress | 0 |
-| Completed | 30 |
+| Completed | 31 |
 | Total | 45 |
 
 **MVP Tasks**: 13/13 ✅ Complete
@@ -331,6 +331,7 @@ Before starting Milestone 1, ensure:
 **Last Updated**: 2025-01-27
 
 **Recent Updates**:
+- **TASK-040 Completed**: Document Re-indexing and Versioning - Comprehensive document re-indexing with version tracking, metadata preservation, batch operations, and version comparison. Full UI integration and API endpoints. All tests passing (17/17). Status: ✅ Done
 - **TASK-030 Completed**: yfinance Stock Data Integration - Comprehensive stock market data fetching, normalization, and storage. Supports company info, financial metrics, historical prices, dividends, earnings, and analyst recommendations. All tests passing (18/18). Status: ✅ Done
 - **TASK-045 Created**: Streamlit Frontend API Integration - Migrate Streamlit frontend to use FastAPI endpoints instead of direct RAG calls. Creates proper separation between frontend and backend, enables multiple frontend clients, and improves testability. Status: ⏳ Waiting
 - **TASK-029 Completed**: FastAPI Backend Implementation - Production-ready RESTful API with OpenAPI documentation, authentication, rate limiting, and comprehensive endpoint coverage. All tests passing (24/24). Status: ✅ Done
@@ -370,7 +371,7 @@ Before starting Milestone 1, ensure:
 - ✅ Monitoring and Observability Enhancement (TASK-022)
 - ✅ Code Formatting and Linting Automation (TASK-023)
 
-**Phase 2 Feature Status**: 2/17 ✅ (TASK-029, TASK-030 complete)
+**Phase 2 Feature Status**: 3/17 ✅ (TASK-029, TASK-030, TASK-040 complete)
 - **P0 (Must Have)**: 2/3 complete - ✅ FastAPI Backend (TASK-029), ✅ yfinance Integration (TASK-030), ⏳ Complete Conversation Memory (TASK-031)
-- **P1 (Should Have)**: 0/11 complete - Enhanced Data Sources, Sentiment Analysis, Document Management enhancements, Frontend API Integration
+- **P1 (Should Have)**: 1/11 complete - ✅ Document Re-indexing and Versioning (TASK-040), Enhanced Data Sources, Sentiment Analysis, Document Management enhancements, Frontend API Integration
 - **P2 (Could Have)**: 0/3 complete - Advanced Query Features, Export and Sharing, Alternative Data Sources
