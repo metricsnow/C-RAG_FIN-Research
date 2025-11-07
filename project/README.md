@@ -22,6 +22,7 @@ A production-ready RAG (Retrieval-Augmented Generation) system for semantic sear
 ### Core Capabilities
 
 - **Semantic Document Search**: Natural language queries across financial documents with intelligent retrieval
+- **Advanced Query Features**: Boolean operators (AND, OR, NOT), date range filtering, document type filtering, ticker filtering, and metadata-based filtering for precise search refinement
 - **Flexible LLM Deployment**: Choose between local Ollama (privacy-first) or OpenAI (gpt-4o-mini) for inference
 - **Citation Tracking**: Automatic source attribution with document references for every answer
 - **SEC EDGAR Integration**: Automated fetching and indexing of SEC filings (10-K, 10-Q, 8-K forms)
@@ -88,6 +89,18 @@ A production-ready RAG (Retrieval-Augmented Generation) system for semantic sear
 - **Multi-Stage Retrieval**: Broad initial retrieval (high recall) → refined reranking (high precision)
 - **Context Formatting**: Enhanced document context with section metadata and structure information
 - **Configurable Optimizations**: All optimizations can be enabled/disabled via environment variables
+
+### Advanced Query Features
+
+- **Boolean Operators**: Support for AND, OR, NOT operators in queries for complex search logic
+- **Date Range Filtering**: Filter documents by date ranges using natural language (from, since, before, until, between)
+- **Document Type Filtering**: Filter by document type (edgar_filing, news, transcript, economic_data)
+- **Ticker Filtering**: Filter queries by ticker symbol (e.g., AAPL, MSFT)
+- **Form Type Filtering**: Filter SEC filings by form type (10-K, 10-Q, 8-K, DEF 14A)
+- **Metadata-Based Filtering**: Custom metadata filters for precise document selection
+- **Query Builder UI**: Visual query builder in Streamlit with filter selection interface
+- **Automatic Filter Extraction**: Automatically extracts filters from natural language queries
+- **Query Syntax Documentation**: Comprehensive help and examples for query syntax
 
 ### Embedding A/B Testing Features
 
@@ -653,6 +666,44 @@ gatherUsageStats = false
 ```
 
 ## Usage Guide
+
+### Advanced Query Features
+
+The system supports advanced query capabilities for precise search refinement:
+
+**Boolean Operators**:
+- Use `AND` or `&` to require all terms: `"revenue AND profit"`
+- Use `OR` or `|` to match any term: `"Apple OR Microsoft"`
+- Use `NOT` or `!` to exclude terms: `"revenue NOT loss"`
+
+**Filtering in Natural Language**:
+- Date ranges: `"revenue from 2023-01-01"`, `"revenue between 2023-01-01 and 2023-12-31"`
+- Ticker filter: `"ticker: AAPL revenue"`
+- Form type: `"form: 10-K revenue"`
+- Document type: `"type: edgar_filing revenue"`
+
+**Using Filters via API**:
+```python
+result = rag_system.query(
+    question="What was Apple's revenue in 2023?",
+    filters={
+        "ticker": "AAPL",
+        "form_type": "10-K",
+        "date_from": "2023-01-01",
+        "date_to": "2023-12-31"
+    }
+)
+```
+
+**Streamlit UI Query Builder**:
+1. Expand the "🔧 Advanced Query Builder" section
+2. Enter your query with optional filters
+3. Use the filter selection interface for date, ticker, form type, and document type
+4. Click "Query with Filters"
+
+For complete documentation, see [Advanced Query Features Documentation](docs/integrations/advanced_query_features.md).
+
+---
 
 ### Quick Start
 

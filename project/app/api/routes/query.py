@@ -54,11 +54,18 @@ async def query(
     try:
         logger.info(f"Processing API query: '{request.question[:50]}...'")
 
+        # Convert filters to dict if provided
+        filters_dict = None
+        if request.filters:
+            filters_dict = request.filters.model_dump(exclude_none=True)
+
         # Process query
         result = rag_system.query(
             question=request.question,
             top_k=request.top_k,
             conversation_history=request.conversation_history,
+            filters=filters_dict,
+            enable_query_parsing=request.enable_query_parsing,
         )
 
         # Convert sources to SourceMetadata models
@@ -81,6 +88,7 @@ async def query(
             sources=sources,
             chunks_used=result.get("chunks_used", 0),
             error=result.get("error"),
+            parsed_query=result.get("parsed_query"),
         )
 
         logger.info(

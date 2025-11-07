@@ -14,8 +14,10 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 
 from app.rag.embedding_factory import EmbeddingError, EmbeddingGenerator
+from app.rag.filter_builder import FilterBuilder
 from app.rag.llm_factory import get_llm
 from app.rag.prompt_engineering import PromptEngineer
+from app.rag.query_parser import QueryParseError, QueryParser
 from app.rag.query_refinement import QueryRefiner
 from app.rag.retrieval_optimizer import RetrievalOptimizer, RetrievalOptimizerError
 from app.utils.config import config
@@ -103,6 +105,10 @@ class RAGQuerySystem:
             self.prompt_engineer = PromptEngineer(
                 include_few_shot=config.rag_few_shot_examples
             )
+
+            # Initialize advanced query features
+            self.query_parser = QueryParser()
+            self.filter_builder = FilterBuilder()
 
             # Initialize retrieval optimizer if optimizations are enabled
             self.use_optimizations = (
@@ -275,7 +281,10 @@ Answer:"""
         return "\n\n".join(formatted_parts)
 
     def _retrieve_context(
-        self, question: str, sentiment_filter: Optional[str] = None
+        self,
+        question: str,
+        sentiment_filter: Optional[str] = None,
+        where_filter: Optional[Dict[str, Any]] = None,
     ) -> List[Document]:
         """
         Retrieve relevant context chunks from ChromaDB.
@@ -287,6 +296,9 @@ Answer:"""
             sentiment_filter: Optional sentiment filter
                 ('positive', 'negative', 'neutral').
                 If provided, only retrieves documents with matching sentiment.
+            where_filter: Optional ChromaDB where clause dictionary for
+                metadata filtering. If provided, will be combined with
+                sentiment filter.
 
         Returns:
             List of Document objects with retrieved chunks
@@ -297,13 +309,17 @@ Answer:"""
         logger.debug(
             f"Retrieving context for question: '{question[:50]}...'"
             + (f" (sentiment_filter={sentiment_filter})" if sentiment_filter else "")
+            + (f" (where_filter={where_filter})" if where_filter else "")
         )
 
-        # Build sentiment filter if provided
-        where_filter = None
+        # Build combined where filter
+        combined_where_filter = where_filter.copy() if where_filter else {}
         if sentiment_filter:
-            where_filter = {"sentiment": sentiment_filter}
+            combined_where_filter["sentiment"] = sentiment_filter
             logger.debug(f"Applying sentiment filter: {sentiment_filter}")
+
+        # Use combined filter (or None if empty)
+        final_where_filter = combined_where_filter if combined_where_filter else None
 
         # Use optimized retrieval if available
         if self.use_optimizations and self.retrieval_optimizer:
@@ -366,7 +382,7 @@ Answer:"""
             results = self.chroma_store.query_by_embedding(
                 query_embedding=query_embedding,
                 n_results=retrieval_count,
-                where=where_filter,
+                where=final_where_filter,
             )
 
             # Convert to Document objects and prioritize SEC EDGAR documents
@@ -451,6 +467,8 @@ Answer:"""
         timeout: Optional[int] = None,
         conversation_history: Optional[List[Dict[str, Any]]] = None,
         sentiment_filter: Optional[str] = None,
+        filters: Optional[Dict[str, Any]] = None,
+        enable_query_parsing: bool = True,
     ) -> Dict[str, Any]:
         """
         Process a natural language query and generate an answer.
@@ -464,6 +482,16 @@ Answer:"""
             sentiment_filter: Optional sentiment filter
                 ('positive', 'negative', 'neutral').
                 If provided, only retrieves documents with matching sentiment.
+            filters: Optional filter specifications dictionary with keys:
+                - date_from: Start date (ISO format string)
+                - date_to: End date (ISO format string)
+                - document_type: Document type filter
+                - ticker: Ticker symbol filter
+                - form_type: Form type filter (e.g., "10-K", "10-Q")
+                - source: Source identifier filter
+                - metadata: Custom metadata filters
+            enable_query_parsing: Whether to parse query for filters and
+                Boolean operators
 
         Returns:
             Dictionary with keys:
@@ -471,6 +499,7 @@ Answer:"""
                 - sources: List of source document metadata
                 - chunks_used: Number of chunks used
                 - error: Error message if query failed (optional)
+                - parsed_query: Parsed query information (if parsing enabled)
 
         Raises:
             RAGQueryError: If query processing fails
@@ -481,6 +510,40 @@ Answer:"""
 
         logger.info(f"Processing query: '{question[:50]}...'")
         try:
+            # Parse query and extract filters if enabled
+            parsed_query_info = None
+            where_filter = None
+
+            if enable_query_parsing:
+                try:
+                    parsed = self.query_parser.parse(question, extract_filters=True)
+                    parsed_query_info = parsed
+                    question = parsed["query_text"]  # Use cleaned query text
+
+                    # Build where clause from extracted filters
+                    if parsed["filters"]:
+                        where_filter = self.filter_builder.build_where_clause(
+                            parsed["filters"]
+                        )
+                        logger.debug(f"Extracted filters: {parsed['filters']}")
+
+                except QueryParseError as e:
+                    logger.warning(
+                        f"Query parsing failed, using original query: {str(e)}"
+                    )
+                    # Continue with original query if parsing fails
+
+            # Apply explicit filters if provided
+            if filters:
+                explicit_where = self.filter_builder.build_where_clause(filters)
+                if explicit_where:
+                    # Combine with parsed filters
+                    if where_filter:
+                        # Combine filters using $and
+                        where_filter = {"$and": [where_filter, explicit_where]}
+                    else:
+                        where_filter = explicit_where
+                    logger.debug(f"Applied explicit filters: {filters}")
             # Use provided top_k or default
             current_top_k = top_k if top_k is not None else self.top_k
 
@@ -496,12 +559,16 @@ Answer:"""
                     original_top_k = self.top_k
                     self.top_k = current_top_k
                     retrieved_docs = self._retrieve_context(
-                        question, sentiment_filter=sentiment_filter
+                        question,
+                        sentiment_filter=sentiment_filter,
+                        where_filter=where_filter,
                     )
                     self.top_k = original_top_k
                 else:
                     retrieved_docs = self._retrieve_context(
-                        question, sentiment_filter=sentiment_filter
+                        question,
+                        sentiment_filter=sentiment_filter,
+                        where_filter=where_filter,
                     )
 
             # Track chunks retrieved
@@ -511,7 +578,7 @@ Answer:"""
             if not retrieved_docs:
                 logger.warning("No relevant documents found for query")
                 track_success(rag_queries_total)
-                return {
+                result = {
                     "answer": (
                         "I couldn't find any relevant information in the "
                         "document database to answer your question. Please try "
@@ -521,6 +588,9 @@ Answer:"""
                     "sources": [],
                     "chunks_used": 0,
                 }
+                if parsed_query_info:
+                    result["parsed_query"] = parsed_query_info
+                return result
 
             # Format context
             logger.debug("Formatting context documents")
@@ -609,7 +679,7 @@ Answer:"""
             except Exception as e:
                 # Handle LLM failures gracefully
                 logger.error(f"LLM generation failed: {str(e)}", exc_info=True)
-                return {
+                result = {
                     "answer": (
                         f"I encountered an error while generating an answer: "
                         f"{str(e)}. Please try again or check your LLM "
@@ -619,6 +689,9 @@ Answer:"""
                     "chunks_used": len(retrieved_docs),
                     "error": f"LLM generation failed: {str(e)}",
                 }
+                if parsed_query_info:
+                    result["parsed_query"] = parsed_query_info
+                return result
 
             # Extract source metadata
             sources = [doc.metadata for doc in retrieved_docs]
@@ -626,11 +699,14 @@ Answer:"""
             # Track successful query
             track_success(rag_queries_total)
 
-            return {
+            result = {
                 "answer": answer,
                 "sources": sources,
                 "chunks_used": len(retrieved_docs),
             }
+            if parsed_query_info:
+                result["parsed_query"] = parsed_query_info
+            return result
 
         except RAGQueryError:
             track_error(rag_queries_total)

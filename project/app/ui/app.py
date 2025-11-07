@@ -398,8 +398,130 @@ def render_chat_interface(
                     if citation:
                         st.caption(citation)
 
-    # Chat input
-    if prompt := st.chat_input("Ask a question about your documents..."):
+    # Advanced query builder (expandable)
+    with st.expander("🔧 Advanced Query Builder", expanded=False):
+        st.markdown("**Use filters and Boolean operators for precise queries**")
+
+        # Query input
+        advanced_query = st.text_area(
+            "Query",
+            placeholder="Enter your question here...",
+            help=(
+                "You can use Boolean operators (AND, OR, NOT) and "
+                "filter keywords in your query"
+            ),
+            key="advanced_query_input",
+        )
+
+        # Filter options
+        col1, col2 = st.columns(2)
+        with col1:
+            date_from = st.date_input(
+                "Date From",
+                value=None,
+                help="Filter documents from this date onwards",
+                key="filter_date_from",
+            )
+            ticker_filter = st.text_input(
+                "Ticker",
+                placeholder="e.g., AAPL, MSFT",
+                help="Filter by ticker symbol",
+                key="filter_ticker",
+            )
+            form_type_filter = st.selectbox(
+                "Form Type",
+                options=[None, "10-K", "10-Q", "8-K", "DEF 14A"],
+                help="Filter by SEC form type",
+                key="filter_form_type",
+            )
+
+        with col2:
+            date_to = st.date_input(
+                "Date To",
+                value=None,
+                help="Filter documents up to this date",
+                key="filter_date_to",
+            )
+            document_type_filter = st.selectbox(
+                "Document Type",
+                options=[None, "edgar_filing", "news", "transcript", "economic_data"],
+                help="Filter by document type",
+                key="filter_document_type",
+            )
+
+        enable_parsing = st.checkbox(
+            "Enable Query Parsing",
+            value=True,
+            help="Automatically extract filters and Boolean operators from query text",
+            key="enable_query_parsing",
+        )
+
+        # Build filters dict
+        filters_dict = None
+        if any(
+            [date_from, date_to, ticker_filter, form_type_filter, document_type_filter]
+        ):
+            filters_dict = {}
+            if date_from:
+                filters_dict["date_from"] = date_from.isoformat()
+            if date_to:
+                filters_dict["date_to"] = date_to.isoformat()
+            if ticker_filter:
+                filters_dict["ticker"] = ticker_filter.upper()
+            if form_type_filter:
+                filters_dict["form_type"] = form_type_filter
+            if document_type_filter:
+                filters_dict["document_type"] = document_type_filter
+
+        # Query button
+        use_advanced_query = st.button(
+            "Query with Filters",
+            type="primary",
+            use_container_width=True,
+        )
+
+        # Query syntax help
+        with st.expander("📖 Query Syntax Help", expanded=False):
+            st.markdown(
+                """
+            **Boolean Operators:**
+            - Use `AND` or `&` to require all terms: "revenue AND profit"
+            - Use `OR` or `|` to match any term: "Apple OR Microsoft"
+            - Use `NOT` or `!` to exclude terms: "revenue NOT loss"
+
+            **Filter Keywords in Query:**
+            - `from 2023-01-01` or `since 2023-01-01` - Date from filter
+            - `before 2023-12-31` or `until 2023-12-31` - Date to filter
+            - `between 2023-01-01 and 2023-12-31` - Date range
+            - `ticker: AAPL` or `ticker=AAPL` - Ticker filter
+            - `form: 10-K` or `form=10-K` - Form type filter
+            - `type: edgar_filing` - Document type filter
+
+            **Examples:**
+            - "What was Apple's revenue from 2023-01-01?" (extracts date filter)
+            - "ticker: AAPL revenue AND profit" (extracts ticker filter)
+            - "10-K filings from 2023" (extracts form type and date)
+            """
+            )
+
+    # Chat input - check both advanced query and regular chat input
+    prompt = None
+    filters_to_use = None
+    enable_parsing_to_use = True
+
+    # Check if advanced query button was clicked
+    if use_advanced_query and advanced_query:
+        prompt = advanced_query
+        filters_to_use = filters_dict
+        enable_parsing_to_use = enable_parsing
+
+    # Also check regular chat input (only if advanced query not used)
+    if not prompt:
+        chat_input = st.chat_input("Ask a question about your documents...")
+        if chat_input:
+            prompt = chat_input
+
+    if prompt:
         # Add user message to chat history
         st.session_state.messages.append({"role": "user", "content": prompt})
 
@@ -420,12 +542,14 @@ def render_chat_interface(
                         else []
                     )
 
-                    # Query RAG system with conversation history
+                    # Query RAG system with conversation history and filters
                     result = rag_system.query(
                         prompt,
                         conversation_history=(
                             conversation_history if conversation_history else None
                         ),
+                        filters=filters_to_use,
+                        enable_query_parsing=enable_parsing_to_use,
                     )
 
                     answer = result.get(
@@ -443,6 +567,12 @@ def render_chat_interface(
                         citation = format_citations(sources)
                         if citation:
                             st.caption(citation)
+
+                    # Display parsed query info if available
+                    parsed_query = result.get("parsed_query")
+                    if parsed_query:
+                        with st.expander("🔍 Query Analysis", expanded=False):
+                            st.json(parsed_query)
 
                     # Add assistant message to chat history
                     st.session_state.messages.append(

@@ -117,7 +117,15 @@ Process a natural language query using the RAG system and return an answer with 
       "role": "assistant",
       "content": "Apple Inc. is a technology company..."
     }
-  ]
+  ],
+  "filters": {
+    "ticker": "AAPL",
+    "form_type": "10-K",
+    "date_from": "2023-01-01",
+    "date_to": "2023-12-31",
+    "document_type": "edgar_filing"
+  },
+  "enable_query_parsing": true
 }
 ```
 
@@ -125,9 +133,19 @@ Process a natural language query using the RAG system and return an answer with 
 - `question` (string, required): Natural language question
 - `top_k` (integer, optional): Number of top chunks to retrieve (1-20, default: 5)
 - `conversation_history` (array, optional): Previous conversation messages for context
-- `sentiment_filter` (string, optional): Filter results by sentiment - `"positive"`, `"negative"`, or `"neutral"` (not yet available via API, use programmatic access)
+- `filters` (object, optional): Advanced query filters
+  - `date_from` (string, optional): Start date filter (ISO format: YYYY-MM-DD)
+  - `date_to` (string, optional): End date filter (ISO format: YYYY-MM-DD)
+  - `document_type` (string, optional): Document type filter (e.g., "edgar_filing", "news", "transcript")
+  - `ticker` (string, optional): Ticker symbol filter (e.g., "AAPL", "MSFT")
+  - `form_type` (string, optional): Form type filter (e.g., "10-K", "10-Q", "8-K")
+  - `source` (string, optional): Source identifier filter
+  - `metadata` (object, optional): Custom metadata filters
+- `enable_query_parsing` (boolean, optional): Enable automatic query parsing for filters and Boolean operators (default: true)
 
-**Note**: Sentiment filtering is available when using the RAG system programmatically. See [Sentiment Analysis Documentation](../integrations/sentiment_analysis.md#rag-system-integration) for details.
+**Note**:
+- Sentiment filtering is available when using the RAG system programmatically. See [Sentiment Analysis Documentation](../integrations/sentiment_analysis.md#rag-system-integration) for details.
+- For advanced query features including Boolean operators and filter syntax, see [Advanced Query Features Documentation](../integrations/advanced_query_features.md).
 
 **Response** (200 OK):
 ```json
@@ -144,9 +162,29 @@ Process a natural language query using the RAG system and return an answer with 
     }
   ],
   "chunks_used": 5,
-  "error": null
+  "error": null,
+  "parsed_query": {
+    "query_text": "What was Apple's revenue in 2023?",
+    "boolean_operators": [],
+    "filters": {
+      "ticker": "AAPL",
+      "form_type": "10-K"
+    },
+    "query_terms": ["apple", "revenue", "2023"]
+  }
 }
 ```
+
+**Response Fields**:
+- `answer` (string): Generated answer from the RAG system
+- `sources` (array): List of source documents used with metadata
+- `chunks_used` (integer): Number of document chunks used
+- `error` (string, nullable): Error message if query failed
+- `parsed_query` (object, optional): Parsed query information (if query parsing enabled)
+  - `query_text` (string): Cleaned query text without filters
+  - `boolean_operators` (array): List of Boolean operators detected (AND, OR, NOT)
+  - `filters` (object): Extracted filter specifications
+  - `query_terms` (array): List of extracted query terms
 
 **Error Responses**:
 - `400 Bad Request`: Invalid question or query processing failed
@@ -154,7 +192,9 @@ Process a natural language query using the RAG system and return an answer with 
 - `422 Unprocessable Entity`: Validation error (missing required fields)
 - `500 Internal Server Error`: Server error during query processing
 
-**Example**:
+**Examples**:
+
+Basic query:
 ```bash
 curl -X POST "http://localhost:8000/api/v1/query" \
   -H "Content-Type: application/json" \
@@ -162,6 +202,34 @@ curl -X POST "http://localhost:8000/api/v1/query" \
   -d '{
     "question": "What is revenue?",
     "top_k": 5
+  }'
+```
+
+Query with filters:
+```bash
+curl -X POST "http://localhost:8000/api/v1/query" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your-api-key" \
+  -d '{
+    "question": "What was Apple'\''s revenue in 2023?",
+    "filters": {
+      "ticker": "AAPL",
+      "form_type": "10-K",
+      "date_from": "2023-01-01",
+      "date_to": "2023-12-31"
+    },
+    "enable_query_parsing": true
+  }'
+```
+
+Query with natural language filters (automatic extraction):
+```bash
+curl -X POST "http://localhost:8000/api/v1/query" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your-api-key" \
+  -d '{
+    "question": "ticker: AAPL form: 10-K revenue from 2023-01-01",
+    "enable_query_parsing": true
   }'
 ```
 
