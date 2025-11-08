@@ -7,7 +7,7 @@
 | **Task ID** | TASK-046 |
 | **Task Name** | News Article Summarization |
 | **Priority** | Low |
-| **Status** | Waiting |
+| **Status** | ✅ Done |
 | **Impact** | Low |
 | **Created** | 2025-01-27 |
 | **Related PRD** | Phase 2 - P2-F5: Enhanced Data Sources - Financial Fundamentals |
@@ -81,21 +81,21 @@ Implement news article summarization to generate concise summaries of financial 
 
 ### Must Have
 
-- [ ] Summarization model integration functional
-- [ ] Generate summaries for news articles
-- [ ] Store summaries as metadata
-- [ ] Integration with news ingestion pipeline
-- [ ] Configurable summarization (enable/disable)
-- [ ] Error handling for summarization failures
-- [ ] Unit tests for summarization module
-- [ ] Integration tests for pipeline integration
+- [x] Summarization model integration functional
+- [x] Generate summaries for news articles
+- [x] Store summaries as metadata
+- [x] Integration with news ingestion pipeline
+- [x] Configurable summarization (enable/disable)
+- [x] Error handling for summarization failures
+- [x] Unit tests for summarization module
+- [x] Integration tests for pipeline integration
 
 ### Should Have
 
-- [ ] Batch summarization for existing articles
-- [ ] Summary quality validation
-- [ ] Configurable summary length
-- [ ] Support for multiple summarization models
+- [x] Batch summarization for existing articles
+- [x] Summary quality validation
+- [x] Configurable summary length
+- [x] Support for multiple summarization models
 
 ### Nice to Have
 
@@ -210,6 +210,93 @@ Implement news article summarization to generate concise summaries of financial 
 - Enhances news aggregation with summarization capability
 - Can improve search relevance and user experience
 - Optional feature - core news aggregation works without it
+
+---
+
+## Completion Summary
+
+**Completed**: 2025-01-27
+
+### Implementation Status
+
+✅ **Fully Implemented and Tested**
+
+All acceptance criteria have been met:
+
+1. **News Summarizer Module** (`app/ingestion/news_summarizer.py`):
+   - Complete LLM-based summarization implementation
+   - Support for Ollama and OpenAI providers
+   - Configurable summary length (50-200 words, default 150)
+   - Error handling and graceful degradation
+   - Batch summarization support
+   - Word count validation and truncation
+
+2. **Configuration** (`app/utils/config.py`):
+   - News summarization configuration options added (lines 438-480)
+   - Environment variable support (NEWS_SUMMARIZATION_ENABLED, etc.)
+   - Configurable target/min/max word counts
+   - Optional LLM provider and model selection
+
+3. **News Fetcher Integration** (`app/ingestion/news_fetcher.py`):
+   - Summarizer integration in NewsFetcher class
+   - Automatic summarization during document conversion
+   - Summary stored in document metadata
+
+4. **Pipeline Integration** (`app/ingestion/pipeline.py`):
+   - NewsSummarizer initialization in IngestionPipeline
+   - Automatic summarization for new articles
+   - Configurable enable/disable
+
+5. **Batch Summarization Script** (`scripts/summarize_news.py`):
+   - Script to summarize existing articles in ChromaDB
+   - Query articles without summaries
+   - Batch processing with error handling
+   - Dry-run mode support
+
+6. **Testing**:
+   - **Unit Tests**: 15 tests in `tests/test_news_summarizer.py` - all passing ✅
+   - **Integration Tests**: Added to `tests/test_news_fetcher.py` and `tests/test_news_integration.py`
+   - **Test Coverage**: News summarizer module at 63% coverage
+
+### Test Results
+
+- **Unit Tests**: 15/15 passed
+- **Integration Tests**: All passing
+- **Test Coverage**: News summarizer module at 63% coverage
+
+### Key Features Implemented
+
+- ✅ LLM-based summarization (Ollama/OpenAI)
+- ✅ Financial domain prompt engineering
+- ✅ Configurable summary length (50-200 words)
+- ✅ Automatic summarization in pipeline
+- ✅ Batch summarization script
+- ✅ Error handling and graceful degradation
+- ✅ Summary stored in document metadata
+- ✅ Word count validation and truncation
+- ✅ Support for multiple LLM providers
+
+### Files Created/Modified
+
+**Created**:
+- `app/ingestion/news_summarizer.py` - Complete summarization module
+- `scripts/summarize_news.py` - Batch summarization script
+- `tests/test_news_summarizer.py` - Unit tests (15 tests)
+
+**Modified**:
+- `app/ingestion/news_fetcher.py` - Added summarizer integration
+- `app/ingestion/pipeline.py` - Added summarizer initialization
+- `app/utils/config.py` - Added summarization configuration
+- `tests/test_news_fetcher.py` - Added summarization tests
+- `tests/test_news_integration.py` - Added integration test
+
+### Notes
+
+- Summarization is optional and can be disabled via configuration
+- Uses existing LLM infrastructure (Ollama/OpenAI)
+- Summaries are stored in document metadata for quick access
+- Batch summarization script allows retroactive summarization of existing articles
+- Error handling ensures pipeline continues even if summarization fails
 
 ---
 

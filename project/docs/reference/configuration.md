@@ -698,7 +698,14 @@ The system includes financial news aggregation for fetching and indexing news ar
    - Keyword-based detection
    - Stored in article metadata
 
-5. **Deduplication**: URL-based deduplication to avoid duplicate articles
+5. **Article Summarization** (TASK-046) ✅: Automatic LLM-based summarization
+   - LLM-based summarization (Ollama/OpenAI)
+   - Configurable summary length (50-200 words, default 150)
+   - Financial domain prompt engineering
+   - Summaries stored in document metadata
+   - Batch summarization script available
+
+6. **Deduplication**: URL-based deduplication to avoid duplicate articles
 
 **Example Configuration**:
 ```bash
@@ -726,6 +733,23 @@ NEWS_SCRAPE_FULL_CONTENT=false
 
 # Scraping-only mode (no RSS)
 NEWS_USE_RSS=false
+
+# News Summarization (TASK-046) ✅
+NEWS_SUMMARIZATION_ENABLED=true
+NEWS_SUMMARIZATION_TARGET_WORDS=150
+NEWS_SUMMARIZATION_MIN_WORDS=50
+NEWS_SUMMARIZATION_MAX_WORDS=200
+NEWS_SUMMARIZATION_LLM_PROVIDER=  # Optional: 'ollama' or 'openai'
+NEWS_SUMMARIZATION_LLM_MODEL=     # Optional: model name
+
+# News Monitoring Configuration (TASK-048) ✅
+NEWS_MONITOR_ENABLED=false        # Enable automated news monitoring service
+NEWS_MONITOR_POLL_INTERVAL_MINUTES=30  # Polling interval (5-1440 minutes)
+NEWS_MONITOR_FEEDS=                # Comma-separated RSS feed URLs
+NEWS_MONITOR_ENABLE_SCRAPING=true # Enable full content scraping
+NEWS_MONITOR_FILTER_TICKERS=      # Comma-separated ticker symbols (optional)
+NEWS_MONITOR_FILTER_KEYWORDS=     # Comma-separated keywords (optional)
+NEWS_MONITOR_FILTER_CATEGORIES=   # Comma-separated categories (optional)
 ```
 
 **Usage**:
@@ -757,6 +781,72 @@ chunk_ids = pipeline.process_news(
 For complete news aggregation documentation, see: **[News Aggregation Integration Guide](../integrations/news_aggregation.md)**
 
 For complete API documentation, see [API Documentation](api.md).
+
+### News Trend Analysis Configuration (TASK-047)
+
+The system includes news trend analysis capabilities for identifying trending topics, tickers, and patterns over time. All trend analysis settings are configurable via environment variables.
+
+| Variable | Type | Default | Constraints | Description |
+|----------|------|---------|-------------|-------------|
+| `NEWS_TRENDS_ENABLED` | boolean | `true` | `true`/`false`, `1`/`0`, `yes`/`no` | Enable news trend analysis functionality |
+| `NEWS_TRENDS_DEFAULT_PERIOD` | string | `daily` | `hourly`, `daily`, `weekly`, `monthly` | Default time period for trend analysis |
+| `NEWS_TRENDS_DEFAULT_TOP_N` | integer | `10` | Range: 1-100 | Default number of top trending items (tickers/topics) to return |
+| `NEWS_TRENDS_MIN_WORD_LENGTH` | integer | `4` | Range: 2-20 | Minimum word length for keyword extraction |
+
+**Example Configuration**:
+```bash
+# Enable news trend analysis (default)
+NEWS_TRENDS_ENABLED=true
+
+# Default time period
+NEWS_TRENDS_DEFAULT_PERIOD=daily
+
+# Default number of top results (applies to both tickers and topics)
+NEWS_TRENDS_DEFAULT_TOP_N=10
+
+# Keyword extraction settings
+NEWS_TRENDS_MIN_WORD_LENGTH=4
+```
+
+**Note**: The `min_mentions` parameter is configurable per API call or script invocation, not via environment variables. Use API query parameters or script arguments to customize this threshold.
+
+**Usage**:
+```bash
+# Generate daily trend report for last 7 days
+python scripts/analyze_news_trends.py --days 7
+
+# Generate weekly trend report for specific date range
+python scripts/analyze_news_trends.py \
+  --date-from 2024-01-01 \
+  --date-to 2024-01-31 \
+  --period weekly
+
+# Programmatic usage
+from app.analysis.news_trends import NewsTrendsAnalyzer
+
+analyzer = NewsTrendsAnalyzer()
+report = analyzer.generate_trend_report(
+    date_from="2024-01-01",
+    date_to="2024-01-31",
+    period="daily"
+)
+```
+
+**Features**:
+- Ticker trend analysis (frequency, growth rate, momentum)
+- Topic/keyword trend analysis
+- Volume trend analysis
+- Time series aggregation (hourly, daily, weekly, monthly)
+- Comprehensive trend reports
+
+**Performance Considerations**:
+- Date filtering: Always use date ranges to limit data processing
+- Top N limits: Use reasonable values (10-50) for performance
+- Period selection: Daily/weekly periods are more efficient than hourly
+
+**Backward Compatibility**: News trend analysis is optional and can be disabled by setting `NEWS_TRENDS_ENABLED=false`. The system continues to work normally without trend analysis.
+
+For complete news trend analysis documentation, see: **[News Trend Analysis Integration Guide](../integrations/news_trend_analysis.md)**
 
 ### FRED API Configuration (TASK-036)
 

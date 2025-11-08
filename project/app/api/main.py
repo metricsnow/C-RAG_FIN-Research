@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse  # noqa: E501
 
 from app.api.middleware import RateLimitMiddleware, RequestLoggingMiddleware
-from app.api.routes import documents, health, ingestion, query
+from app.api.routes import documents, health, ingestion, query, trends
 from app.utils.config import config
 from app.utils.logger import get_logger
 
@@ -83,6 +83,7 @@ app.include_router(query.router, prefix="/api/v1")
 app.include_router(ingestion.router, prefix="/api/v1")
 app.include_router(documents.router, prefix="/api/v1")
 app.include_router(health.router, prefix="/api/v1")
+app.include_router(trends.router, prefix="/api/v1")
 
 
 # Root endpoint
@@ -105,6 +106,7 @@ async def root() -> dict:
             "documents": "/api/v1/documents",
             "health": "/api/v1/health",
             "metrics": "/api/v1/health/metrics",
+            "trends": "/api/v1/trends",
         },
     }
 

@@ -31,7 +31,7 @@ All configuration values are validated:
 """
 
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -435,6 +435,92 @@ class Config(BaseSettings):
         description="Enable financial news aggregation",
     )
 
+    # News Summarization Configuration (TASK-046)
+    news_summarization_enabled: bool = Field(
+        default=True,
+        alias="NEWS_SUMMARIZATION_ENABLED",
+        description="Enable automatic news article summarization",
+    )
+    news_summarization_target_words: int = Field(
+        default=150,
+        ge=50,
+        le=300,
+        alias="NEWS_SUMMARIZATION_TARGET_WORDS",
+        description="Target summary length in words (default: 150)",
+    )
+    news_summarization_min_words: int = Field(
+        default=50,
+        ge=20,
+        le=200,
+        alias="NEWS_SUMMARIZATION_MIN_WORDS",
+        description="Minimum summary length in words (default: 50)",
+    )
+    news_summarization_max_words: int = Field(
+        default=200,
+        ge=100,
+        le=500,
+        alias="NEWS_SUMMARIZATION_MAX_WORDS",
+        description="Maximum summary length in words (default: 200)",
+    )
+    news_summarization_llm_provider: str = Field(
+        default="",
+        alias="NEWS_SUMMARIZATION_LLM_PROVIDER",
+        description=(
+            "LLM provider for summarization ('ollama' or 'openai'). "
+            "If empty, uses LLM_PROVIDER"
+        ),
+    )
+    news_summarization_llm_model: str = Field(
+        default="",
+        alias="NEWS_SUMMARIZATION_LLM_MODEL",
+        description=(
+            "LLM model for summarization. " "If empty, uses default for provider"
+        ),
+    )
+
+    # News Trend Analysis Configuration (TASK-047)
+    news_trends_enabled: bool = Field(
+        default=True,
+        alias="NEWS_TRENDS_ENABLED",
+        description="Enable news trend analysis functionality",
+    )
+    news_trends_default_period: str = Field(
+        default="daily",
+        alias="NEWS_TRENDS_DEFAULT_PERIOD",
+        description=(
+            "Default time period for trend analysis "
+            "('hourly', 'daily', 'weekly', 'monthly')"
+        ),
+    )
+    news_trends_top_tickers: int = Field(
+        default=10,
+        ge=1,
+        le=100,
+        alias="NEWS_TRENDS_TOP_TICKERS",
+        description="Number of top trending tickers to analyze (default: 10)",
+    )
+    news_trends_top_topics: int = Field(
+        default=10,
+        ge=1,
+        le=100,
+        alias="NEWS_TRENDS_TOP_TOPICS",
+        description="Number of top trending topics to analyze (default: 10)",
+    )
+    news_trends_min_word_length: int = Field(
+        default=4,
+        ge=2,
+        le=10,
+        alias="NEWS_TRENDS_MIN_WORD_LENGTH",
+        description="Minimum word length for keyword extraction (default: 4)",
+    )
+    news_trends_min_mentions: int = Field(
+        default=2,
+        ge=1,
+        le=50,
+        alias="NEWS_TRENDS_MIN_MENTIONS",
+        description="Minimum mentions to include in trending analysis (default: 2)",
+    )
+
     # Alternative Data Sources Configuration (TASK-044)
     social_media_enabled: bool = Field(
         default=False,
@@ -555,6 +641,45 @@ class Config(BaseSettings):
         default=True,
         alias="NEWS_SCRAPE_FULL_CONTENT",
         description="Scrape full article content (not just RSS summaries)",
+    )
+
+    # News Monitoring Configuration (TASK-048)
+    news_monitor_enabled: bool = Field(
+        default=False,
+        alias="NEWS_MONITOR_ENABLED",
+        description="Enable automated news monitoring service",
+    )
+    news_monitor_poll_interval_minutes: int = Field(
+        default=30,
+        ge=5,
+        le=1440,
+        alias="NEWS_MONITOR_POLL_INTERVAL_MINUTES",
+        description="Polling interval for news monitoring in minutes (5-1440)",
+    )
+    news_monitor_feeds: Optional[List[str]] = Field(
+        default=None,
+        alias="NEWS_MONITOR_FEEDS",
+        description="Comma-separated list of RSS feed URLs for monitoring",
+    )
+    news_monitor_enable_scraping: bool = Field(
+        default=True,
+        alias="NEWS_MONITOR_ENABLE_SCRAPING",
+        description="Enable full content scraping for monitored articles",
+    )
+    news_monitor_filter_tickers: Optional[List[str]] = Field(
+        default=None,
+        alias="NEWS_MONITOR_FILTER_TICKERS",
+        description="Comma-separated list of ticker symbols to filter (None = all)",
+    )
+    news_monitor_filter_keywords: Optional[List[str]] = Field(
+        default=None,
+        alias="NEWS_MONITOR_FILTER_KEYWORDS",
+        description="Comma-separated list of keywords to filter (None = all)",
+    )
+    news_monitor_filter_categories: Optional[List[str]] = Field(
+        default=None,
+        alias="NEWS_MONITOR_FILTER_CATEGORIES",
+        description="Comma-separated list of categories to filter (None = all)",
     )
 
     # Economic Calendar Configuration (TASK-035)
@@ -688,6 +813,35 @@ class Config(BaseSettings):
         default=True,
         alias="SENTIMENT_EXTRACT_RISKS",
         description="Extract risk factors from documents",
+    )
+
+    # News Trend Analysis Configuration (TASK-047)
+    news_trends_enabled: bool = Field(
+        default=True,
+        alias="NEWS_TRENDS_ENABLED",
+        description="Enable news trend analysis",
+    )
+    news_trends_default_period: str = Field(
+        default="daily",
+        alias="NEWS_TRENDS_DEFAULT_PERIOD",
+        description=(
+            "Default time period for trend analysis "
+            "(hourly, daily, weekly, monthly)"
+        ),
+    )
+    news_trends_default_top_n: int = Field(
+        default=10,
+        ge=1,
+        le=100,
+        alias="NEWS_TRENDS_DEFAULT_TOP_N",
+        description="Default number of top trending items to return",
+    )
+    news_trends_min_word_length: int = Field(
+        default=4,
+        ge=2,
+        le=20,
+        alias="NEWS_TRENDS_MIN_WORD_LENGTH",
+        description="Minimum word length for keyword extraction",
     )
 
     # Project paths (computed fields)

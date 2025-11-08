@@ -12,6 +12,7 @@ from typing import Dict, List, Optional, Set
 from langchain_core.documents import Document
 
 from app.ingestion.news_scraper import NewsScraper, NewsScraperError
+from app.ingestion.news_summarizer import NewsSummarizer
 from app.ingestion.rss_parser import RSSParser, RSSParserError
 from app.utils.logger import get_logger
 
@@ -76,6 +77,7 @@ class NewsFetcher:
         rss_rate_limit: float = 1.0,
         scraping_rate_limit: float = 2.0,
         scrape_full_content: bool = True,
+        summarizer: Optional[NewsSummarizer] = None,
     ):
         """
         Initialize news fetcher.
@@ -86,10 +88,12 @@ class NewsFetcher:
             rss_rate_limit: Rate limit for RSS feed requests (seconds)
             scraping_rate_limit: Rate limit for web scraping (seconds)
             scrape_full_content: Whether to scrape full article content (default: True)
+            summarizer: Optional NewsSummarizer instance for article summarization
         """
         self.use_rss = use_rss
         self.use_scraping = use_scraping
         self.scrape_full_content = scrape_full_content
+        self.summarizer = summarizer
 
         # Initialize RSS parser
         self.rss_parser = (
@@ -332,6 +336,11 @@ class NewsFetcher:
         """
         documents = []
 
+        # Summarize articles if summarizer is available
+        if self.summarizer:
+            logger.debug("Summarizing articles before document conversion")
+            articles = self.summarizer.summarize_articles(articles)
+
         for article in articles:
             # Combine title and content
             content = f"{article.get('title', '')}\n\n{article.get('content', '')}"
@@ -351,6 +360,10 @@ class NewsFetcher:
                 "type": "news_article",
                 "feed_title": article.get("feed_title", ""),
             }
+
+            # Add summary to metadata if available
+            if article.get("summary"):
+                metadata["summary"] = article["summary"]
 
             # Create Document
             doc = Document(page_content=content, metadata=metadata)

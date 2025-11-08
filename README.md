@@ -350,9 +350,9 @@ The project is organized into several key modules, each implementing specific st
 - ✅ RAG optimization (hybrid search, reranking, query refinement)
 
 ### Planned (Future Enhancements)
-- 📋 News article summarization
-- 📋 News trend analysis
-- 📋 Automated news monitoring
+- ✅ News article summarization
+- ✅ News trend analysis
+- ✅ Automated news monitoring
 - 📋 News alert system
 - 📋 Additional performance optimizations
 

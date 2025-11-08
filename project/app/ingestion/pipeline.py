@@ -26,6 +26,7 @@ from app.ingestion.esg_fetcher import ESGFetcher, ESGFetcherError
 from app.ingestion.fred_fetcher import FREDFetcher, FREDFetcherError
 from app.ingestion.imf_fetcher import IMFFetcher, IMFFetcherError
 from app.ingestion.news_fetcher import NewsFetcher, NewsFetcherError
+from app.ingestion.news_summarizer import NewsSummarizer
 from app.ingestion.sentiment_analyzer import (
     SentimentAnalyzer,
     SentimentAnalyzerError,
@@ -109,6 +110,27 @@ class IngestionPipeline:
         self.transcript_parser = (
             TranscriptParser() if config.transcript_enabled else None
         )
+        # Initialize news summarizer if enabled
+        self.news_summarizer = (
+            NewsSummarizer(
+                enabled=config.news_summarization_enabled,
+                llm_provider=(
+                    config.news_summarization_llm_provider
+                    if config.news_summarization_llm_provider
+                    else None
+                ),
+                llm_model=(
+                    config.news_summarization_llm_model
+                    if config.news_summarization_llm_model
+                    else None
+                ),
+                target_words=config.news_summarization_target_words,
+                min_words=config.news_summarization_min_words,
+                max_words=config.news_summarization_max_words,
+            )
+            if config.news_enabled and config.news_summarization_enabled
+            else None
+        )
         self.news_fetcher = (
             NewsFetcher(
                 use_rss=config.news_use_rss,
@@ -116,6 +138,7 @@ class IngestionPipeline:
                 rss_rate_limit=config.news_rss_rate_limit_seconds,
                 scraping_rate_limit=config.news_scraping_rate_limit_seconds,
                 scrape_full_content=config.news_scrape_full_content,
+                summarizer=self.news_summarizer,
             )
             if config.news_enabled
             else None

@@ -11,7 +11,10 @@ The Financial Research Assistant includes comprehensive financial news aggregati
 - **Multiple Sources**: Support for Reuters, CNBC, Bloomberg, Financial Times, MarketWatch
 - **Ticker Detection**: Automatic extraction of ticker symbols mentioned in articles
 - **Article Categorization**: Automatic categorization (earnings, markets, analysis, m&a, ipo, general)
-- **Metadata Tagging**: Rich metadata including source, date, author, tickers, category
+- **Article Summarization**: Automatic LLM-based summarization of news articles (TASK-046) ✅
+- **News Trend Analysis**: Trend analysis for tickers, topics, and volume patterns (TASK-047) ✅
+- **Automated News Monitoring**: Continuous monitoring and automatic ingestion of new articles (TASK-048) ✅
+- **Metadata Tagging**: Rich metadata including source, date, author, tickers, category, summary
 - **Deduplication**: URL-based deduplication to avoid duplicate articles
 - **Rate Limiting**: Configurable rate limits to respect source servers
 - **Pipeline Integration**: Seamless integration with existing ingestion pipeline
@@ -88,6 +91,36 @@ python scripts/fetch_news.py --feeds https://www.reuters.com/finance/rss --no-sc
 # Use different ChromaDB collection
 python scripts/fetch_news.py --feeds https://www.reuters.com/finance/rss --collection news
 ```
+
+#### Automated News Monitoring
+
+```bash
+# Start monitoring service with default configuration
+python scripts/start_news_monitor.py
+
+# Start with custom feeds and interval
+python scripts/start_news_monitor.py \
+  --feeds https://www.reuters.com/finance/rss \
+  --interval 15
+
+# Start with filters (only monitor specific tickers/keywords)
+python scripts/start_news_monitor.py \
+  --feeds https://www.reuters.com/finance/rss \
+  --filter-tickers AAPL MSFT GOOGL \
+  --filter-keywords earnings revenue
+
+# Disable full content scraping
+python scripts/start_news_monitor.py \
+  --feeds https://www.reuters.com/finance/rss \
+  --no-scraping
+
+# Use different ChromaDB collection
+python scripts/start_news_monitor.py \
+  --feeds https://www.reuters.com/finance/rss \
+  --collection news
+```
+
+**Note**: The monitoring service runs continuously in the background. Press Ctrl+C to stop.
 
 ### Programmatic Usage
 
@@ -173,6 +206,14 @@ NEWS_SCRAPING_RATE_LIMIT_SECONDS=2.0
 
 # Scrape full article content for RSS articles
 NEWS_SCRAPE_FULL_CONTENT=true
+
+# News Summarization (TASK-046) ✅
+NEWS_SUMMARIZATION_ENABLED=true
+NEWS_SUMMARIZATION_TARGET_WORDS=150
+NEWS_SUMMARIZATION_MIN_WORDS=50
+NEWS_SUMMARIZATION_MAX_WORDS=200
+NEWS_SUMMARIZATION_LLM_PROVIDER=  # Optional: 'ollama' or 'openai' (uses LLM_PROVIDER if empty)
+NEWS_SUMMARIZATION_LLM_MODEL=     # Optional: model name (uses default for provider if empty)
 ```
 
 ### Configuration Options
@@ -185,6 +226,12 @@ NEWS_SCRAPE_FULL_CONTENT=true
 | `NEWS_RSS_RATE_LIMIT_SECONDS` | float | `1.0` | Rate limit between RSS requests (0.1-60.0) |
 | `NEWS_SCRAPING_RATE_LIMIT_SECONDS` | float | `2.0` | Rate limit between scraping requests (0.1-60.0) |
 | `NEWS_SCRAPE_FULL_CONTENT` | boolean | `true` | Scrape full content for RSS articles |
+| `NEWS_SUMMARIZATION_ENABLED` | boolean | `true` | Enable automatic article summarization |
+| `NEWS_SUMMARIZATION_TARGET_WORDS` | int | `150` | Target summary length in words (50-300) |
+| `NEWS_SUMMARIZATION_MIN_WORDS` | int | `50` | Minimum summary length in words (20-200) |
+| `NEWS_SUMMARIZATION_MAX_WORDS` | int | `200` | Maximum summary length in words (100-500) |
+| `NEWS_SUMMARIZATION_LLM_PROVIDER` | string | `""` | LLM provider ('ollama' or 'openai'). Empty uses `LLM_PROVIDER` |
+| `NEWS_SUMMARIZATION_LLM_MODEL` | string | `""` | LLM model name. Empty uses default for provider |
 
 ## Article Metadata
 
@@ -200,6 +247,7 @@ News articles are stored with rich metadata:
     "category": "earnings",           # Article category
     "type": "news_article",           # Document type
     "feed_title": "Reuters Finance",  # RSS feed title (if from RSS)
+    "summary": "Article summary...", # LLM-generated summary (if summarization enabled)
 }
 ```
 
@@ -244,11 +292,31 @@ Ticker symbols are automatically extracted from article titles and content:
    - Article categorization
    - URL-based deduplication
    - Converts to LangChain Documents
+   - Integrates with News Summarizer for automatic summarization
 
-4. **Pipeline Integration** (`app/ingestion/pipeline.py`):
+4. **News Summarizer** (`app/ingestion/news_summarizer.py`) (TASK-046) ✅:
+   - LLM-based article summarization
+   - Support for Ollama and OpenAI providers
+   - Configurable summary length (50-200 words)
+   - Financial domain prompt engineering
+   - Batch summarization support
+   - Error handling and graceful degradation
+
+5. **Pipeline Integration** (`app/ingestion/pipeline.py`):
    - `process_news()` method for news ingestion
-   - Full workflow: fetch → parse → chunk → embed → store
+   - Full workflow: fetch → parse → summarize → chunk → embed → store
    - Error handling and metrics tracking
+   - Automatic summarization integration
+
+6. **News Monitor** (`app/services/news_monitor.py`) (TASK-048) ✅:
+   - Automated background service for continuous news monitoring
+   - Scheduled RSS feed polling using APScheduler
+   - Automatic article detection and ingestion
+   - URL-based deduplication (in-memory and ChromaDB)
+   - Configurable filtering (tickers, keywords, categories)
+   - Service lifecycle management (start/stop/pause/resume)
+   - Health monitoring and statistics tracking
+   - Error recovery and retry logic
 
 ### Data Flow
 
@@ -263,7 +331,9 @@ Article Extraction
     ↓
 Ticker Detection & Categorization
     ↓
-LangChain Documents
+News Summarizer (if enabled) ← LLM-based summarization
+    ↓
+LangChain Documents (with summary in metadata)
     ↓
 Ingestion Pipeline
     ↓
@@ -298,6 +368,44 @@ Chunking → Embedding → ChromaDB
 - Same article from different sources will be stored separately
 - Consider content-based deduplication for future enhancement
 
+### Automated Monitoring
+
+- **Polling Intervals**: Default 30 minutes (configurable 5-1440 minutes)
+- **Deduplication**: In-memory cache + ChromaDB lookup for robust deduplication
+- **Filtering**: Apply filters before ingestion to reduce processing overhead
+- **Error Handling**: Errors are logged but don't stop the service
+- **Resource Usage**: Monitor CPU and memory usage for long-running services
+- **Service Management**: Use start/stop/pause/resume for service control
+
+## Configuration
+
+### Environment Variables
+
+#### News Monitoring Configuration (TASK-048)
+
+```bash
+# Enable automated news monitoring
+NEWS_MONITOR_ENABLED=true
+
+# Polling interval in minutes (5-1440, default: 30)
+NEWS_MONITOR_POLL_INTERVAL_MINUTES=30
+
+# RSS feed URLs (comma-separated)
+NEWS_MONITOR_FEEDS=https://www.reuters.com/finance/rss,https://www.cnbc.com/id/100003114/device/rss/rss.html
+
+# Enable full content scraping (default: true)
+NEWS_MONITOR_ENABLE_SCRAPING=true
+
+# Filter by ticker symbols (comma-separated, optional)
+NEWS_MONITOR_FILTER_TICKERS=AAPL,MSFT,GOOGL
+
+# Filter by keywords (comma-separated, optional)
+NEWS_MONITOR_FILTER_KEYWORDS=earnings,revenue,profit
+
+# Filter by categories (comma-separated, optional)
+NEWS_MONITOR_FILTER_CATEGORIES=earnings,markets
+```
+
 ## Troubleshooting
 
 ### No Articles Fetched
@@ -318,6 +426,26 @@ Chunking → Embedding → ChromaDB
 1. Check if website structure has changed
 2. Verify article URL is accessible
 3. Check rate limiting (may be blocked)
+
+### Monitoring Service Issues
+
+**Problem**: Monitoring service fails to start or stops unexpectedly
+
+**Solutions**:
+1. Verify `NEWS_MONITOR_ENABLED=true` in configuration
+2. Check that feed URLs are valid and accessible
+3. Verify ChromaDB is accessible and collection exists
+4. Check logs for specific error messages
+5. Ensure APScheduler is installed: `pip install apscheduler>=3.10.0`
+
+**Problem**: No articles being ingested by monitoring service
+
+**Solutions**:
+1. Check that feeds are returning articles (test manually)
+2. Verify deduplication isn't filtering all articles
+3. Check filter criteria aren't too restrictive
+4. Review monitoring statistics: `monitor.get_stats()`
+5. Check health status: `monitor.health_check()`
 4. Review error logs for specific issues
 5. Use RSS feeds as fallback
 
@@ -422,13 +550,129 @@ News articles are queryable through the existing RAG system:
 
 The RAG system will retrieve relevant news articles based on semantic similarity and metadata filtering.
 
+## News Summarization (TASK-046) ✅
+
+**Status**: Complete - Automatic LLM-based summarization of news articles is now available.
+
+### Features
+
+- **Automatic Summarization**: Articles are automatically summarized during ingestion
+- **LLM-Based**: Uses Ollama or OpenAI for high-quality summaries
+- **Financial Domain**: Prompt engineering optimized for financial news
+- **Configurable Length**: Target 50-200 words (default 150)
+- **Metadata Storage**: Summaries stored in document metadata for quick access
+- **Batch Processing**: Script available to summarize existing articles
+
+### Usage
+
+Summarization is automatically enabled by default. To disable:
+
+```bash
+NEWS_SUMMARIZATION_ENABLED=false
+```
+
+### Batch Summarization
+
+To summarize existing articles in ChromaDB:
+
+```bash
+# Summarize all articles without summaries
+python scripts/summarize_news.py
+
+# Limit to first 10 articles
+python scripts/summarize_news.py --limit 10
+
+# Dry run (don't update ChromaDB)
+python scripts/summarize_news.py --dry-run
+
+# Use different collection
+python scripts/summarize_news.py --collection news
+```
+
+### Configuration
+
+```bash
+# Enable/disable summarization
+NEWS_SUMMARIZATION_ENABLED=true
+
+# Summary length configuration
+NEWS_SUMMARIZATION_TARGET_WORDS=150  # Target length
+NEWS_SUMMARIZATION_MIN_WORDS=50      # Minimum length
+NEWS_SUMMARIZATION_MAX_WORDS=200     # Maximum length
+
+# Optional: Use specific LLM provider/model
+NEWS_SUMMARIZATION_LLM_PROVIDER=ollama  # or 'openai'
+NEWS_SUMMARIZATION_LLM_MODEL=llama3.2   # Optional model name
+```
+
+### Summary Quality
+
+- **Focus**: Key financial information (tickers, numbers, events)
+- **Length**: 50-200 words (configurable)
+- **Format**: Concise, informative summaries
+- **Error Handling**: Pipeline continues even if summarization fails
+
+### Benefits
+
+- **Quick Overviews**: Users can quickly understand article content
+- **Improved Search**: Summaries enhance search relevance
+- **Metadata Access**: Summaries available in document metadata
+- **Optional Feature**: Can be disabled if not needed
+
+## News Trend Analysis (TASK-047) ✅
+
+**Status**: Complete - News trend analysis is now available for identifying trending topics, tickers, and patterns.
+
+### Features
+
+- **Ticker Trend Analysis**: Identify trending tickers based on frequency and growth
+- **Topic/Keyword Analysis**: Detect trending topics and keywords from news articles
+- **Volume Trend Analysis**: Track news volume over time periods
+- **Time Series Aggregation**: Support for hourly, daily, weekly, and monthly periods
+- **Comprehensive Reports**: Generate detailed trend reports with multiple metrics
+
+### Quick Start
+
+```bash
+# Generate daily trend report for last 7 days
+python scripts/analyze_news_trends.py --days 7
+```
+
+For detailed documentation, see [News Trend Analysis Integration](news_trend_analysis.md).
+
+## Automated News Monitoring (TASK-048) ✅
+
+**Status**: Complete - Automated news monitoring service is now available for continuous background monitoring and automatic ingestion of new articles.
+
+### Features
+
+- **Continuous Monitoring**: Background service that continuously monitors RSS feeds
+- **Automatic Ingestion**: Automatically detects and ingests new articles
+- **Configurable Polling**: Polling intervals from 5 minutes to 24 hours
+- **Deduplication**: In-memory cache + ChromaDB lookup for robust deduplication
+- **Filtering**: Configurable filters for tickers, keywords, and categories
+- **Service Management**: Start/stop/pause/resume capabilities
+- **Health Monitoring**: Health checks and statistics tracking
+- **Error Recovery**: Graceful error handling with retry logic
+
+### Quick Start
+
+```bash
+# Start monitoring with default configuration
+python scripts/start_news_monitor.py
+
+# Start with custom feeds and interval
+python scripts/start_news_monitor.py \
+  --feeds https://www.reuters.com/finance/rss \
+  --interval 15
+```
+
+For detailed documentation, see the [Automated News Monitoring](#automated-news-monitoring-task-048) section above.
+
 ## Future Enhancements
 
 The following enhancements are planned as separate tasks:
 
-- **TASK-046**: News Article Summarization
-- **TASK-047**: News Trend Analysis
-- **TASK-048**: Automated News Monitoring
 - **TASK-049**: News Alert System
 
 See individual task files for details.
@@ -436,11 +680,12 @@ See individual task files for details.
 ## Related Documentation
 
 - [Configuration Reference](reference/configuration.md#news-aggregation-configuration-task-034)
+- [News Trend Analysis Integration](news_trend_analysis.md) - Trend analysis for news articles (TASK-047) ✅
 - [API Documentation](reference/api.md) (for programmatic access)
 - [Ingestion Pipeline](../README.md#data-collection)
 
 ---
 
 **Last Updated**: 2025-01-27
-**Task**: TASK-034
+**Tasks**: TASK-034 (News Aggregation), TASK-046 (News Summarization), TASK-047 (News Trend Analysis), TASK-048 (Automated News Monitoring)
 **Status**: Complete

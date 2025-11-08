@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from app.ingestion.news_fetcher import NewsFetcher, NewsFetcherError
+from app.ingestion.news_summarizer import NewsSummarizer
 
 
 class TestNewsFetcher:
@@ -117,3 +118,52 @@ class TestNewsFetcher:
         assert documents[0].page_content.startswith("Test Article")
         assert documents[0].metadata["source"] == "reuters"
         assert documents[0].metadata["tickers"] == "AAPL"
+
+    @patch("app.ingestion.news_summarizer.get_llm")
+    def test_to_documents_with_summarizer(self, mock_get_llm):
+        """Test conversion to Document objects with summarization."""
+        # Mock LLM for summarizer
+        mock_llm = MagicMock()
+        mock_response = MagicMock()
+        mock_response.content = "This is a summary of the article."
+        mock_llm.invoke.return_value = mock_response
+        mock_get_llm.return_value = mock_llm
+
+        # Create summarizer and fetcher
+        summarizer = NewsSummarizer(enabled=True)
+        fetcher = NewsFetcher(summarizer=summarizer)
+
+        articles = [
+            {
+                "title": "Test Article",
+                "content": "Article content about AAPL stock performance.",
+                "url": "https://example.com/article",
+                "source": "reuters",
+                "author": "Author",
+                "date": "2025-01-27",
+                "tickers": ["AAPL"],
+                "category": "markets",
+            }
+        ]
+        documents = fetcher.to_documents(articles)
+
+        assert len(documents) == 1
+        assert "summary" in documents[0].metadata
+        assert documents[0].metadata["summary"] == "This is a summary of the article."
+        mock_llm.invoke.assert_called_once()
+
+    def test_to_documents_without_summarizer(self):
+        """Test conversion to Document objects without summarization."""
+        fetcher = NewsFetcher(summarizer=None)
+        articles = [
+            {
+                "title": "Test Article",
+                "content": "Article content",
+                "url": "https://example.com/article",
+                "source": "reuters",
+            }
+        ]
+        documents = fetcher.to_documents(articles)
+
+        assert len(documents) == 1
+        assert "summary" not in documents[0].metadata
