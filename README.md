@@ -60,12 +60,16 @@ The project is organized into several key modules, each implementing specific st
 - **SEC EDGAR API**: Automated document fetching pipeline for SEC filings (10-K, 10-Q, 8-K)
 - **Stock Data Integration**: Comprehensive stock market data via yfinance (company info, financial metrics, historical prices, dividends, earnings, analyst recommendations)
 - **Earnings Call Transcripts**: Fetch and index earnings call transcripts with speaker annotation, Q&A sections, and forward guidance extraction
-- **Financial News Aggregation**: RSS feeds and web scraping for financial news from Reuters, CNBC, Bloomberg with ticker detection and categorization
+- **Financial News Aggregation**: RSS feeds and web scraping for financial news from Reuters, CNBC, Bloomberg with ticker detection and categorization, LLM-based article summarization, trend analysis for tickers/topics/volume patterns, automated continuous monitoring with background service, and user-configurable news alerts with email notifications
 - **Economic Calendar Integration**: Macroeconomic indicators and events via Trading Economics API
 - **FRED API Integration**: 840,000+ economic time series including interest rates, exchange rates, inflation, employment, GDP
 - **IMF and World Bank Data Integration**: Global economic data from IMF Data Portal and World Bank Open Data APIs for 188+ countries
 - **Central Bank Data Integration**: FOMC statements, meeting minutes, press conference transcripts, and forward guidance extraction
 - **Financial Sentiment Analysis**: Comprehensive sentiment analysis using FinBERT, TextBlob, and VADER with forward guidance and risk factor extraction, plus sentiment-aware query filtering
+- **News Article Summarization**: LLM-based automatic summarization of financial news articles with configurable summary length
+- **News Trend Analysis**: Identify trending topics, tickers, and patterns in financial news over time with time series aggregation and trend metrics
+- **Automated News Monitoring**: Continuous background service monitoring RSS feeds and automatically ingesting new articles with configurable filtering
+- **News Alert System**: User-configurable alerts for news matching specific criteria (tickers, keywords, categories) with email notifications and rate limiting
 - **Document Processing**: Multi-format support (text, Markdown) with intelligent chunking and metadata extraction
 - **Batch Processing**: Optimized batch embedding generation for efficient document indexing
 
@@ -166,9 +170,12 @@ The project is organized into several key modules, each implementing specific st
 - **SEC EDGAR Integration**: Automated document fetching and indexing pipeline for SEC filings (10-K, 10-Q, 8-K forms)
 - **Financial Domain Optimization**: Domain-specific prompt engineering and embedding strategies for financial terminology
 - **FastAPI Backend**: Production-ready RESTful API with OpenAPI documentation, authentication, and rate limiting
-- **Document Management**: Comprehensive UI for managing indexed documents with search, filtering, and deletion
+- **Document Management**: Comprehensive UI for managing indexed documents with search, filtering, deletion, statistics, and version tracking
 - **Conversation Memory**: Multi-turn conversations with context preservation and LangChain memory integration
 - **Financial Sentiment Analysis**: Automatic sentiment analysis for all documents using FinBERT, TextBlob, and VADER with sentiment-aware query filtering
+- **Advanced Query Features**: Boolean operators (AND, OR, NOT), date range filtering, document type filtering, ticker filtering, and metadata-based filtering
+- **Export and Sharing**: Export conversations to PDF, Word, CSV, Markdown formats with shareable links and link shortening
+- **Frontend-Backend Separation**: Streamlit frontend integrated with FastAPI backend via HTTP API client for proper architecture separation
 
 ### Advanced RAG Techniques
 - **Hybrid Search**: Combines semantic vector search with BM25 keyword matching for improved retrieval precision
@@ -219,29 +226,60 @@ The project is organized into several key modules, each implementing specific st
 │   │   │   ├── edgar_fetcher.py      # SEC EDGAR API integration
 │   │   │   ├── yfinance_fetcher.py   # Stock data integration
 │   │   │   ├── transcript_fetcher.py  # Earnings call transcripts
+│   │   │   ├── transcript_parser.py  # Transcript parsing utilities
 │   │   │   ├── news_fetcher.py        # Financial news aggregation
+│   │   │   ├── news_scraper.py        # Web scraping for news articles
+│   │   │   ├── news_summarizer.py     # LLM-based news article summarization
+│   │   │   ├── rss_parser.py          # RSS feed parser
 │   │   │   ├── economic_calendar_fetcher.py # Economic calendar
 │   │   │   ├── fred_fetcher.py       # FRED API integration
 │   │   │   ├── imf_fetcher.py        # IMF Data Portal integration
 │   │   │   ├── world_bank_fetcher.py  # World Bank API integration
 │   │   │   ├── central_bank_fetcher.py # Central bank data
 │   │   │   ├── sentiment_analyzer.py # Financial sentiment analysis
-│   │   │   └── pipeline.py           # End-to-end ingestion orchestration
+│   │   │   ├── pipeline.py           # End-to-end ingestion orchestration
+│   │   │   └── processors/           # Specialized data source processors
+│   │   │       ├── base_processor.py  # Base class with common functionality
+│   │   │       ├── document_processor.py
+│   │   │       ├── stock_processor.py
+│   │   │       ├── transcript_processor.py
+│   │   │       ├── news_processor.py
+│   │   │       ├── economic_data_processor.py
+│   │   │       └── alternative_data_processor.py
 │   │   ├── rag/                # RAG chain implementation
 │   │   │   ├── chain.py              # LCEL-based RAG chain with streaming
 │   │   │   ├── llm_factory.py        # Multi-provider LLM abstraction
 │   │   │   ├── embedding_factory.py  # Multi-provider embedding abstraction
 │   │   │   ├── prompt_engineering.py # Financial domain prompts
 │   │   │   ├── query_refinement.py   # Query expansion and refinement
-│   │   │   └── retrieval_optimizer.py # Hybrid search and reranking
+│   │   │   ├── query_parser.py       # Advanced query parsing (Boolean operators, filters)
+│   │   │   ├── filter_builder.py     # ChromaDB filter builder for metadata filtering
+│   │   │   ├── retrieval_optimizer.py # Hybrid search and reranking
+│   │   │   └── embedding_ab_test.py  # A/B testing framework for embeddings
 │   │   ├── ui/                 # Streamlit frontend
-│   │   │   ├── app.py                # Interactive chat interface
-│   │   │   └── document_management.py # Document management UI
+│   │   │   ├── app.py                # Main Streamlit application
+│   │   │   ├── chat_interface.py     # Chat interface component
+│   │   │   ├── document_management.py # Document management UI
+│   │   │   ├── document_list.py      # Document listing component
+│   │   │   ├── document_search.py    # Document search and filter component
+│   │   │   ├── document_stats.py     # Document statistics component
+│   │   │   ├── api_client.py         # FastAPI HTTP client wrapper
+│   │   │   ├── app_helpers.py        # UI helper functions
+│   │   │   └── app_init.py           # Application initialization utilities
+│   │   ├── alerts/             # News alert system
+│   │   │   ├── alert_rules.py        # Alert rule management
+│   │   │   ├── news_alerts.py        # News alert system
+│   │   │   └── notifications.py       # Email notification service
+│   │   ├── services/           # Background services
+│   │   │   └── news_monitor.py       # Automated news monitoring service
+│   │   ├── analysis/           # Analysis modules
+│   │   │   └── news_trends.py        # News trend analysis
 │   │   ├── utils/              # Configuration and utilities
 │   │   │   ├── config.py            # Pydantic-based configuration
-│   │   │   ├── conversation_export.py # Conversation export utilities
+│   │   │   ├── conversation_export.py # Conversation export utilities (PDF, Word, CSV, Markdown)
 │   │   │   ├── conversation_memory.py # Conversation state management
 │   │   │   ├── document_manager.py   # Document management utilities
+│   │   │   ├── sharing.py            # Shareable links and link shortening
 │   │   │   ├── health.py            # Health check utilities
 │   │   │   ├── logger.py            # Structured logging
 │   │   │   └── metrics.py           # Prometheus metrics
@@ -270,6 +308,9 @@ The project is organized into several key modules, each implementing specific st
 │   │   ├── fetch_stock_data.py       # Stock data fetching
 │   │   ├── fetch_transcripts.py     # Earnings call transcripts
 │   │   ├── fetch_news.py             # News aggregation
+│   │   ├── summarize_news.py         # News article summarization
+│   │   ├── analyze_news_trends.py    # News trend analysis
+│   │   ├── start_news_monitor.py     # Automated news monitoring service
 │   │   ├── fetch_economic_calendar.py # Economic calendar
 │   │   ├── fetch_fred_data.py        # FRED API data
 │   │   ├── fetch_imf_data.py         # IMF data
@@ -346,15 +387,21 @@ The project is organized into several key modules, each implementing specific st
 - ✅ Earnings call transcripts integration
 - ✅ Financial news aggregation with RSS feeds and web scraping
 - ✅ Central bank data integration (FOMC statements, minutes, press conferences)
-- ✅ Document management UI with search, filtering, and deletion
+- ✅ Document management UI with search, filtering, deletion, statistics, and version tracking
 - ✅ RAG optimization (hybrid search, reranking, query refinement)
+- ✅ Advanced query features (Boolean operators, date filtering, metadata filtering, ticker filtering)
+- ✅ Export and sharing functionality (PDF, Word, CSV, Markdown export with shareable links)
+- ✅ Streamlit frontend API integration (proper frontend-backend separation)
+- ✅ News article summarization (LLM-based automatic summarization)
+- ✅ News trend analysis (trending topics, tickers, and patterns over time)
+- ✅ Automated news monitoring (continuous background service)
+- ✅ News alert system (user-configurable alerts with email notifications)
 
 ### Planned (Future Enhancements)
-- ✅ News article summarization
-- ✅ News trend analysis
-- ✅ Automated news monitoring
-- 📋 News alert system
 - 📋 Additional performance optimizations
+- 📋 Enhanced visualization and reporting features
+- 📋 Multi-user support and authentication
+- 📋 Advanced analytics and ML-based predictions
 
 See [Phase 2 PRD](project/docs/prd-phase2.md) for detailed planning.
 
