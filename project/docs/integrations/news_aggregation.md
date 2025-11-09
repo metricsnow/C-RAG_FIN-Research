@@ -304,10 +304,14 @@ Ticker symbols are automatically extracted from article titles and content:
    - Error handling and graceful degradation
 
 5. **Pipeline Integration** (`app/ingestion/pipeline.py`):
-   - `process_news()` method for news ingestion
+   - `process_news()` method delegates to `NewsProcessor`
    - Full workflow: fetch → parse → summarize → chunk → embed → store
    - Error handling and metrics tracking
    - Automatic summarization integration
+   - **NewsProcessor** (`app/ingestion/processors/news_processor.py`):
+     - Specialized processor for news article ingestion
+     - Inherits from `BaseProcessor` for common functionality
+     - Integrates with news alert system for automatic notifications
 
 6. **News Monitor** (`app/services/news_monitor.py`) (TASK-048) ✅:
    - Automated background service for continuous news monitoring

@@ -21,6 +21,39 @@ Ingestion Modules
    :members:
    :show-inheritance:
 
+Ingestion Processors
+-------------------
+
+The ingestion pipeline uses a modular processor architecture where each data source type has its own specialized processor class.
+
+.. automodule:: app.ingestion.processors.base_processor
+   :members:
+   :show-inheritance:
+
+.. automodule:: app.ingestion.processors.document_processor
+   :members:
+   :show-inheritance:
+
+.. automodule:: app.ingestion.processors.stock_processor
+   :members:
+   :show-inheritance:
+
+.. automodule:: app.ingestion.processors.transcript_processor
+   :members:
+   :show-inheritance:
+
+.. automodule:: app.ingestion.processors.news_processor
+   :members:
+   :show-inheritance:
+
+.. automodule:: app.ingestion.processors.economic_data_processor
+   :members:
+   :show-inheritance:
+
+.. automodule:: app.ingestion.processors.alternative_data_processor
+   :members:
+   :show-inheritance:
+
 RAG Modules
 -----------
 

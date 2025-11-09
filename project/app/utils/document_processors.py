@@ -9,13 +9,9 @@ from typing import List
 
 from langchain_core.documents import Document
 
-from app.rag.embedding_factory import EmbeddingError, EmbeddingGenerator
+from app.rag.embedding_factory import EmbeddingGenerator
 from app.utils.logger import get_logger
-from app.utils.metrics import (
-    document_chunks_created,
-    track_error,
-    track_success,
-)
+from app.utils.metrics import document_chunks_created
 from app.vector_db import ChromaStore, ChromaStoreError
 
 logger = get_logger(__name__)
@@ -81,14 +77,12 @@ def generate_and_store_embeddings(
             logger.info(
                 f"Successfully stored {len(ids)} {source_name} chunks in ChromaDB"
             )
-            track_success(document_chunks_created)
             return ids
         except ChromaStoreError as e:
             logger.error(f"ChromaDB storage failed for {source_name}: {str(e)}")
-            track_error(document_chunks_created)
             raise
     else:
-        logger.debug(f"Skipping ChromaDB storage for {source_name} (store_embeddings=False)")
-        track_success(document_chunks_created)
+        logger.debug(
+            f"Skipping ChromaDB storage for {source_name} (store_embeddings=False)"
+        )
         return [f"chunk_{i}" for i in range(len(chunks))]
-
