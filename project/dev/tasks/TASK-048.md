@@ -7,7 +7,7 @@
 | **Task ID** | TASK-048 |
 | **Task Name** | Automated News Monitoring |
 | **Priority** | Low |
-| **Status** | Waiting |
+| **Status** | Done |
 | **Impact** | Low |
 | **Created** | 2025-01-27 |
 | **Related PRD** | Phase 2 - P2-F5: Enhanced Data Sources - Financial Fundamentals |
@@ -88,23 +88,23 @@ Implement automated news monitoring service that continuously monitors RSS feeds
 
 ### Must Have
 
-- [ ] Monitoring service functional
-- [ ] Continuous RSS feed polling
-- [ ] Automatic article detection and ingestion
-- [ ] Deduplication of articles
-- [ ] Configurable monitoring intervals
-- [ ] Service start/stop/restart capabilities
-- [ ] Error handling and recovery
-- [ ] Logging and monitoring
-- [ ] Unit tests for monitoring service
-- [ ] Integration tests for full workflow
+- [x] Monitoring service functional
+- [x] Continuous RSS feed polling
+- [x] Automatic article detection and ingestion
+- [x] Deduplication of articles
+- [x] Configurable monitoring intervals
+- [x] Service start/stop/restart capabilities
+- [x] Error handling and recovery
+- [x] Logging and monitoring
+- [x] Unit tests for monitoring service
+- [x] Integration tests for full workflow
 
 ### Should Have
 
-- [ ] Health check endpoints
-- [ ] Monitoring statistics/metrics
-- [ ] Configurable filter criteria
-- [ ] Multiple feed support
+- [x] Health check endpoints
+- [x] Monitoring statistics/metrics
+- [x] Configurable filter criteria
+- [x] Multiple feed support
 
 ### Nice to Have
 
@@ -239,6 +239,68 @@ Implement automated news monitoring service that continuously monitors RSS feeds
 - Enables automated news collection
 - Can be extended with alerting (TASK-049)
 - Optional feature - manual news fetching still works
+
+---
+
+## Implementation Summary
+
+**Completed**: 2025-01-27
+
+### Implementation Details
+
+**Files Created:**
+- `app/services/news_monitor.py` - Complete NewsMonitor service implementation (446 lines)
+- `scripts/start_news_monitor.py` - Service startup script with signal handling
+- `app/services/__init__.py` - Services module initialization
+
+**Files Modified:**
+- `app/utils/config.py` - Added news monitoring configuration options:
+  - `news_monitor_enabled` - Enable/disable monitoring
+  - `news_monitor_poll_interval_minutes` - Polling interval (5-1440 minutes)
+  - `news_monitor_feeds` - Comma-separated RSS feed URLs
+  - `news_monitor_enable_scraping` - Enable full content scraping
+  - `news_monitor_filter_tickers` - Ticker filter
+  - `news_monitor_filter_keywords` - Keyword filter
+  - `news_monitor_filter_categories` - Category filter
+
+**Test Coverage:**
+- Unit tests: `tests/test_news_monitor.py` - 16 tests, all passing
+- Integration tests: `tests/test_news_monitor_integration.py` - 6 tests, all passing
+- Total: 22 tests passing
+- Code coverage: 74% for news_monitor.py module
+
+**Key Features Implemented:**
+1. ✅ APScheduler-based background monitoring service
+2. ✅ Configurable RSS feed polling (default: 30 minutes)
+3. ✅ Automatic article detection and ingestion
+4. ✅ Dual deduplication (in-memory cache + ChromaDB check)
+5. ✅ Configurable filtering (tickers, keywords, categories)
+6. ✅ Service lifecycle management (start/stop/pause/resume)
+7. ✅ Comprehensive error handling and recovery
+8. ✅ Statistics tracking (polls, articles processed/ingested, errors)
+9. ✅ Health check method
+10. ✅ Graceful shutdown with signal handling
+
+**Architecture:**
+- Uses APScheduler for reliable background task scheduling
+- Integrates with existing IngestionPipeline for article processing
+- Uses ChromaStore for deduplication checks
+- Thread-safe implementation with proper state management
+- Comprehensive logging throughout
+
+**Usage:**
+```bash
+# Start monitoring service
+python scripts/start_news_monitor.py --feeds https://example.com/feed1 --interval 30
+
+# With filters
+python scripts/start_news_monitor.py \
+  --feeds https://example.com/feed1 \
+  --filter-tickers AAPL MSFT \
+  --filter-keywords earnings revenue
+```
+
+**Status**: ✅ **COMPLETE** - All Must Have and Should Have criteria met.
 
 ---
 

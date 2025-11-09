@@ -26,7 +26,7 @@ A production-ready RAG (Retrieval-Augmented Generation) system for semantic sear
 - **Flexible LLM Deployment**: Choose between local Ollama (privacy-first) or OpenAI (gpt-4o-mini) for inference
 - **Citation Tracking**: Automatic source attribution with document references for every answer
 - **SEC EDGAR Integration**: Automated fetching and indexing of SEC filings (10-K, 10-Q, 8-K forms)
-- **Financial News Aggregation**: RSS feed parsing and web scraping for financial news (Reuters, CNBC, Bloomberg, etc.) with automatic sentiment analysis, LLM-based article summarization, trend analysis for tickers, topics, and volume patterns, and automated continuous monitoring
+- **Financial News Aggregation**: RSS feed parsing and web scraping for financial news (Reuters, CNBC, Bloomberg, etc.) with automatic sentiment analysis, LLM-based article summarization, trend analysis for tickers, topics, and volume patterns, and automated continuous monitoring with background service
 - **Alternative Data Sources**: Social media sentiment (Reddit, Twitter/X), ESG data (MSCI, Sustainalytics, CDP), LinkedIn jobs, supply chain data, and IPO/Form S-1 filings
 - **Financial Domain Specialization**: Optimized for financial terminology and research queries
 - **Vector Database**: Persistent ChromaDB storage for efficient similarity search
@@ -1547,6 +1547,32 @@ chunk_ids = pipeline.process_news(
     article_urls=["https://www.reuters.com/article/example"],
     store_embeddings=True
 )
+
+# Automated News Monitoring Service (TASK-048) ✅
+from app.services.news_monitor import NewsMonitor
+
+# Create and start monitoring service
+monitor = NewsMonitor(
+    feed_urls=["https://www.reuters.com/finance/rss"],
+    poll_interval_minutes=30,
+    filter_tickers=["AAPL", "MSFT"],  # Optional
+    filter_keywords=["earnings", "revenue"]  # Optional
+)
+
+monitor.start()  # Runs in background, performs initial poll immediately
+
+# Check statistics
+stats = monitor.get_stats()
+print(f"Articles ingested: {stats['total_articles_ingested']}")
+
+# Health check
+health = monitor.health_check()
+print(f"Service running: {health['service_running']}")
+
+# Pause/resume/stop
+monitor.pause()
+monitor.resume()
+monitor.stop()
 ```
 
 **Features**:

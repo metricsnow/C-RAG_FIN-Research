@@ -446,8 +446,9 @@ NEWS_MONITOR_FILTER_CATEGORIES=earnings,markets
 3. Check filter criteria aren't too restrictive
 4. Review monitoring statistics: `monitor.get_stats()`
 5. Check health status: `monitor.health_check()`
-4. Review error logs for specific issues
-5. Use RSS feeds as fallback
+6. Review error logs for specific issues
+7. Use RSS feeds as fallback
+8. Verify service is not paused: `monitor.is_paused`
 
 ### Rate Limiting Issues
 
@@ -654,6 +655,8 @@ For detailed documentation, see [News Trend Analysis Integration](news_trend_ana
 - **Service Management**: Start/stop/pause/resume capabilities
 - **Health Monitoring**: Health checks and statistics tracking
 - **Error Recovery**: Graceful error handling with retry logic
+- **Signal Handling**: Graceful shutdown on SIGINT/SIGTERM
+- **Statistics Tracking**: Comprehensive metrics for monitoring and debugging
 
 ### Quick Start
 
@@ -665,9 +668,222 @@ python scripts/start_news_monitor.py
 python scripts/start_news_monitor.py \
   --feeds https://www.reuters.com/finance/rss \
   --interval 15
+
+# Start with filters (only monitor specific tickers/keywords)
+python scripts/start_news_monitor.py \
+  --feeds https://www.reuters.com/finance/rss \
+  --filter-tickers AAPL MSFT GOOGL \
+  --filter-keywords earnings revenue
+
+# Disable full content scraping
+python scripts/start_news_monitor.py \
+  --feeds https://www.reuters.com/finance/rss \
+  --no-scraping
+
+# Use different ChromaDB collection
+python scripts/start_news_monitor.py \
+  --feeds https://www.reuters.com/finance/rss \
+  --collection news
 ```
 
-For detailed documentation, see the [Automated News Monitoring](#automated-news-monitoring-task-048) section above.
+**Note**: The monitoring service runs continuously in the background. Press Ctrl+C to stop gracefully.
+
+### Programmatic Usage
+
+```python
+from app.services.news_monitor import NewsMonitor, NewsMonitorError
+
+# Create monitor instance
+monitor = NewsMonitor(
+    feed_urls=[
+        "https://www.reuters.com/finance/rss",
+        "https://www.cnbc.com/id/100003114/device/rss/rss.html"
+    ],
+    poll_interval_minutes=30,
+    collection_name="documents",
+    enable_scraping=True,
+    filter_tickers=["AAPL", "MSFT"],  # Optional
+    filter_keywords=["earnings", "revenue"],  # Optional
+    filter_categories=["earnings", "markets"]  # Optional
+)
+
+# Start monitoring service
+try:
+    monitor.start()
+    print("Monitoring service started")
+
+    # Service runs in background
+    # You can check status, pause, resume, etc.
+
+    # Get statistics
+    stats = monitor.get_stats()
+    print(f"Total polls: {stats['total_polls']}")
+    print(f"Articles ingested: {stats['total_articles_ingested']}")
+
+    # Health check
+    health = monitor.health_check()
+    print(f"Service running: {health['service_running']}")
+
+    # Pause monitoring (scheduler continues, polls skipped)
+    monitor.pause()
+
+    # Resume monitoring
+    monitor.resume()
+
+    # Stop monitoring
+    monitor.stop()
+
+except NewsMonitorError as e:
+    print(f"Error: {e}")
+```
+
+### Service Management
+
+The monitoring service provides full lifecycle management:
+
+```python
+# Start service
+monitor.start()  # Performs initial poll immediately
+
+# Pause monitoring (scheduler continues, but polls are skipped)
+monitor.pause()
+
+# Resume monitoring
+monitor.resume()
+
+# Stop service (shuts down scheduler)
+monitor.stop()
+```
+
+### Statistics and Monitoring
+
+The service tracks comprehensive statistics:
+
+```python
+stats = monitor.get_stats()
+
+# Available statistics:
+# - total_polls: Number of feed polls completed
+# - total_articles_processed: Total articles processed
+# - total_articles_ingested: Total articles successfully ingested
+# - total_errors: Number of errors encountered
+# - last_poll_time: Timestamp of last poll
+# - last_poll_success: Whether last poll was successful
+# - start_time: Service start timestamp
+# - uptime_seconds: Service uptime in seconds
+# - is_running: Whether service is running
+# - is_paused: Whether service is paused
+# - feed_count: Number of feeds being monitored
+# - processed_urls_count: Number of URLs in deduplication cache
+```
+
+### Health Checks
+
+Monitor service health:
+
+```python
+health = monitor.health_check()
+
+# Returns dictionary with:
+# - service_running: Whether service is running
+# - scheduler_running: Whether scheduler is active
+# - pipeline_available: Whether ingestion pipeline is available
+# - chroma_store_available: Whether ChromaDB store is available
+# - feeds_configured: Whether feeds are configured
+```
+
+### Configuration
+
+Configure via environment variables in `.env`:
+
+```bash
+# Enable automated news monitoring
+NEWS_MONITOR_ENABLED=true
+
+# Polling interval in minutes (5-1440, default: 30)
+NEWS_MONITOR_POLL_INTERVAL_MINUTES=30
+
+# RSS feed URLs (comma-separated)
+NEWS_MONITOR_FEEDS=https://www.reuters.com/finance/rss,https://www.cnbc.com/id/100003114/device/rss/rss.html
+
+# Enable full content scraping (default: true)
+NEWS_MONITOR_ENABLE_SCRAPING=true
+
+# Filter by ticker symbols (comma-separated, optional)
+NEWS_MONITOR_FILTER_TICKERS=AAPL,MSFT,GOOGL
+
+# Filter by keywords (comma-separated, optional)
+NEWS_MONITOR_FILTER_KEYWORDS=earnings,revenue,profit
+
+# Filter by categories (comma-separated, optional)
+NEWS_MONITOR_FILTER_CATEGORIES=earnings,markets
+```
+
+### Architecture
+
+The monitoring service uses:
+
+- **APScheduler**: Reliable background task scheduling with interval triggers
+- **IngestionPipeline**: Existing pipeline for article processing
+- **ChromaStore**: For deduplication checks against existing articles
+- **Thread-safe Design**: Proper state management for concurrent operations
+
+### Deduplication Strategy
+
+The service uses a two-tier deduplication approach:
+
+1. **In-Memory Cache**: Fast lookup of recently processed URLs
+2. **ChromaDB Lookup**: Persistent check against all stored articles
+
+This ensures:
+- Fast processing of new articles
+- No duplicate ingestion
+- Robust handling of service restarts
+
+### Filtering
+
+Apply filters before ingestion to reduce processing overhead:
+
+- **Ticker Filter**: Only process articles mentioning specified tickers
+- **Keyword Filter**: Only process articles containing specified keywords
+- **Category Filter**: Only process articles in specified categories
+
+Filters use AND logic - all specified filters must match.
+
+### Error Handling
+
+The service includes comprehensive error handling:
+
+- **Feed Errors**: Individual feed failures don't stop the service
+- **Ingestion Errors**: Article ingestion failures are logged but don't stop polling
+- **Recovery**: Service continues running after errors
+- **Statistics**: Error counts tracked in statistics
+
+### Best Practices
+
+1. **Polling Intervals**:
+   - Default 30 minutes is reasonable for most use cases
+   - Shorter intervals (5-15 min) for time-sensitive news
+   - Longer intervals (60+ min) to reduce resource usage
+
+2. **Filtering**:
+   - Use filters to reduce processing overhead
+   - Start broad, then narrow based on needs
+   - Monitor statistics to optimize filter criteria
+
+3. **Resource Management**:
+   - Monitor CPU and memory usage for long-running services
+   - Consider running as a systemd service for production
+   - Use pause/resume for maintenance windows
+
+4. **Deduplication**:
+   - In-memory cache grows over time (cleared on restart)
+   - ChromaDB lookup ensures no duplicates across restarts
+   - Monitor `processed_urls_count` in statistics
+
+### Troubleshooting
+
+See the [Troubleshooting](#troubleshooting) section below for common issues and solutions.
 
 ## Future Enhancements
 
@@ -687,5 +903,5 @@ See individual task files for details.
 ---
 
 **Last Updated**: 2025-01-27
-**Tasks**: TASK-034 (News Aggregation), TASK-046 (News Summarization), TASK-047 (News Trend Analysis), TASK-048 (Automated News Monitoring)
+**Tasks**: TASK-034 (News Aggregation) ✅, TASK-046 (News Summarization) ✅, TASK-047 (News Trend Analysis) ✅, TASK-048 (Automated News Monitoring) ✅
 **Status**: Complete
