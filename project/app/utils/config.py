@@ -682,6 +682,52 @@ class Config(BaseSettings):
         description="Comma-separated list of categories to filter (None = all)",
     )
 
+    # News Alert System Configuration (TASK-049)
+    news_alerts_enabled: bool = Field(
+        default=True,
+        alias="NEWS_ALERTS_ENABLED",
+        description="Enable news alert system for matching articles against alert rules",
+    )
+    news_alerts_storage_path: str = Field(
+        default="./data/alerts",
+        alias="NEWS_ALERTS_STORAGE_PATH",
+        description="Path to alert rules storage directory",
+    )
+    news_alerts_smtp_server: Optional[str] = Field(
+        default=None,
+        alias="NEWS_ALERTS_SMTP_SERVER",
+        description="SMTP server address for email notifications (e.g., smtp.gmail.com)",
+    )
+    news_alerts_smtp_port: int = Field(
+        default=587,
+        ge=1,
+        le=65535,
+        alias="NEWS_ALERTS_SMTP_PORT",
+        description="SMTP server port (default: 587 for TLS)",
+    )
+    news_alerts_smtp_username: Optional[str] = Field(
+        default=None,
+        alias="NEWS_ALERTS_SMTP_USERNAME",
+        description="SMTP username for authentication",
+    )
+    news_alerts_smtp_password: Optional[str] = Field(
+        default=None,
+        alias="NEWS_ALERTS_SMTP_PASSWORD",
+        description="SMTP password for authentication",
+    )
+    news_alerts_from_email: Optional[str] = Field(
+        default=None,
+        alias="NEWS_ALERTS_FROM_EMAIL",
+        description="From email address for notifications",
+    )
+    news_alerts_rate_limit_minutes: int = Field(
+        default=15,
+        ge=1,
+        le=1440,
+        alias="NEWS_ALERTS_RATE_LIMIT_MINUTES",
+        description="Rate limit in minutes between notifications to same recipient (default: 15)",
+    )
+
     # Economic Calendar Configuration (TASK-035)
     economic_calendar_enabled: bool = Field(
         default=True,

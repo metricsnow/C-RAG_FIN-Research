@@ -27,6 +27,7 @@ from app.ingestion.fred_fetcher import FREDFetcher, FREDFetcherError
 from app.ingestion.imf_fetcher import IMFFetcher, IMFFetcherError
 from app.ingestion.news_fetcher import NewsFetcher, NewsFetcherError
 from app.ingestion.news_summarizer import NewsSummarizer
+from app.alerts.news_alerts import NewsAlertSystem
 from app.ingestion.sentiment_analyzer import (
     SentimentAnalyzer,
     SentimentAnalyzerError,
@@ -141,6 +142,12 @@ class IngestionPipeline:
                 summarizer=self.news_summarizer,
             )
             if config.news_enabled
+            else None
+        )
+        # Initialize news alert system if enabled
+        self.news_alert_system = (
+            NewsAlertSystem()
+            if config.news_enabled and config.news_alerts_enabled
             else None
         )
         self.sentiment_analyzer = (
@@ -983,6 +990,21 @@ class IngestionPipeline:
             if not articles:
                 logger.warning("No news articles fetched")
                 return []
+
+            # Step 1.5: Check articles against alert rules (if enabled)
+            if self.news_alert_system and config.news_alerts_enabled:
+                try:
+                    logger.debug("Checking articles against alert rules")
+                    alert_results = self.news_alert_system.check_articles(articles)
+                    if alert_results:
+                        logger.info(
+                            f"Alert notifications sent for {len(alert_results)} articles"
+                        )
+                except Exception as e:
+                    # Don't fail ingestion if alert checking fails
+                    logger.warning(
+                        f"Alert checking failed (continuing with ingestion): {str(e)}"
+                    )
 
             # Step 2: Convert to Document objects
             logger.debug(f"Converting {len(articles)} articles to Document objects")

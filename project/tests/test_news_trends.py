@@ -2,12 +2,12 @@
 Unit tests for news trends analysis module.
 """
 
-import pytest
 from datetime import datetime, timedelta
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import MagicMock, Mock, patch
 
-import pandas as pd
 import numpy as np
+import pandas as pd
+import pytest
 
 from app.analysis.news_trends import NewsTrendsAnalyzer, NewsTrendsError
 from app.vector_db.chroma_store import ChromaStore, ChromaStoreError
@@ -79,9 +79,7 @@ class TestNewsTrendsAnalyzer:
         assert analyzer.chroma_store is not None
         assert isinstance(analyzer.chroma_store, ChromaStore)
 
-    def test_get_news_articles_success(
-        self, mock_chroma_store, mock_chromadb_results
-    ):
+    def test_get_news_articles_success(self, mock_chroma_store, mock_chromadb_results):
         """Test successful retrieval of news articles."""
         mock_chroma_store.collection.get.return_value = mock_chromadb_results
 
@@ -107,9 +105,7 @@ class TestNewsTrendsAnalyzer:
 
         # Should filter to articles between dates
         assert all(
-            date_from <= a["date_str"] <= date_to
-            for a in articles
-            if a.get("date_str")
+            date_from <= a["date_str"] <= date_to for a in articles if a.get("date_str")
         )
 
     def test_get_news_articles_with_limit(
@@ -178,9 +174,7 @@ class TestNewsTrendsAnalyzer:
         """Test topic trend analysis."""
         analyzer = NewsTrendsAnalyzer()
 
-        trends = analyzer.analyze_topic_trends(
-            sample_articles, period="daily", top_n=5
-        )
+        trends = analyzer.analyze_topic_trends(sample_articles, period="daily", top_n=5)
 
         assert isinstance(trends, pd.DataFrame)
         assert "period" in trends.columns
@@ -203,7 +197,9 @@ class TestNewsTrendsAnalyzer:
         analyzer = NewsTrendsAnalyzer()
 
         # Use text with repeated words to meet minimum mention requirement
-        text = "Apple Inc announced earnings revenue growth profit Apple earnings revenue"
+        text = (
+            "Apple Inc announced earnings revenue growth profit Apple earnings revenue"
+        )
         keywords = analyzer._extract_keywords(text, min_word_length=4)
 
         assert isinstance(keywords, list)
@@ -283,9 +279,7 @@ class TestNewsTrendsAnalyzer:
         assert trending == []
 
     @patch.object(NewsTrendsAnalyzer, "get_news_articles")
-    def test_generate_trend_report(
-        self, mock_get_articles, sample_articles
-    ):
+    def test_generate_trend_report(self, mock_get_articles, sample_articles):
         """Test trend report generation."""
         mock_get_articles.return_value = sample_articles
 
@@ -354,4 +348,3 @@ class TestNewsTrendsAnalyzer:
         for period in ["hourly", "daily", "weekly", "monthly"]:
             trends = analyzer.analyze_volume_trends(sample_articles, period=period)
             assert isinstance(trends, pd.DataFrame)
-

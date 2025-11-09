@@ -38,7 +38,9 @@ def format_report(report: dict) -> str:
     lines.append("=" * 80)
     lines.append("")
     lines.append(f"Period: {report.get('period', 'N/A')}")
-    lines.append(f"Date Range: {report.get('date_from', 'N/A')} to {report.get('date_to', 'N/A')}")
+    lines.append(
+        f"Date Range: {report.get('date_from', 'N/A')} to {report.get('date_to', 'N/A')}"
+    )
     lines.append(f"Total Articles: {report.get('total_articles', 0)}")
     lines.append("")
 
@@ -184,9 +186,11 @@ def main():
                 "total_articles": report["total_articles"],
                 "trending_tickers": report["trending_tickers"],
                 "trending_topics": report["trending_topics"],
-                "volume_trends": report["volume_trends"].to_dict("records")
-                if not report["volume_trends"].empty
-                else [],
+                "volume_trends": (
+                    report["volume_trends"].to_dict("records")
+                    if not report["volume_trends"].empty
+                    else []
+                ),
             }
 
             output_text = json.dumps(json_report, indent=2, default=str)
@@ -213,4 +217,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

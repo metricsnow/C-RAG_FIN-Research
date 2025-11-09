@@ -26,7 +26,7 @@ A production-ready RAG (Retrieval-Augmented Generation) system for semantic sear
 - **Flexible LLM Deployment**: Choose between local Ollama (privacy-first) or OpenAI (gpt-4o-mini) for inference
 - **Citation Tracking**: Automatic source attribution with document references for every answer
 - **SEC EDGAR Integration**: Automated fetching and indexing of SEC filings (10-K, 10-Q, 8-K forms)
-- **Financial News Aggregation**: RSS feed parsing and web scraping for financial news (Reuters, CNBC, Bloomberg, etc.) with automatic sentiment analysis, LLM-based article summarization, trend analysis for tickers, topics, and volume patterns, and automated continuous monitoring with background service
+- **Financial News Aggregation**: RSS feed parsing and web scraping for financial news (Reuters, CNBC, Bloomberg, etc.) with automatic sentiment analysis, LLM-based article summarization, trend analysis for tickers, topics, and volume patterns, automated continuous monitoring with background service, and user-configurable news alerts with email notifications
 - **Alternative Data Sources**: Social media sentiment (Reddit, Twitter/X), ESG data (MSCI, Sustainalytics, CDP), LinkedIn jobs, supply chain data, and IPO/Form S-1 filings
 - **Financial Domain Specialization**: Optimized for financial terminology and research queries
 - **Vector Database**: Persistent ChromaDB storage for efficient similarity search
@@ -143,7 +143,7 @@ A production-ready RAG (Retrieval-Augmented Generation) system for semantic sear
 - **Automated EDGAR Fetching**: Fetch SEC filings from 10+ major companies automatically
 - **Stock Data Integration**: Comprehensive stock market data via yfinance including company info, financial metrics, historical prices, dividends, earnings, and analyst recommendations
 - **Earnings Call Transcripts**: Fetch and index earnings call transcripts with speaker annotation, Q&A sections, and forward guidance extraction
-- **Financial News Aggregation**: RSS feeds and web scraping for financial news from Reuters, CNBC, Bloomberg with ticker detection, categorization, summarization, and trend analysis
+- **Financial News Aggregation**: RSS feeds and web scraping for financial news from Reuters, CNBC, Bloomberg with ticker detection, categorization, summarization, trend analysis, automated monitoring, and user-configurable alerts with email notifications
 - **Economic Calendar Integration**: Macroeconomic indicators and events via Trading Economics API
 - **FRED API Integration**: 840,000+ economic time series including interest rates, exchange rates, inflation, employment, GDP
 - **IMF and World Bank Data Integration**: Global economic data from IMF Data Portal and World Bank Open Data APIs including GDP, inflation, unemployment, trade balance for 188+ countries
@@ -505,6 +505,14 @@ The system uses environment variables loaded from `.env` file (automatically han
 | `NEWS_SUMMARIZATION_LLM_PROVIDER` | string | LLM provider for summarization (optional) | `""` | 'ollama' or 'openai' |
 | `NEWS_SUMMARIZATION_LLM_MODEL` | string | LLM model for summarization (optional) | `""` | Model name |
 | `NEWS_MONITOR_ENABLED` | boolean | Enable automated news monitoring service | `false` | true/false |
+| `NEWS_ALERTS_ENABLED` | boolean | Enable news alert system for matching articles against alert rules | `true` | true/false |
+| `NEWS_ALERTS_STORAGE_PATH` | string | Path to alert rules storage directory | `./data/alerts` | Path |
+| `NEWS_ALERTS_SMTP_SERVER` | string | SMTP server address for email notifications | `""` | e.g., smtp.gmail.com |
+| `NEWS_ALERTS_SMTP_PORT` | int | SMTP server port | `587` | 1-65535 |
+| `NEWS_ALERTS_SMTP_USERNAME` | string | SMTP username for authentication | `""` | Email/username |
+| `NEWS_ALERTS_SMTP_PASSWORD` | string | SMTP password for authentication | `""` | Password |
+| `NEWS_ALERTS_FROM_EMAIL` | string | From email address for notifications | `""` | Email address |
+| `NEWS_ALERTS_RATE_LIMIT_MINUTES` | int | Rate limit between notifications to same recipient | `15` | 1-1440 |
 | `NEWS_MONITOR_POLL_INTERVAL_MINUTES` | int | Polling interval in minutes (5-1440) | `30` | 5-1440 |
 | `NEWS_MONITOR_FEEDS` | string | Comma-separated RSS feed URLs for monitoring | `""` | URL list |
 | `NEWS_MONITOR_ENABLE_SCRAPING` | boolean | Enable full content scraping for monitored articles | `true` | true/false |
@@ -2758,7 +2766,14 @@ project/
 │   ├── ui/                 # Streamlit frontend
 │   │   └── app.py                # Main Streamlit application
 │   ├── utils/              # Utility functions
-│   │   └── config.py            # Configuration management
+│   │   ├── config.py            # Configuration management
+│   │   ├── document_processors.py # Document processing utilities
+│   │   ├── document_manager.py   # Document management utilities
+│   │   ├── conversation_memory.py # Conversation memory utilities
+│   │   ├── conversation_export.py # Conversation export utilities
+│   │   ├── sharing.py            # Sharing and link utilities
+│   │   ├── logger.py             # Logging configuration
+│   │   └── metrics.py            # Metrics and monitoring
 │   └── vector_db/          # ChromaDB integration
 │       └── chroma_store.py       # Vector database operations
 ├── data/                   # Data storage

@@ -175,7 +175,9 @@ class NewsTrendsAnalyzer:
                 # Apply date filters if provided
                 if date_from and article_date:
                     try:
-                        date_from_dt = datetime.fromisoformat(date_from.replace("Z", "+00:00"))
+                        date_from_dt = datetime.fromisoformat(
+                            date_from.replace("Z", "+00:00")
+                        )
                         if article_date < date_from_dt:
                             continue
                     except (ValueError, AttributeError):
@@ -183,7 +185,9 @@ class NewsTrendsAnalyzer:
 
                 if date_to and article_date:
                     try:
-                        date_to_dt = datetime.fromisoformat(date_to.replace("Z", "+00:00"))
+                        date_to_dt = datetime.fromisoformat(
+                            date_to.replace("Z", "+00:00")
+                        )
                         if article_date > date_to_dt:
                             continue
                     except (ValueError, AttributeError):
@@ -321,8 +325,8 @@ class NewsTrendsAnalyzer:
         )
 
         # Get top N tickers by total count
-        total_counts = ticker_counts.groupby("ticker")["count"].sum().sort_values(
-            ascending=False
+        total_counts = (
+            ticker_counts.groupby("ticker")["count"].sum().sort_values(ascending=False)
         )
         top_tickers = total_counts.head(top_n).index.tolist()
 
@@ -428,8 +432,10 @@ class NewsTrendsAnalyzer:
         )
 
         # Get top N keywords by total count
-        total_counts = keyword_counts.groupby("keyword")["count"].sum().sort_values(
-            ascending=False
+        total_counts = (
+            keyword_counts.groupby("keyword")["count"]
+            .sum()
+            .sort_values(ascending=False)
         )
         top_keywords = total_counts.head(top_n).index.tolist()
 
@@ -446,9 +452,7 @@ class NewsTrendsAnalyzer:
 
         return result
 
-    def _extract_keywords(
-        self, text: str, min_word_length: int = 4
-    ) -> List[str]:
+    def _extract_keywords(self, text: str, min_word_length: int = 4) -> List[str]:
         """
         Extract keywords from text.
 
@@ -759,4 +763,3 @@ class NewsTrendsAnalyzer:
         logger.info(f"Generated trend report: {len(articles)} articles analyzed")
 
         return report
-

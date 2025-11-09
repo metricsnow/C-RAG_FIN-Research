@@ -4,8 +4,9 @@ Integration tests for news trends analysis.
 Tests news trend analysis with real ChromaDB data and full workflow.
 """
 
-import pytest
 from datetime import datetime, timedelta
+
+import pytest
 from langchain_core.documents import Document
 
 from app.analysis.news_trends import NewsTrendsAnalyzer, NewsTrendsError
@@ -36,7 +37,7 @@ def sample_news_articles_for_trends(embedding_generator):
     # Create articles over 30 days with varying tickers and topics
     for i in range(30):
         date = base_date + timedelta(days=i, hours=i % 24)
-        
+
         # Vary tickers: AAPL more frequent in first half, MSFT in second half
         if i < 15:
             tickers = "AAPL, MSFT" if i % 3 == 0 else "AAPL"
@@ -45,7 +46,9 @@ def sample_news_articles_for_trends(embedding_generator):
             tickers = "MSFT, GOOGL" if i % 3 == 0 else "MSFT"
             content = f"Microsoft Corporation announced cloud services revenue growth. "
 
-        content += f"Financial markets reacted positively to the news. Stock prices increased."
+        content += (
+            f"Financial markets reacted positively to the news. Stock prices increased."
+        )
 
         metadata = {
             "type": "news_article",
@@ -83,9 +86,7 @@ def populated_trends_store(
 class TestNewsTrendsIntegration:
     """Integration tests for news trends analysis with real ChromaDB data."""
 
-    def test_get_news_articles_from_chromadb(
-        self, populated_trends_store
-    ):
+    def test_get_news_articles_from_chromadb(self, populated_trends_store):
         """Test retrieving news articles from real ChromaDB."""
         analyzer = NewsTrendsAnalyzer(chroma_store=populated_trends_store)
 
@@ -99,9 +100,7 @@ class TestNewsTrendsIntegration:
             a["metadata"].get("type") == "news_article" for a in articles
         ), "All articles should be news_article type"
 
-    def test_get_news_articles_with_date_filter(
-        self, populated_trends_store
-    ):
+    def test_get_news_articles_with_date_filter(self, populated_trends_store):
         """Test retrieving news articles with date range filter."""
         analyzer = NewsTrendsAnalyzer(chroma_store=populated_trends_store)
 
@@ -115,14 +114,10 @@ class TestNewsTrendsIntegration:
         assert len(articles) >= 9, "Should retrieve at least 9 articles in date range"
         assert len(articles) <= 10, "Should retrieve at most 10 articles in date range"
         assert all(
-            date_from <= a["date_str"] <= date_to
-            for a in articles
-            if a.get("date_str")
+            date_from <= a["date_str"] <= date_to for a in articles if a.get("date_str")
         ), "All articles should be within date range"
 
-    def test_analyze_ticker_trends_integration(
-        self, populated_trends_store
-    ):
+    def test_analyze_ticker_trends_integration(self, populated_trends_store):
         """Test ticker trend analysis with real data."""
         analyzer = NewsTrendsAnalyzer(chroma_store=populated_trends_store)
 
@@ -130,11 +125,11 @@ class TestNewsTrendsIntegration:
         articles = analyzer.get_news_articles()
 
         # Analyze trends
-        trends = analyzer.analyze_ticker_trends(
-            articles, period="daily", top_n=5
-        )
+        trends = analyzer.analyze_ticker_trends(articles, period="daily", top_n=5)
 
-        assert isinstance(trends, type(analyzer.analyze_ticker_trends([], period="daily"))), "Should return DataFrame"
+        assert isinstance(
+            trends, type(analyzer.analyze_ticker_trends([], period="daily"))
+        ), "Should return DataFrame"
         assert len(trends) > 0, "Should have trend data"
         assert "period" in trends.columns, "Should have period column"
         assert "ticker" in trends.columns, "Should have ticker column"
@@ -145,9 +140,7 @@ class TestNewsTrendsIntegration:
         tickers = trends["ticker"].unique()
         assert "AAPL" in tickers, "AAPL should appear in trends"
 
-    def test_analyze_topic_trends_integration(
-        self, populated_trends_store
-    ):
+    def test_analyze_topic_trends_integration(self, populated_trends_store):
         """Test topic trend analysis with real data."""
         analyzer = NewsTrendsAnalyzer(chroma_store=populated_trends_store)
 
@@ -155,11 +148,11 @@ class TestNewsTrendsIntegration:
         articles = analyzer.get_news_articles()
 
         # Analyze trends
-        trends = analyzer.analyze_topic_trends(
-            articles, period="daily", top_n=5
-        )
+        trends = analyzer.analyze_topic_trends(articles, period="daily", top_n=5)
 
-        assert isinstance(trends, type(analyzer.analyze_topic_trends([], period="daily"))), "Should return DataFrame"
+        assert isinstance(
+            trends, type(analyzer.analyze_topic_trends([], period="daily"))
+        ), "Should return DataFrame"
         assert len(trends) > 0, "Should have trend data"
         assert "period" in trends.columns, "Should have period column"
         assert "keyword" in trends.columns, "Should have keyword column"
@@ -172,9 +165,7 @@ class TestNewsTrendsIntegration:
             for kw in keywords
         ), "Should contain financial keywords"
 
-    def test_analyze_volume_trends_integration(
-        self, populated_trends_store
-    ):
+    def test_analyze_volume_trends_integration(self, populated_trends_store):
         """Test volume trend analysis with real data."""
         analyzer = NewsTrendsAnalyzer(chroma_store=populated_trends_store)
 
@@ -184,7 +175,9 @@ class TestNewsTrendsIntegration:
         # Analyze volume trends
         trends = analyzer.analyze_volume_trends(articles, period="daily")
 
-        assert isinstance(trends, type(analyzer.analyze_volume_trends([], period="daily"))), "Should return DataFrame"
+        assert isinstance(
+            trends, type(analyzer.analyze_volume_trends([], period="daily"))
+        ), "Should return DataFrame"
         assert len(trends) > 0, "Should have volume trend data"
         assert "period" in trends.columns, "Should have period column"
         assert "volume" in trends.columns, "Should have volume column"
@@ -194,9 +187,7 @@ class TestNewsTrendsIntegration:
         total_volume = trends["volume"].sum()
         assert total_volume == len(articles), "Total volume should match article count"
 
-    def test_get_trending_tickers_integration(
-        self, populated_trends_store
-    ):
+    def test_get_trending_tickers_integration(self, populated_trends_store):
         """Test getting trending tickers with real data."""
         analyzer = NewsTrendsAnalyzer(chroma_store=populated_trends_store)
 
@@ -204,24 +195,26 @@ class TestNewsTrendsIntegration:
         articles = analyzer.get_news_articles()
 
         # Get trending tickers
-        trending = analyzer.get_trending_tickers(
-            articles, period="daily", top_n=5
-        )
+        trending = analyzer.get_trending_tickers(articles, period="daily", top_n=5)
 
         assert isinstance(trending, list), "Should return list"
         assert len(trending) > 0, "Should have trending tickers"
         assert all("ticker" in t for t in trending), "All items should have ticker"
-        assert all("total_count" in t for t in trending), "All items should have total_count"
-        assert all("recent_count" in t for t in trending), "All items should have recent_count"
-        assert all("growth_rate" in t for t in trending), "All items should have growth_rate"
+        assert all(
+            "total_count" in t for t in trending
+        ), "All items should have total_count"
+        assert all(
+            "recent_count" in t for t in trending
+        ), "All items should have recent_count"
+        assert all(
+            "growth_rate" in t for t in trending
+        ), "All items should have growth_rate"
 
         # Verify AAPL and MSFT appear
         tickers = [t["ticker"] for t in trending]
         assert "AAPL" in tickers or "MSFT" in tickers, "Should include test tickers"
 
-    def test_get_trending_topics_integration(
-        self, populated_trends_store
-    ):
+    def test_get_trending_topics_integration(self, populated_trends_store):
         """Test getting trending topics with real data."""
         analyzer = NewsTrendsAnalyzer(chroma_store=populated_trends_store)
 
@@ -229,20 +222,22 @@ class TestNewsTrendsIntegration:
         articles = analyzer.get_news_articles()
 
         # Get trending topics
-        trending = analyzer.get_trending_topics(
-            articles, period="daily", top_n=5
-        )
+        trending = analyzer.get_trending_topics(articles, period="daily", top_n=5)
 
         assert isinstance(trending, list), "Should return list"
         assert len(trending) > 0, "Should have trending topics"
         assert all("keyword" in t for t in trending), "All items should have keyword"
-        assert all("total_count" in t for t in trending), "All items should have total_count"
-        assert all("recent_count" in t for t in trending), "All items should have recent_count"
-        assert all("growth_rate" in t for t in trending), "All items should have growth_rate"
+        assert all(
+            "total_count" in t for t in trending
+        ), "All items should have total_count"
+        assert all(
+            "recent_count" in t for t in trending
+        ), "All items should have recent_count"
+        assert all(
+            "growth_rate" in t for t in trending
+        ), "All items should have growth_rate"
 
-    def test_generate_trend_report_integration(
-        self, populated_trends_store
-    ):
+    def test_generate_trend_report_integration(self, populated_trends_store):
         """Test generating complete trend report with real data."""
         analyzer = NewsTrendsAnalyzer(chroma_store=populated_trends_store)
 
@@ -272,9 +267,7 @@ class TestNewsTrendsIntegration:
         assert len(report["trending_tickers"]) > 0, "Should have trending tickers"
         assert len(report["trending_topics"]) > 0, "Should have trending topics"
 
-    def test_trend_analysis_different_periods_integration(
-        self, populated_trends_store
-    ):
+    def test_trend_analysis_different_periods_integration(self, populated_trends_store):
         """Test trend analysis with different time periods."""
         analyzer = NewsTrendsAnalyzer(chroma_store=populated_trends_store)
 
@@ -285,17 +278,23 @@ class TestNewsTrendsIntegration:
             ticker_trends = analyzer.analyze_ticker_trends(
                 articles, period=period, top_n=5
             )
-            assert isinstance(ticker_trends, type(analyzer.analyze_ticker_trends([], period="daily"))), f"Should return DataFrame for {period}"
+            assert isinstance(
+                ticker_trends, type(analyzer.analyze_ticker_trends([], period="daily"))
+            ), f"Should return DataFrame for {period}"
 
             # Test topic trends
             topic_trends = analyzer.analyze_topic_trends(
                 articles, period=period, top_n=5
             )
-            assert isinstance(topic_trends, type(analyzer.analyze_topic_trends([], period="daily"))), f"Should return DataFrame for {period}"
+            assert isinstance(
+                topic_trends, type(analyzer.analyze_topic_trends([], period="daily"))
+            ), f"Should return DataFrame for {period}"
 
             # Test volume trends
             volume_trends = analyzer.analyze_volume_trends(articles, period=period)
-            assert isinstance(volume_trends, type(analyzer.analyze_volume_trends([], period="daily"))), f"Should return DataFrame for {period}"
+            assert isinstance(
+                volume_trends, type(analyzer.analyze_volume_trends([], period="daily"))
+            ), f"Should return DataFrame for {period}"
 
     def test_trend_analysis_with_empty_store(self, test_trends_store):
         """Test trend analysis with empty ChromaDB store."""
@@ -321,9 +320,7 @@ class TestNewsTrendsIntegration:
         trending_topics = analyzer.get_trending_topics(articles, period="daily")
         assert trending_topics == [], "Should return empty list"
 
-    def test_trend_analysis_date_filtering_integration(
-        self, populated_trends_store
-    ):
+    def test_trend_analysis_date_filtering_integration(self, populated_trends_store):
         """Test trend analysis with date filtering."""
         analyzer = NewsTrendsAnalyzer(chroma_store=populated_trends_store)
 
@@ -348,11 +345,11 @@ class TestNewsTrendsIntegration:
             periods = trends["period"].unique()
             for period in periods:
                 if isinstance(period, datetime):
-                    assert date_from <= period.isoformat() <= date_to, "Period should be within date range"
+                    assert (
+                        date_from <= period.isoformat() <= date_to
+                    ), "Period should be within date range"
 
-    def test_trend_report_completeness_integration(
-        self, populated_trends_store
-    ):
+    def test_trend_report_completeness_integration(self, populated_trends_store):
         """Test that trend report contains all required components."""
         analyzer = NewsTrendsAnalyzer(chroma_store=populated_trends_store)
 
@@ -362,11 +359,24 @@ class TestNewsTrendsIntegration:
 
         # Verify all components are present and have data
         assert report["total_articles"] > 0, "Should have articles"
-        assert isinstance(report["ticker_trends"], type(analyzer.analyze_ticker_trends([], period="daily"))), "Should have ticker_trends DataFrame"
-        assert isinstance(report["topic_trends"], type(analyzer.analyze_topic_trends([], period="daily"))), "Should have topic_trends DataFrame"
-        assert isinstance(report["volume_trends"], type(analyzer.analyze_volume_trends([], period="daily"))), "Should have volume_trends DataFrame"
-        assert isinstance(report["trending_tickers"], list), "Should have trending_tickers list"
-        assert isinstance(report["trending_topics"], list), "Should have trending_topics list"
+        assert isinstance(
+            report["ticker_trends"],
+            type(analyzer.analyze_ticker_trends([], period="daily")),
+        ), "Should have ticker_trends DataFrame"
+        assert isinstance(
+            report["topic_trends"],
+            type(analyzer.analyze_topic_trends([], period="daily")),
+        ), "Should have topic_trends DataFrame"
+        assert isinstance(
+            report["volume_trends"],
+            type(analyzer.analyze_volume_trends([], period="daily")),
+        ), "Should have volume_trends DataFrame"
+        assert isinstance(
+            report["trending_tickers"], list
+        ), "Should have trending_tickers list"
+        assert isinstance(
+            report["trending_topics"], list
+        ), "Should have trending_topics list"
 
         # Verify trending lists have expected structure
         if report["trending_tickers"]:
@@ -382,4 +392,3 @@ class TestNewsTrendsIntegration:
             assert "total_count" in topic, "Trending topic should have total_count"
             assert "recent_count" in topic, "Trending topic should have recent_count"
             assert "growth_rate" in topic, "Trending topic should have growth_rate"
-

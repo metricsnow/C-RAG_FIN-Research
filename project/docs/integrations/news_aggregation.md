@@ -14,6 +14,7 @@ The Financial Research Assistant includes comprehensive financial news aggregati
 - **Article Summarization**: Automatic LLM-based summarization of news articles (TASK-046) ✅
 - **News Trend Analysis**: Trend analysis for tickers, topics, and volume patterns (TASK-047) ✅
 - **Automated News Monitoring**: Continuous monitoring and automatic ingestion of new articles (TASK-048) ✅
+- **News Alert System**: User-configurable alerts for articles matching specific criteria with email notifications (TASK-049) ✅
 - **Metadata Tagging**: Rich metadata including source, date, author, tickers, category, summary
 - **Deduplication**: URL-based deduplication to avoid duplicate articles
 - **Rate Limiting**: Configurable rate limits to respect source servers
@@ -318,6 +319,17 @@ Ticker symbols are automatically extracted from article titles and content:
    - Health monitoring and statistics tracking
    - Error recovery and retry logic
 
+7. **News Alert System** (`app/alerts/`) (TASK-049) ✅:
+   - User-configurable alert rules with ticker, keyword, and category criteria
+   - AND/OR logic support for flexible matching
+   - Email notification system with HTML and plain text support
+   - Rate limiting to prevent notification spam (configurable, default: 15 minutes)
+   - Persistent alert rule storage (JSON-based)
+   - Automatic article matching during news ingestion
+   - Integration with news ingestion pipeline and news monitor
+   - User-specific alert rules support
+   - Enable/disable alert rules
+
 ### Data Flow
 
 ```
@@ -336,6 +348,8 @@ News Summarizer (if enabled) ← LLM-based summarization
 LangChain Documents (with summary in metadata)
     ↓
 Ingestion Pipeline
+    ↓
+News Alert System (if enabled) ← Check articles against alert rules
     ↓
 Chunking → Embedding → ChromaDB
 ```
@@ -406,6 +420,179 @@ NEWS_MONITOR_FILTER_KEYWORDS=earnings,revenue,profit
 NEWS_MONITOR_FILTER_CATEGORIES=earnings,markets
 ```
 
+#### News Alert System Configuration (TASK-049)
+
+```bash
+# Enable news alert system
+NEWS_ALERTS_ENABLED=true
+
+# Alert rules storage directory (default: ./data/alerts)
+NEWS_ALERTS_STORAGE_PATH=./data/alerts
+
+# SMTP server configuration for email notifications
+NEWS_ALERTS_SMTP_SERVER=smtp.gmail.com
+NEWS_ALERTS_SMTP_PORT=587
+NEWS_ALERTS_SMTP_USERNAME=your_email@gmail.com
+NEWS_ALERTS_SMTP_PASSWORD=your_app_password
+NEWS_ALERTS_FROM_EMAIL=your_email@gmail.com
+
+# Rate limit between notifications to same recipient (minutes, default: 15)
+NEWS_ALERTS_RATE_LIMIT_MINUTES=15
+```
+
+### News Alert System Usage
+
+#### Creating Alert Rules
+
+```python
+from app.alerts import NewsAlertSystem
+
+# Initialize alert system
+system = NewsAlertSystem()
+
+# Create alert rule with AND logic (all criteria must match)
+rule = system.rule_manager.create_rule(
+    name="AAPL Earnings Alert",
+    criteria={
+        "tickers": ["AAPL"],
+        "keywords": ["earnings", "quarterly"],
+        "categories": ["earnings"],
+        "logic": "AND",  # All criteria must match
+    },
+    notification_method="email",
+    notification_target="user@example.com",
+)
+
+# Create alert rule with OR logic (any criterion can match)
+rule = system.rule_manager.create_rule(
+    name="Tech Stocks Alert",
+    criteria={
+        "tickers": ["AAPL", "MSFT", "GOOGL"],
+        "logic": "OR",  # Any ticker can match
+    },
+    notification_method="email",
+    notification_target="user@example.com",
+)
+```
+
+#### Managing Alert Rules
+
+```python
+# Get all rules
+all_rules = system.rule_manager.get_all_rules()
+
+# Get enabled rules only
+enabled_rules = system.rule_manager.get_all_rules(enabled_only=True)
+
+# Get rules for specific user
+user_rules = system.rule_manager.get_all_rules(user_id="user_123")
+
+# Update rule
+system.rule_manager.update_rule(
+    rule_id="rule_123",
+    name="Updated Rule Name",
+    enabled=False,
+)
+
+# Enable/disable rule
+system.rule_manager.enable_rule("rule_123")
+system.rule_manager.disable_rule("rule_123")
+
+# Delete rule
+system.rule_manager.delete_rule("rule_123")
+```
+
+#### Alert Rule Criteria
+
+Alert rules support three types of criteria:
+
+1. **Tickers**: List of ticker symbols (e.g., `["AAPL", "MSFT"]`)
+2. **Keywords**: List of keywords to search in article content (e.g., `["earnings", "revenue"]`)
+3. **Categories**: List of article categories (e.g., `["earnings", "markets"]`)
+
+**Logic Options:**
+- `"AND"`: All specified criteria must match
+- `"OR"`: At least one criterion must match
+
+**Example Criteria:**
+```python
+# Match articles about AAPL earnings (all criteria required)
+criteria = {
+    "tickers": ["AAPL"],
+    "keywords": ["earnings"],
+    "categories": ["earnings"],
+    "logic": "AND",
+}
+
+# Match articles about any tech stock (any ticker)
+criteria = {
+    "tickers": ["AAPL", "MSFT", "GOOGL", "AMZN"],
+    "logic": "OR",
+}
+
+# Match articles with earnings keyword in any category
+criteria = {
+    "keywords": ["earnings", "quarterly", "revenue"],
+    "logic": "OR",
+}
+```
+
+#### Automatic Alert Checking
+
+The alert system automatically checks articles during news ingestion:
+
+```python
+from app.ingestion.pipeline import IngestionPipeline
+
+# Articles are automatically checked against alert rules
+pipeline = IngestionPipeline()
+ids = pipeline.process_news(
+    feed_urls=["https://www.reuters.com/finance/rss"],
+    enhance_with_scraping=True,
+)
+# If articles match alert rules, notifications are sent automatically
+```
+
+#### Manual Article Checking
+
+You can also manually check articles against alert rules:
+
+```python
+# Check single article
+article = {
+    "title": "Apple Reports Strong Earnings",
+    "content": "Apple reported strong quarterly earnings...",
+    "url": "https://example.com/article",
+    "tickers": ["AAPL"],
+    "category": "earnings",
+}
+
+matches = system.check_article(article)
+# Returns list of matched rules with notification status
+
+# Check multiple articles
+articles = [article1, article2, article3]
+results = system.check_articles(articles)
+# Returns dict mapping article URLs to matched rules
+```
+
+#### Notification Rate Limiting
+
+The alert system includes rate limiting to prevent notification spam:
+
+- Default rate limit: 15 minutes between notifications to the same recipient
+- Configurable via `NEWS_ALERTS_RATE_LIMIT_MINUTES`
+- Rate limit is per recipient (email address)
+- Rate limiting can be bypassed for testing using `bypass_rate_limit=True`
+
+```python
+# Check rate limit status
+status = system.notification_service.get_rate_limit_status("user@example.com")
+if status:
+    print(f"Minutes remaining: {status['minutes_remaining']}")
+    print(f"Can send: {status['can_send']}")
+```
+
 ## Troubleshooting
 
 ### No Articles Fetched
@@ -473,6 +660,55 @@ NEWS_MONITOR_FILTER_CATEGORIES=earnings,markets
 3. Tickers must be mentioned in title or content
 4. Check article content for ticker mentions
 
+### Alert System Issues
+
+**Problem**: Alert notifications not being sent
+
+**Solutions**:
+1. Verify `NEWS_ALERTS_ENABLED=true` in configuration
+2. Check SMTP server configuration (server, port, credentials)
+3. Verify alert rules are enabled: `rule.enabled == True`
+4. Check rate limiting (may be rate-limited if notifications sent recently)
+5. Verify notification target (email address) is correct
+6. Check logs for SMTP errors or notification failures
+7. Test email configuration manually:
+   ```python
+   from app.alerts.notifications import NotificationService
+   service = NotificationService(
+       smtp_server="smtp.gmail.com",
+       smtp_port=587,
+       smtp_username="your_email@gmail.com",
+       smtp_password="your_password",
+       from_email="your_email@gmail.com",
+   )
+   service.send_email("test@example.com", "Test", "Test body", bypass_rate_limit=True)
+   ```
+
+**Problem**: Articles not matching alert rules
+
+**Solutions**:
+1. Verify alert rule criteria (tickers, keywords, categories)
+2. Check article metadata (tickers, category) are correctly extracted
+3. Verify logic (AND vs OR) matches your intent
+4. Test matching manually:
+   ```python
+   from app.alerts import NewsAlertSystem
+   system = NewsAlertSystem()
+   matching_rules = system.get_matching_rules(article)
+   print(f"Matched {len(matching_rules)} rules")
+   ```
+5. Check that rules are enabled: `rule.enabled == True`
+6. Verify article content contains expected keywords/tickers
+
+**Problem**: Too many notifications (spam)
+
+**Solutions**:
+1. Increase rate limit: `NEWS_ALERTS_RATE_LIMIT_MINUTES=30`
+2. Use more specific criteria (AND logic instead of OR)
+3. Add more restrictive filters (specific tickers, keywords)
+4. Disable rules when not needed
+5. Review and refine alert rule criteria
+
 ## Examples
 
 ### Example 1: Daily News Collection
@@ -508,6 +744,48 @@ chunk_ids = pipeline.process_news(
 ```bash
 # Add to crontab for daily news updates
 0 9 * * * cd /path/to/project && source venv/bin/activate && python scripts/fetch_news.py --feeds https://www.reuters.com/finance/rss
+```
+
+### Example 4: News Alert System
+
+```python
+from app.alerts import NewsAlertSystem
+from app.ingestion.pipeline import IngestionPipeline
+
+# Initialize alert system
+system = NewsAlertSystem()
+
+# Create alert rule for AAPL earnings
+system.rule_manager.create_rule(
+    name="AAPL Earnings Alert",
+    criteria={
+        "tickers": ["AAPL"],
+        "keywords": ["earnings", "quarterly"],
+        "categories": ["earnings"],
+        "logic": "AND",
+    },
+    notification_method="email",
+    notification_target="trader@example.com",
+)
+
+# Create alert rule for tech stock news
+system.rule_manager.create_rule(
+    name="Tech Stocks Alert",
+    criteria={
+        "tickers": ["AAPL", "MSFT", "GOOGL", "AMZN"],
+        "logic": "OR",
+    },
+    notification_method="email",
+    notification_target="analyst@example.com",
+)
+
+# Process news - alerts are automatically checked and notifications sent
+pipeline = IngestionPipeline()
+pipeline.process_news(
+    feed_urls=["https://www.reuters.com/finance/rss"],
+    enhance_with_scraping=True,
+)
+# If articles match alert rules, email notifications are sent automatically
 ```
 
 ## Integration with Other Features

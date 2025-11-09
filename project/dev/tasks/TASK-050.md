@@ -449,8 +449,149 @@ black --check app
 
 ## Discovered During Work
 
-_This section will be filled during task execution with findings and actions taken._
+### Phase 1: Analysis and Review (Completed 2025-01-27)
+
+#### File Length Analysis
+
+**Files >800 lines (MUST SPLIT):**
+1. `app/ingestion/pipeline.py` - **2,153 lines** (CRITICAL - 2 classes, 20 methods)
+   - Contains IngestionPipeline class with 17 processing methods
+   - Methods grouped by data source: documents, stock, transcripts, news, economic data, etc.
+   - **Action**: Split into base pipeline + processor modules by data source type
+
+2. `app/utils/config.py` - **1,176 lines** (Acceptable - 1 class, 39 methods)
+   - Pydantic configuration class with many fields
+   - Mostly configuration definitions and validators
+   - **Action**: Keep as-is (configuration files can be large)
+
+3. `app/ui/document_management.py` - **1,005 lines** (Must split - 0 classes, 11 functions)
+   - UI component with multiple rendering functions
+   - **Action**: Split into smaller UI component modules
+
+4. `app/ui/app.py` - **806 lines** (Must split - 0 classes, 6 functions)
+   - Main Streamlit application
+   - **Action**: Split into page components
+
+**Files >500 lines (REVIEW REQUIRED):**
+5. `app/analysis/news_trends.py` - 765 lines (2 classes, 10 methods)
+6. `app/rag/chain.py` - 764 lines (2 classes, 2 functions, 6 methods)
+7. `app/ingestion/edgar_fetcher.py` - 744 lines (2 classes, 1 function, 10 methods)
+8. `app/utils/document_manager.py` - 696 lines
+9. `app/utils/conversation_export.py` - 622 lines
+10. `app/ingestion/central_bank_fetcher.py` - 546 lines
+11. `app/ingestion/social_media_fetcher.py` - 515 lines
+12. `app/vector_db/chroma_store.py` - 513 lines
+
+**Files 300-500 lines (TARGET RANGE):**
+- 25 files in this range (acceptable, but could be optimized)
+
+#### Code Duplication Analysis
+
+**Common Patterns Identified:**
+1. **Document Processing Pattern**: Repeated across all `process_*` methods in pipeline.py
+   - Fetch data → Convert to Documents → Chunk → Embed → Store
+   - **Action**: Extract to base processor class
+
+2. **Formatting Functions**: Multiple `format_*_for_rag` methods across fetchers
+   - Similar structure in: world_bank, imf, central_bank, economic_calendar, fred
+   - **Action**: Create common formatting utilities
+
+3. **Error Handling**: Similar try-except patterns across processors
+   - **Action**: Extract to utility decorator or base class
+
+#### Utility Function Opportunities
+
+**Functions to Extract:**
+1. **Document Processing Utilities** (`app/utils/document_processors.py`):
+   - `process_documents_to_chunks()` - Common chunking logic
+   - `generate_and_store_embeddings()` - Embedding generation and storage
+   - `create_document_from_data()` - Document creation helper
+
+2. **Formatting Utilities** (`app/utils/formatters.py`):
+   - `format_data_for_rag()` - Generic data formatting
+   - `format_time_series_for_rag()` - Time series specific formatting
+
+3. **Error Handling Utilities** (`app/utils/error_handlers.py`):
+   - Decorator for consistent error handling
+   - Error tracking and logging helpers
+
+#### Reorganization Plan
+
+**Priority 1: Split pipeline.py (CRITICAL)**
+- Create `app/ingestion/processors/` directory
+- Split into modules:
+  - `base_processor.py` - Base processor class with common logic
+  - `document_processor.py` - Document processing methods
+  - `stock_processor.py` - Stock data processing
+  - `transcript_processor.py` - Transcript processing
+  - `news_processor.py` - News processing
+  - `economic_data_processor.py` - Economic calendar, FRED, World Bank, IMF
+  - `alternative_data_processor.py` - Social media, ESG, alternative data
+- Keep main `pipeline.py` as orchestrator (target: <500 lines)
+
+**Priority 2: Split UI Files**
+- `app/ui/document_management.py` → Split into:
+  - `document_list.py` - Document listing UI
+  - `document_search.py` - Search UI
+  - `document_stats.py` - Statistics UI
+- `app/ui/app.py` → Split into:
+  - `pages/` directory with separate page modules
+  - Keep main `app.py` as router (target: <300 lines)
+
+**Priority 3: Extract Utilities**
+- Create utility modules for common patterns
+- Update imports across codebase
+
+**Priority 4: Review and Optimize**
+- Review files 300-500 lines for optimization opportunities
+- Extract duplicate code to utilities
+
+#### Implementation Strategy
+
+1. **Incremental Approach**: Split files one at a time with testing after each change
+2. **Backward Compatibility**: Maintain existing imports via `__init__.py` exports
+3. **Comprehensive Testing**: Run full test suite after each major change
+4. **Documentation**: Update imports and documentation as changes are made
+
+### Phase 2: Utility Creation (In Progress)
+
+#### Utilities Created
+
+1. **`app/utils/document_processors.py`** (Created 2025-01-27)
+   - `generate_and_store_embeddings()` - Common pattern for embedding generation and storage
+   - Extracts repeated pattern from all `process_*` methods in pipeline.py
+   - Reduces code duplication across data source processors
+
+#### Next Steps for Phase 2
+
+1. Create `app/utils/formatters.py` for common formatting utilities
+2. Create `app/utils/error_handlers.py` for error handling decorators
+3. Update pipeline.py to use new utilities (incremental)
+
+### Phase 3: File Reorganization (Pending)
+
+**Status**: Analysis complete, implementation plan ready. Requires careful incremental execution with comprehensive testing after each change.
+
+**Critical Files to Split:**
+1. `app/ingestion/pipeline.py` (2,153 lines) - Highest priority
+2. `app/ui/document_management.py` (1,005 lines)
+3. `app/ui/app.py` (806 lines)
+
+**Approach**: 
+- Start with UI files (lower risk, easier to test)
+- Then tackle pipeline.py with base processor class extraction
+- Maintain backward compatibility throughout
+
+### Phase 4: Validation (Pending)
+
+**Requirements:**
+- Full test suite execution (100% pass rate)
+- All production functionality validated
+- No regressions introduced
+- Code quality checks passing
 
 ---
+
+**Status**: Phase 1 Complete, Phase 2 In Progress, Phases 3-4 Pending
 
 **End of Task**

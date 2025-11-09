@@ -11,8 +11,8 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
-from app.api.auth import verify_api_key
 from app.analysis.news_trends import NewsTrendsAnalyzer, NewsTrendsError
+from app.api.auth import verify_api_key
 from app.utils.config import config
 from app.utils.logger import get_logger
 
@@ -388,4 +388,3 @@ async def get_trend_report(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error",
         ) from e
-

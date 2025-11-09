@@ -60,3 +60,7 @@ Utility Modules
 .. automodule:: app.utils.logger
    :members:
    :show-inheritance:
+
+.. automodule:: app.utils.document_processors
+   :members:
+   :show-inheritance:
